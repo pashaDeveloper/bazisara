@@ -1,0 +1,127 @@
+/* RTEditor.css */
+
+/* حالت تاریک برای ناحیه ویرایشگر */
+.dark .ck-editor__editable_inline {
+  background-color: #1a202c !important; /* رنگ پس‌زمینه تاریک */
+  color: #cbd5e0 !important; /* رنگ متن روشن */
+}
+
+/* حالت تاریک برای نوار ابزار */
+.dark .ck-toolbar {
+  background-color: #2d3748 !important; /* رنگ پس‌زمینه نوار ابزار */
+  border-color: #4a5568 !important; /* رنگ مرز نوار ابزار */
+}
+
+/* حالت تاریک برای دکمه‌ها */
+.dark .ck-button {
+  color: #cbd5e0 !important; /* رنگ آیکون‌ها و متن دکمه‌ها */
+}
+
+/* حالت تاریک برای انتخاب‌ها */
+.dark .ck-dropdown {
+  background-color: #2d3748 !important;
+  color: #cbd5e0 !important;
+}
+
+/* حالت تاریک برای ابزارک‌های دیگر */
+.dark .ck-panel {
+  background-color: #2d3748 !important;
+  color: #cbd5e0 !important;
+}
+
+/* حالت تاریک برای placeholder ها */
+.dark .ck-editor__editable_inline::placeholder {
+  color: #a0aec0 !important;
+}
+
+/* حالت تاریک برای انتخاب متن */
+
+.ck-content{ 
+height:100vh;
+  overflow-y: scroll; 
+  scrollbar-width: none;
+
+}
+.ck-sticky-panel__content_sticky{
+top:60px !important;
+}
+
+.page-builder,
+.page-builder * {
+  color: #f4f4f5;
+}
+
+.page-builder input:not([type="file"]),
+.page-builder textarea,
+.page-builder select {
+  background-color: #050505 !important;
+  border: 1px solid #3f3f46 !important;
+  color: #f8fafc !important;
+}
+
+.page-builder input::placeholder,
+.page-builder textarea::placeholder {
+  color: #a1a1aa !important;
+}
+
+.page-builder input[type="file"] {
+  color: #e4e4e7 !important;
+}
+
+.page-builder label,
+.page-builder p,
+.page-builder h2,
+.page-builder h3,
+.page-builder h4,
+.page-builder span {
+  color: #f4f4f5;
+}
+
+.page-builder .ck-editor__editable_inline,
+.page-builder .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 320px;
+  background-color: #050505 !important;
+  border-color: #3f3f46 !important;
+  color: #f8fafc !important;
+}
+
+.page-builder .ck-content,
+.page-builder .ck-content * {
+  color: #f8fafc !important;
+}
+
+.page-builder .ck.ck-toolbar,
+.page-builder .ck.ck-sticky-panel__content,
+.page-builder .ck.ck-dropdown__panel,
+.page-builder .ck.ck-list {
+  background-color: #18181b !important;
+  border-color: #3f3f46 !important;
+}
+
+.page-builder .ck.ck-button,
+.page-builder .ck.ck-button .ck-button__label,
+.page-builder .ck.ck-dropdown .ck-button__label {
+  color: #f8fafc !important;
+}
+
+.page-builder .preview-content,
+.page-builder .preview-content * {
+  color: #f4f4f5;
+}
+
+.page-builder .preview-content a {
+  color: #93c5fd;
+}
+
+.page-builder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-builder-icon svg {
+  width: 100%;
+  height: 100%;
+  color: inherit;
+}
+

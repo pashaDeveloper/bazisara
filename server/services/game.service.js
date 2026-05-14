@@ -1,0 +1,396 @@
+const mongoose = require("mongoose");
+const Game = require("../models/game.model");
+const Category = require("../models/category.model");
+const Genre = require("../models/genre.model");
+const Company = require("../models/company.model");
+const Tag = require("../models/tag.model");
+const {
+  buildSearchQuery,
+  buildPaginationMeta,
+  getPaginationOptions,
+  getSearchTerm,
+} = require("../utils/pagination.util");
+
+const populateGame = (query) =>
+  query
+    .populate("category", "name")
+    .populate("genres", "name icon image")
+    .populate("developers", "name logo icon")
+    .populate("publishers", "name logo icon")
+    .populate("tags", "name slug image");
+
+function makeSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9\u0600-\u06ff-]+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+async function makeUniqueSlug(title, currentId = null) {
+  const baseSlug = makeSlug(title);
+  if (!baseSlug) return "";
+
+  let slug = baseSlug;
+  let counter = 2;
+
+  while (
+    await Game.exists({
+      slug,
+      isDeleted: false,
+      ...(currentId ? { _id: { $ne: currentId } } : {}),
+    })
+  ) {
+    slug = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
+
+  return slug;
+}
+
+function parseArray(value) {
+  if (value === undefined || value === null || value === "") return [];
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.map(String).map((item) => item.trim()).filter(Boolean);
+    }
+  } catch (_) {}
+
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseSocialLinks(value) {
+  if (value === undefined || value === null || value === "") return [];
+  const rawItems = Array.isArray(value) ? value : (() => {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  })();
+
+  return rawItems
+    .map((item) => ({
+      platform: String(item?.platform || "").trim(),
+      label: String(item?.label || "").trim(),
+      url: String(item?.url || "").trim(),
+    }))
+    .filter((item) => item.platform && item.url);
+}
+
+function parseBoolean(value) {
+  return value === true || value === "true" || value === "1" || value === 1;
+}
+
+function toNumber(value, fallback = null) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function buildMedia(file) {
+  if (!file) return undefined;
+
+  return {
+    url: file.url,
+    public_id: file.public_id,
+    type: file.resource_type === "video" ? "video" : "image",
+  };
+}
+
+function limitText(value, maxLength) {
+  const text = String(value || "").trim();
+  return text.length > maxLength ? text.slice(0, maxLength).trim() : text;
+}
+
+function applySeoFromContent(payload, currentGame = null) {
+  const title =
+    payload.title !== undefined ? payload.title : currentGame?.title || "";
+  const shortDescription =
+    payload.shortDescription !== undefined
+      ? payload.shortDescription
+      : currentGame?.shortDescription || "";
+
+  if (payload.title !== undefined || payload.shortDescription !== undefined || !currentGame) {
+    payload.seoTitle = limitText(title, 160);
+    payload.seoDescription = limitText(shortDescription || title, 320);
+    payload.seoKeywords = [title, shortDescription]
+      .filter(Boolean)
+      .map((item) => limitText(item, 80));
+  }
+}
+
+async function ensureExists(Model, ids, label) {
+  const values = Array.isArray(ids) ? ids : ids ? [ids] : [];
+  const filtered = values.filter(Boolean);
+
+  for (const id of filtered) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new Error(`${label} id is not valid`);
+    }
+  }
+
+  if (!filtered.length) return;
+
+  const count = await Model.countDocuments({
+    _id: { $in: filtered },
+    isDeleted: false,
+  });
+
+  if (count !== filtered.length) {
+    throw new Error(`${label} not found`);
+  }
+}
+
+function normalizePayload(body, uploadedFiles, currentGame) {
+  const title = body.title !== undefined ? String(body.title).trim() : undefined;
+  const payload = {
+    title,
+    slug: title !== undefined ? "" : undefined,
+    shortDescription:
+      body.shortDescription !== undefined
+        ? String(body.shortDescription).trim()
+        : undefined,
+    description:
+      body.description !== undefined ? String(body.description).trim() : undefined,
+    category: body.category !== undefined ? body.category || null : undefined,
+    genres: body.genres !== undefined ? parseArray(body.genres) : undefined,
+    developers:
+      body.developers !== undefined ? parseArray(body.developers) : undefined,
+    publishers:
+      body.publishers !== undefined ? parseArray(body.publishers) : undefined,
+    tags: body.tags !== undefined ? parseArray(body.tags) : undefined,
+    platforms:
+      body.platforms !== undefined ? parseArray(body.platforms) : undefined,
+    gameModes:
+      body.gameModes !== undefined ? parseArray(body.gameModes) : undefined,
+    languages:
+      body.languages !== undefined ? parseArray(body.languages) : undefined,
+    regions: body.regions !== undefined ? parseArray(body.regions) : undefined,
+    launcher: body.launcher !== undefined ? String(body.launcher).trim() : undefined,
+    edition: body.edition !== undefined ? String(body.edition).trim() : undefined,
+    releaseDate:
+      body.releaseDate !== undefined
+        ? body.releaseDate
+          ? new Date(body.releaseDate)
+          : null
+        : undefined,
+    officialWebsite:
+      body.officialWebsite !== undefined
+        ? String(body.officialWebsite).trim()
+        : undefined,
+    socialLinks:
+      body.socialLinks !== undefined ? parseSocialLinks(body.socialLinks) : undefined,
+    ageRating:
+      body.ageRating !== undefined ? String(body.ageRating).trim() : undefined,
+    gameplayTime:
+      body.gameplayTime !== undefined ? String(body.gameplayTime).trim() : undefined,
+    metacriticScore:
+      body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
+    trailerUrl:
+      body.trailerUrl !== undefined ? String(body.trailerUrl).trim() : undefined,
+    isFeatured:
+      body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
+  };
+
+  const cover = buildMedia(uploadedFiles?.cover?.[0]);
+  if (cover) payload.cover = cover;
+
+  const galleryFiles = uploadedFiles?.gallery || [];
+  if (galleryFiles.length) {
+    payload.gallery = [
+      ...(currentGame?.gallery || []),
+      ...galleryFiles.map(buildMedia).filter(Boolean),
+    ];
+  }
+
+  const trailerVideo = buildMedia(uploadedFiles?.trailerVideo?.[0]);
+  if (trailerVideo) payload.trailerVideo = trailerVideo;
+
+  const gameplayVideo = buildMedia(uploadedFiles?.gameplayVideo?.[0]);
+  if (gameplayVideo) payload.gameplayVideo = gameplayVideo;
+
+  applySeoFromContent(payload, currentGame);
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined)
+  );
+}
+
+async function validatePayload(payload) {
+  if (payload.category !== undefined) {
+    if (!payload.category) throw new Error("Game category is required");
+    await ensureExists(Category, payload.category, "Category");
+  }
+  if (payload.genres !== undefined) await ensureExists(Genre, payload.genres, "Genre");
+  if (payload.developers !== undefined) {
+    await ensureExists(Company, payload.developers, "Developer");
+  }
+  if (payload.publishers !== undefined) {
+    await ensureExists(Company, payload.publishers, "Publisher");
+  }
+  if (payload.tags !== undefined) await ensureExists(Tag, payload.tags, "Tag");
+}
+
+exports.createGame = async (req, res) => {
+  const payload = normalizePayload(req.body, req.uploadedFiles);
+
+  if (!payload.title) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان بازی الزامی است",
+    });
+  }
+
+  payload.slug = await makeUniqueSlug(payload.title);
+
+  await validatePayload(payload);
+
+  const game = await Game.create(payload);
+  const populatedGame = await populateGame(Game.findById(game._id));
+
+  res.status(201).json({
+    acknowledgement: true,
+    message: "Created",
+    description: "بازی با موفقیت ایجاد شد",
+    data: populatedGame,
+  });
+};
+
+exports.getGames = async (req, res) => {
+  const search = getSearchTerm(req.query);
+  const query = {
+    isDeleted: false,
+    ...buildSearchQuery(search, [
+      "title",
+      "slug",
+      "shortDescription",
+      "description",
+      "seoTitle",
+      "seoDescription",
+      "seoKeywords",
+    ]),
+  };
+  const { limit, page, skip } = getPaginationOptions(req.query);
+  const [games, totalItems] = await Promise.all([
+    populateGame(Game.find(query)).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Game.countDocuments(query),
+  ]);
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "لیست بازی‌ها دریافت شد",
+    data: games,
+    pagination: buildPaginationMeta({ limit, page, totalItems }),
+  });
+};
+
+exports.getGame = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "شناسه بازی معتبر نیست",
+    });
+  }
+
+  const game = await populateGame(Game.findOne({ _id: id, isDeleted: false }));
+
+  if (!game) {
+    return res.status(404).json({
+      acknowledgement: false,
+      message: "Not Found",
+      description: "بازی یافت نشد",
+    });
+  }
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "جزئیات بازی دریافت شد",
+    data: game,
+  });
+};
+
+exports.updateGame = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "شناسه بازی معتبر نیست",
+    });
+  }
+
+  const game = await Game.findOne({ _id: id, isDeleted: false });
+  if (!game) {
+    return res.status(404).json({
+      acknowledgement: false,
+      message: "Not Found",
+      description: "بازی یافت نشد",
+    });
+  }
+
+  const payload = normalizePayload(req.body, req.uploadedFiles, game);
+  if (payload.title !== undefined) {
+    payload.slug = await makeUniqueSlug(payload.title, id);
+  }
+  await validatePayload(payload);
+  Object.assign(game, payload);
+  await game.save();
+
+  const populatedGame = await populateGame(Game.findById(game._id));
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "بازی با موفقیت به‌روزرسانی شد",
+    data: populatedGame,
+  });
+};
+
+exports.deleteGame = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "شناسه بازی معتبر نیست",
+    });
+  }
+
+  const game = await Game.findOneAndUpdate(
+    { _id: id, isDeleted: false },
+    { isDeleted: true, deletedAt: Date.now(), status: "inactive" },
+    { new: true }
+  );
+
+  if (!game) {
+    return res.status(404).json({
+      acknowledgement: false,
+      message: "Not Found",
+      description: "بازی یافت نشد",
+    });
+  }
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "بازی با موفقیت حذف شد",
+  });
+};

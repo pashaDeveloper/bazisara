@@ -1,0 +1,184 @@
+
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+
+/* Additional styles */
+@import 'additional-styles/utility-patterns.css';
+
+@import 'tailwindcss/utilities';
+
+  
+  
+  @font-face {
+    font-family: "Vazir";
+    src: url("/fonts/vazir/Vazir.woff2") format("woff2"),
+         url("/fonts/vazir/vazir.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+  body {
+    font-family: 'Vazir'; 
+  }
+
+  .dashboard-content-scroll {
+    direction: ltr;
+    scrollbar-color: #22c55e #09090b;
+    scrollbar-width: thin;
+  }
+
+  .dashboard-content-scroll > * {
+    direction: rtl;
+  }
+
+  .dashboard-content-scroll::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .dashboard-content-scroll::-webkit-scrollbar-track {
+    background: #09090b;
+    border-right: 1px solid #18181b;
+  }
+
+  .dashboard-content-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #3f3f46, #22c55e);
+    border: 2px solid #09090b;
+    border-radius: 999px;
+  }
+
+  .dashboard-content-scroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #71717a, #4ade80);
+  }
+
+  html:not(.dark) body {
+    background: #f4f4f5;
+    color: #18181b;
+  }
+
+  html:not(.dark) .bg-black,
+  html:not(.dark) .bg-zinc-950,
+  html:not(.dark) .bg-zinc-950\/80,
+  html:not(.dark) .bg-black\/80,
+  html:not(.dark) .bg-black\/90 {
+    background-color: #ffffff !important;
+  }
+
+  html:not(.dark) .bg-zinc-900,
+  html:not(.dark) .bg-zinc-900\/80 {
+    background-color: #f4f4f5 !important;
+  }
+
+  html:not(.dark) .bg-gradient-to-b {
+    background-image: linear-gradient(to bottom, #f8fafc, #f4f4f5, #ffffff) !important;
+  }
+
+  html:not(.dark) .border-zinc-700,
+  html:not(.dark) .border-zinc-800,
+  html:not(.dark) .border-zinc-800\/80 {
+    border-color: #d4d4d8 !important;
+  }
+
+  html:not(.dark) .text-white,
+  html:not(.dark) .text-zinc-100,
+  html:not(.dark) .text-zinc-200,
+  html:not(.dark) .text-zinc-300 {
+    color: #18181b !important;
+  }
+
+  html:not(.dark) .text-zinc-400,
+  html:not(.dark) .text-zinc-500,
+  html:not(.dark) .text-zinc-600 {
+    color: #52525b !important;
+  }
+
+  html:not(.dark) input,
+  html:not(.dark) textarea,
+  html:not(.dark) select {
+    background-color: #ffffff !important;
+    border-color: #d4d4d8 !important;
+    color: #18181b !important;
+  }
+
+  html:not(.dark) input::placeholder,
+  html:not(.dark) textarea::placeholder {
+    color: #71717a !important;
+  }
+
+  html:not(.dark) .shadow-black\/40 {
+    --tw-shadow-color: rgb(39 39 42 / 0.16) !important;
+    --tw-shadow: var(--tw-shadow-colored) !important;
+  }
+
+  html:not(.dark) .dashboard-content-scroll {
+    scrollbar-color: #a1a1aa #f4f4f5;
+  }
+
+  html:not(.dark) .dashboard-content-scroll::-webkit-scrollbar-track {
+    background: #f4f4f5;
+    border-right-color: #e4e4e7;
+  }
+
+  html:not(.dark) .dashboard-content-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #d4d4d8, #71717a);
+    border-color: #f4f4f5;
+  }
+
+  html:not(.dark) .bg-green-500,
+  html:not(.dark) .bg-red-500,
+  html:not(.dark) .bg-blue-500,
+  html:not(.dark) .bg-violet-500 {
+    color: #ffffff !important;
+  }
+
+  html:not(.dark) .hover\:bg-zinc-950:hover,
+  html:not(.dark) .hover\:bg-zinc-900:hover,
+  html:not(.dark) .hover\:bg-zinc-900\/40:hover,
+  html:not(.dark) .hover\:bg-zinc-900\/70:hover,
+  html:not(.dark) .hover\:bg-gray-900:hover {
+    background-color: #f4f4f5 !important;
+  }
+
+  html:not(.dark) .hover\:bg-zinc-800:hover,
+  html:not(.dark) .hover\:bg-gray-800:hover {
+    background-color: #e4e4e7 !important;
+  }
+
+  html:not(.dark) .hover\:text-white:hover,
+  html:not(.dark) .hover\:text-zinc-200:hover,
+  html:not(.dark) .hover\:text-gray-200:hover {
+    color: #18181b !important;
+  }
+
+  html:not(.dark) .hover\:border-white:hover,
+  html:not(.dark) .focus\:border-white:focus,
+  html:not(.dark) .hover\:border-zinc-600:hover,
+  html:not(.dark) .hover\:border-zinc-500:hover {
+    border-color: #71717a !important;
+  }
+
+  html:not(.dark) .focus\:ring-white:focus {
+    --tw-ring-color: #71717a !important;
+  }
+
+  html:not(.dark) .hover\:bg-zinc-200:hover,
+  html:not(.dark) .hover\:bg-gray-200:hover,
+  html:not(.dark) .hover\:bg-gray-300:hover,
+  html:not(.dark) .hover\:bg-gray-400:hover {
+    background-color: #e4e4e7 !important;
+  }
+
+  html:not(.dark) .hover\:bg-green-50:hover {
+    background-color: #dcfce7 !important;
+  }
+
+  html:not(.dark) .hover\:bg-blue-600:hover,
+  html:not(.dark) .hover\:bg-violet-500:hover,
+  html:not(.dark) .hover\:bg-violet-600:hover {
+    color: #ffffff !important;
+  }
+
+  html:not(.dark) li:hover .text-zinc-500,
+  html:not(.dark) button:hover .text-zinc-500,
+  html:not(.dark) a:hover .text-zinc-500 {
+    color: #3f3f46 !important;
+  }

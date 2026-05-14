@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+
+# Env files
+.env
+*.env
+
+# Build output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+
+# Server secrets
+server/serviceAccountKey.json
+
+# Ignore generated CKEditor build output if present
+dashboard/dist/
