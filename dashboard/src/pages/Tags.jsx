@@ -36,8 +36,8 @@ function Tags() {
   };
 
   const formatKeywords = (keywords) => {
-    if (Array.isArray(keywords)) return keywords.join("، ");
-    return keywords || "-";
+    if (Array.isArray(keywords) && keywords.length) return keywords.join("، ");
+    return "-";
   };
 
   return (
@@ -46,10 +46,11 @@ function Tags() {
         <div className="rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs text-zinc-400">مدیریت سئو بازی‌ها</p>
+              <p className="text-xs text-zinc-400">مدیریت صفحات سئویی بازی‌ها</p>
               <h1 className="mt-1 text-2xl font-bold text-white">تگ‌ها</h1>
               <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                تگ‌ها برای ساخت صفحه‌های سئویی و اتصال به بازی‌ها استفاده می‌شوند و هر تگ تصویر اختصاصی دارد.
+                تگ‌ها برای ساخت صفحه‌های سئو، گروه‌بندی محتوایی و اتصال به بازی‌ها استفاده می‌شوند.
+                برای هر تگ می‌توانید اسلاگ، تصویر، توضیح و اطلاعات متا ثبت کنید.
               </p>
             </div>
             <AddButton link="/tags/create" />
@@ -60,17 +61,24 @@ function Tags() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-sm font-bold text-white">لیست تگ‌ها</h2>
-              <span className="mt-1 block text-xs text-zinc-500">{tagsMeta?.totalItems || tags.length} مورد</span>
+              <span className="mt-1 block text-xs text-zinc-500">
+                {tagsMeta?.totalItems || tags.length} مورد
+              </span>
             </div>
-            <SearchBox onChange={setSearch} placeholder="جستجوی نام، اسلاگ یا کلمات کلیدی..." value={search} />
+            <SearchBox
+              onChange={setSearch}
+              placeholder="جستجوی نام، اسلاگ یا کلمات کلیدی..."
+              value={search}
+            />
           </div>
+
           <div className="mt-4 overflow-hidden">
             <table className="w-full table-fixed text-right text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500">
-                  <th className="w-[30%] pb-3 font-medium">نام</th>
-                  <th className="hidden pb-3 font-medium md:table-cell">عنوان سئو</th>
-                  <th className="hidden w-24 pb-3 font-medium sm:table-cell">تصویر</th>
+                  <th className="w-[30%] pb-3 font-medium">نام و اسلاگ</th>
+                  <th className="hidden pb-3 font-medium md:table-cell">سئو</th>
+                  <th className="hidden w-28 pb-3 font-medium sm:table-cell">تصویر</th>
                   <th className="w-24 pb-3 text-center font-medium">عملیات</th>
                 </tr>
               </thead>
@@ -86,7 +94,9 @@ function Tags() {
                     <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
                       <td className="py-4 pl-3">
                         <span className="block truncate">{item.name}</span>
-                        <span className="mt-1 block truncate text-xs text-zinc-500">{item.slug}</span>
+                        <span className="mt-1 block truncate text-xs text-zinc-500" dir="ltr">
+                          {item.slug}
+                        </span>
                       </td>
                       <td className="hidden py-4 pl-3 text-zinc-400 md:table-cell">
                         <span className="block truncate">{item.seoTitle || "-"}</span>
@@ -137,6 +147,7 @@ function Tags() {
               </tbody>
             </table>
           </div>
+
           <Pagination
             currentPage={tagsPagination.currentPage}
             onPageChange={tagsPagination.setCurrentPage}

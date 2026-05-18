@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import DisplayImages from "@/components/shared/DisplayImages";
+import Cross from "@/components/icons/Cross";
 import NavigationButton from "@/components/shared/button/NavigationButton";
 import SendButton from "@/components/shared/button/SendButton";
 import SocialLinksInput from "@/components/shared/SocialLinksInput";
@@ -57,6 +58,9 @@ const initialForm = {
   trailerVideo: null,
   gameplayVideo: null,
   cover: null,
+  cardDesktopCover: null,
+  cardMobileCover: null,
+  desktopCover: null,
   gallery: [],
 };
 
@@ -200,8 +204,12 @@ function GameCardPreview({ coverPreview, form }) {
   );
 }
 
-function GameDetailPreview({ coverPreview, form, galleryPreview, genres, platforms }) {
-  const heroImage = coverPreview || galleryPreview[0]?.url || "";
+function GameDetailPreview({ cardMobileCoverPreview = "", coverPreview, desktopCoverPreview = "", form, galleryPreview, genres, isSticky = true, platforms, variant = "desktop" }) {
+  const isMobile = variant === "mobile";
+  const heroImage =
+    (isMobile ? cardMobileCoverPreview || coverPreview : desktopCoverPreview || coverPreview) ||
+    galleryPreview[0]?.url ||
+    "";
   const title = form.title.trim();
   const description = stripHtml(form.description) || form.shortDescription.trim();
   const specs = [
@@ -216,16 +224,37 @@ function GameDetailPreview({ coverPreview, form, galleryPreview, genres, platfor
   ];
 
   return (
-    <div className="sticky top-24 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950" dir="rtl">
-      <div className="relative h-64 bg-zinc-900">
+    <div
+      className={`overflow-hidden border border-zinc-800 bg-zinc-950 ${
+        isMobile
+          ? "no-scrollbar max-h-[720px] w-full max-w-[360px] overflow-y-auto"
+          : `${isSticky ? "sticky top-24" : ""}`
+      }`}
+      dir="rtl"
+    >
+      <div className={`relative bg-zinc-900 ${isMobile ? "h-52" : "h-64"}`}>
         {heroImage ? (
-          <img alt={title} className="h-full w-full object-cover" src={heroImage} />
+          <img
+            alt={title}
+            className="h-full w-full object-cover"
+            src={heroImage}
+          />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-none" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/20 to-transparent" />
-        <div className="absolute bottom-4 right-4 w-72 rounded-xl border border-white/10 bg-white/90 p-4 text-zinc-950 shadow-xl">
-          {title ? <h3 className="line-clamp-2 text-lg font-black">{title}</h3> : <SkeletonBlock className="h-6 w-3/4 bg-zinc-300/25" />}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
+        <div
+          className={`absolute rounded-xl border border-white/10 bg-white/90 text-zinc-950 shadow-xl ${
+            isMobile ? "inset-x-3 bottom-3 p-3" : "bottom-4 left-4 w-72 p-4"
+          }`}
+        >
+          {title ? (
+            <h3 className={`line-clamp-2 font-black ${isMobile ? "text-base" : "text-lg"}`}>
+              {title}
+            </h3>
+          ) : (
+            <SkeletonBlock className="h-6 w-3/4 bg-zinc-300/25" />
+          )}
           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px]">
             {[form.edition, form.ageRating, form.metacriticScore].map((value, index) => (
               <span className="rounded-lg bg-zinc-100 p-2" key={index}>
@@ -245,7 +274,7 @@ function GameDetailPreview({ coverPreview, form, galleryPreview, genres, platfor
       </div>
 
       <div className="border-b border-zinc-800 bg-black px-4 py-3">
-        <div className="flex gap-6 text-xs text-zinc-400">
+        <div className={`flex text-xs text-zinc-400 ${isMobile ? "gap-4 overflow-x-auto whitespace-nowrap" : "gap-6"}`}>
           <span>معرفی</span>
           <span>نقد و بررسی</span>
           <span className="border-b-2 border-red-500 pb-2 text-white">مشخصات</span>
@@ -253,7 +282,7 @@ function GameDetailPreview({ coverPreview, form, galleryPreview, genres, platfor
         </div>
       </div>
 
-      <div className="space-y-5 p-4">
+      <div className={`space-y-5 ${isMobile ? "p-3" : "p-4"}`}>
         {description ? (
           <p className="line-clamp-4 text-sm leading-7 text-zinc-300">{description}</p>
         ) : (
@@ -265,7 +294,12 @@ function GameDetailPreview({ coverPreview, form, galleryPreview, genres, platfor
         )}
         <div className="overflow-hidden rounded-xl border border-zinc-800">
           {specs.map(([label, value]) => (
-            <div className="grid grid-cols-[120px_1fr] border-b border-zinc-800 last:border-b-0" key={label}>
+            <div
+              className={`grid border-b border-zinc-800 last:border-b-0 ${
+                isMobile ? "grid-cols-[96px_1fr]" : "grid-cols-[120px_1fr]"
+              }`}
+              key={label}
+            >
               <div className="bg-black px-3 py-3 text-xs text-zinc-500">{label}</div>
               <div className="px-3 py-3 text-xs text-zinc-200">
                 {value ? value : <SkeletonBlock className="h-4 w-20" />}
@@ -275,10 +309,244 @@ function GameDetailPreview({ coverPreview, form, galleryPreview, genres, platfor
         </div>
         <div>
           <p className="mb-3 text-xs font-bold text-zinc-500">محصولات مرتبط</p>
-          <div className="grid grid-cols-4 gap-3">
+          <div className={`grid gap-3 ${isMobile ? "grid-cols-2" : "grid-cols-4"}`}>
             {[0, 1, 2, 3].map((item) => (
               <div className="h-24 rounded-xl border border-zinc-800 bg-black" key={item} />
             ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DesktopCoverCropper({ file, onCancel, onCrop }) {
+  const imageRef = useRef(null);
+  const dragRef = useRef(null);
+  const [source, setSource] = useState("");
+  const [imageBox, setImageBox] = useState({ width: 0, height: 0 });
+  const [crop, setCrop] = useState({ x: 40, y: 40, width: 260, height: 150 });
+
+  useEffect(() => {
+    if (!file) {
+      setSource("");
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setSource(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+
+      event.preventDefault();
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+
+      setCrop(() => {
+        const minSize = 60;
+        const box = imageBox;
+        let next = { ...drag.startCrop };
+
+        if (drag.type === "move") {
+          next.x = Math.min(Math.max(0, drag.startCrop.x + dx), box.width - drag.startCrop.width);
+          next.y = Math.min(Math.max(0, drag.startCrop.y + dy), box.height - drag.startCrop.height);
+        }
+
+        if (drag.type.includes("e")) {
+          next.width = Math.min(Math.max(minSize, drag.startCrop.width + dx), box.width - drag.startCrop.x);
+        }
+        if (drag.type.includes("s")) {
+          next.height = Math.min(Math.max(minSize, drag.startCrop.height + dy), box.height - drag.startCrop.y);
+        }
+        if (drag.type.includes("w")) {
+          const nextX = Math.min(
+            Math.max(0, drag.startCrop.x + dx),
+            drag.startCrop.x + drag.startCrop.width - minSize
+          );
+          next.width = drag.startCrop.width + (drag.startCrop.x - nextX);
+          next.x = nextX;
+        }
+        if (drag.type.includes("n")) {
+          const nextY = Math.min(
+            Math.max(0, drag.startCrop.y + dy),
+            drag.startCrop.y + drag.startCrop.height - minSize
+          );
+          next.height = drag.startCrop.height + (drag.startCrop.y - nextY);
+          next.y = nextY;
+        }
+
+        return next;
+      });
+    };
+
+    const handlePointerUp = () => {
+      dragRef.current = null;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [imageBox]);
+
+  const handleImageLoad = () => {
+    const image = imageRef.current;
+    if (!image) return;
+
+    const { width, height } = image.getBoundingClientRect();
+    setImageBox({ width, height });
+
+    const cropWidth = width * 0.82;
+    const cropHeight = Math.min(height * 0.7, cropWidth * 0.58);
+    setCrop({
+      x: (width - cropWidth) / 2,
+      y: (height - cropHeight) / 2,
+      width: cropWidth,
+      height: cropHeight,
+    });
+  };
+
+  const startDrag = (event, type) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragRef.current = {
+      type,
+      startX: event.clientX,
+      startY: event.clientY,
+      startCrop: crop,
+    };
+  };
+
+  const handleCrop = async () => {
+    const image = imageRef.current;
+    if (!image || !imageBox.width || !imageBox.height) return;
+
+    const scaleX = image.naturalWidth / imageBox.width;
+    const scaleY = image.naturalHeight / imageBox.height;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(crop.width * scaleX);
+    canvas.height = Math.round(crop.height * scaleY);
+
+    const context = canvas.getContext("2d");
+    context.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const croppedFile = new File([blob], `desktop-${file.name.replace(/\.[^.]+$/, "")}.webp`, {
+          type: "image/webp",
+        });
+        onCrop(croppedFile, URL.createObjectURL(blob));
+      },
+      "image/webp",
+      0.92
+    );
+  };
+
+  if (!file || !source) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur" dir="rtl">
+      <div className="w-full max-w-5xl overflow-hidden border border-zinc-800 bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <div>
+            <p className="text-xs text-zinc-500">تصویر جزئیات دسکتاپ</p>
+            <h2 className="text-base font-bold text-white">برش تصویر</h2>
+          </div>
+          <button
+            aria-label="بستن crop"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 transition hover:border-white hover:text-white"
+            onClick={onCancel}
+            type="button"
+          >
+            <Cross />
+          </button>
+        </div>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="no-scrollbar max-h-[72vh] overflow-auto bg-black">
+            <div className="relative mx-auto w-fit select-none">
+              <img
+                alt="mobile crop"
+                className="block max-h-[72vh] max-w-full"
+                onLoad={handleImageLoad}
+                ref={imageRef}
+                src={source}
+              />
+              {imageBox.width ? (
+                <>
+                  <div className="pointer-events-none absolute inset-0 bg-black/45" />
+                  <div
+                    className="absolute cursor-move border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"
+                    onPointerDown={(event) => startDrag(event, "move")}
+                    style={{
+                      height: crop.height,
+                      right: imageBox.width - crop.x - crop.width,
+                      top: crop.y,
+                      width: crop.width,
+                    }}
+                  >
+                    <div className="grid h-full w-full grid-cols-3 grid-rows-3">
+                      {Array.from({ length: 9 }).map((_, index) => (
+                        <span className="border border-white/25" key={index} />
+                      ))}
+                    </div>
+                    {["nw", "ne", "sw", "se"].map((handle) => (
+                      <button
+                        aria-label={`resize ${handle}`}
+                        className={`absolute h-5 w-5 rounded-full border-2 border-white bg-red-500 ${
+                          handle.includes("n") ? "-top-3" : "-bottom-3"
+                        } ${handle.includes("w") ? "-left-3 cursor-nwse-resize" : "-right-3 cursor-nesw-resize"}`}
+                        key={handle}
+                        onPointerDown={(event) => startDrag(event, handle)}
+                        type="button"
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-between gap-4">
+            <div className="space-y-3 text-sm text-zinc-400">
+              {/* <p>کادر سفید را جابه‌جا کن یا از گوشه‌ها اندازه آن را تغییر بده.</p>
+              <p>فایل نهایی واقعاً crop می‌شود و همان نسخه‌ی برش‌خورده برای جزئیات دسکتاپ آپلود خواهد شد.</p> */}
+            </div>
+            <div className="grid gap-2">
+              <button
+                className="rounded-lg bg-red-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-400"
+                onClick={handleCrop}
+                type="button"
+              >
+                ثبت 
+              </button>
+              <button
+                className="rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-300 transition hover:border-white hover:text-white"
+                onClick={onCancel}
+                type="button"
+              >
+                انصراف
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -293,9 +561,14 @@ function GameForm({ mode = "create" }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
   const [coverPreview, setCoverPreview] = useState("");
+  const [cardDesktopCoverPreview, setCardDesktopCoverPreview] = useState("");
+  const [cardMobileCoverPreview, setCardMobileCoverPreview] = useState("");
+  const [desktopCoverPreview, setDesktopCoverPreview] = useState("");
+  const [desktopCoverCropFile, setDesktopCoverCropFile] = useState(null);
   const [galleryPreview, setGalleryPreview] = useState([]);
   const [trailerVideoPreview, setTrailerVideoPreview] = useState("");
   const [gameplayVideoPreview, setGameplayVideoPreview] = useState("");
+  const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
 
   const { data: gameData, isLoading: isLoadingGame } = useGetGameQuery(id, {
     skip: !isEdit || !id,
@@ -370,9 +643,15 @@ function GameForm({ mode = "create" }) {
       trailerVideo: null,
       gameplayVideo: null,
       cover: null,
+      cardDesktopCover: null,
+      cardMobileCover: null,
+      desktopCover: null,
       gallery: [],
     });
     setCoverPreview(game.cover?.url || "");
+    setCardDesktopCoverPreview(game.cardDesktopCover?.url || game.cover?.url || "");
+    setCardMobileCoverPreview(game.cardMobileCover?.url || game.cover?.url || "");
+    setDesktopCoverPreview(game.desktopCover?.url || "");
     setGalleryPreview((game.gallery || []).map((item) => ({ url: item.url, type: item.type })));
     setTrailerVideoPreview(game.trailerVideo?.url || "");
     setGameplayVideoPreview(game.gameplayVideo?.url || "");
@@ -448,6 +727,18 @@ function GameForm({ mode = "create" }) {
         if (value instanceof File) formData.append("cover", value);
         return;
       }
+      if (key === "cardDesktopCover") {
+        if (value instanceof File) formData.append("cardDesktopCover", value);
+        return;
+      }
+      if (key === "cardMobileCover") {
+        if (value instanceof File) formData.append("cardMobileCover", value);
+        return;
+      }
+      if (key === "desktopCover") {
+        if (value instanceof File) formData.append("desktopCover", value);
+        return;
+      }
       if (key === "gallery") {
         (Array.isArray(value) ? value : []).forEach((file) => {
           if (file instanceof File) formData.append("gallery", file);
@@ -508,15 +799,51 @@ function GameForm({ mode = "create" }) {
         return (
           <div className="grid gap-4">
             <TextField label="عنوان" name="title" onChange={handleChange} value={form.title} />
-            <div className="rounded-xl border border-zinc-800 bg-black p-4">
-              <span className="mb-3 block text-sm text-zinc-300">کاور</span>
-              <ThumbnailUpload
-                name="cover"
-                preview={coverPreview}
-                setThumbnail={(file) => setForm((prev) => ({ ...prev, cover: file }))}
-                setThumbnailPreview={setCoverPreview}
-                title="انتخاب کاور"
-              />
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-xl border border-zinc-800 bg-black p-4">
+                <span className="mb-3 block text-sm text-zinc-300">تصویر کارت دسکتاپ</span>
+                <ThumbnailUpload
+                  name="cardDesktopCover"
+                  preview={cardDesktopCoverPreview}
+                  setThumbnail={(file) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      cardDesktopCover: file,
+                      cover: prev.cover || file,
+                    }));
+                  }}
+                  setThumbnailPreview={(preview) => {
+                    setCardDesktopCoverPreview(preview);
+                    if (!coverPreview) setCoverPreview(preview);
+                  }}
+                  title="انتخاب کارت دسکتاپ"
+                />
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-black p-4">
+                <span className="mb-3 block text-sm text-zinc-300">تصویر کارت موبایل</span>
+                <ThumbnailUpload
+                  name="cardMobileCover"
+                  preview={cardMobileCoverPreview}
+                  setThumbnail={(file) => setForm((prev) => ({ ...prev, cardMobileCover: file }))}
+                  setThumbnailPreview={setCardMobileCoverPreview}
+                  title="انتخاب کارت موبایل"
+                />
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-black p-4">
+                <span className="mb-3 block text-sm text-zinc-300">تصویر جزئیات دسکتاپ</span>
+                <ThumbnailUpload
+                  name="desktopCover"
+                  preview={desktopCoverPreview}
+                  setThumbnail={(file) => {
+                    if (file instanceof File) setDesktopCoverCropFile(file);
+                  }}
+                  setThumbnailPreview={() => {}}
+                  title="انتخاب و crop"
+                />
+                <p className="mt-3 text-xs leading-6 text-zinc-500">
+                  بعد از انتخاب تصویر، ابزار crop باز می‌شود.
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -680,7 +1007,7 @@ function GameForm({ mode = "create" }) {
                   totalSteps={steps.length}
                 />
               </div>
-              <div className="grid gap-5 xl:grid-cols-[minmax(300px,380px)_minmax(320px,420px)_minmax(520px,1fr)]" dir="ltr">
+              <div className="grid gap-5 xl:grid-cols-[minmax(460px,660px)_minmax(260px,340px)_minmax(420px,1fr)]" dir="ltr">
                 <div className="space-y-5 rounded-xl border border-zinc-800 bg-black p-4" dir="rtl">
                   <div className="mb-1 flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-500">فرم تکمیل بازی</span>
@@ -704,23 +1031,73 @@ function GameForm({ mode = "create" }) {
                 </div>
 
                 <GameCardPreview
-                  coverPreview={coverPreview}
+                  coverPreview={cardDesktopCoverPreview || coverPreview}
                   form={form}
                   genres={selectedGenreLabels}
                   platforms={selectedPlatformLabels}
                 />
 
-                <GameDetailPreview
-                  coverPreview={coverPreview}
-                  form={form}
-                  galleryPreview={galleryPreview}
-                  genres={selectedGenreLabels}
-                  platforms={selectedPlatformLabels}
-                />
+                <div className="sticky top-24 flex flex-col items-center space-y-3 self-start" dir="rtl">
+                  <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black px-3 py-2">
+                    <button
+                      className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-xs text-zinc-300 transition hover:border-white hover:text-white"
+                      onClick={() => setIsDesktopPreviewOpen(true)}
+                      type="button"
+                    >
+                      <span className="text-base leading-none">⛶</span>
+                    </button>
+                  </div>
+                  <GameDetailPreview
+                    cardMobileCoverPreview={cardMobileCoverPreview}
+                    coverPreview={coverPreview}
+                    desktopCoverPreview={desktopCoverPreview}
+                    form={form}
+                    galleryPreview={galleryPreview}
+                    genres={selectedGenreLabels}
+                    isSticky={false}
+                    platforms={selectedPlatformLabels}
+                    variant="mobile"
+                  />
+                </div>
               </div>
             </>
           )}
         </form>
+
+        {isDesktopPreviewOpen ? (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur" dir="rtl">
+            <button
+              aria-label="بستن پیش‌نمایش دسکتاپ"
+              className="fixed left-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 bg-black/70 text-white backdrop-blur transition hover:border-white"
+              onClick={() => setIsDesktopPreviewOpen(false)}
+              type="button"
+            >
+              <Cross />
+            </button>
+            <div className="mx-auto w-full max-w-7xl px-4 pb-8">
+              <GameDetailPreview
+                cardMobileCoverPreview={cardMobileCoverPreview}
+                coverPreview={coverPreview}
+                desktopCoverPreview={desktopCoverPreview}
+                form={form}
+                galleryPreview={galleryPreview}
+                genres={selectedGenreLabels}
+                isSticky={false}
+                platforms={selectedPlatformLabels}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <DesktopCoverCropper
+          file={desktopCoverCropFile}
+          onCancel={() => setDesktopCoverCropFile(null)}
+          onCrop={(croppedFile, previewUrl) => {
+            setForm((prev) => ({ ...prev, desktopCover: croppedFile }));
+            setDesktopCoverPreview(previewUrl);
+            setDesktopCoverCropFile(null);
+          }}
+        />
       </section>
     </ControlPanel>
   );

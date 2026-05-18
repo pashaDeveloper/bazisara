@@ -125,7 +125,7 @@ function CategoryFilters() {
                 onChange={(event) => setSelectedCategory(event.target.value)}
                 value={selectedCategory}
               >
-                <option value="">همه دسته‌بندی‌ها</option>
+                <option value="" className="text-left">همه دسته‌بندی‌ها</option>
                 {renderTreeOptions(tree)}
               </select>
             </div>
@@ -158,7 +158,9 @@ function CategoryFilters() {
                       draggable={!isReordering}
                       key={item._id}
                       className={`border-b border-zinc-900 text-zinc-200 transition ${
-                        draggedId === item._id ? "bg-zinc-900/70 opacity-70" : "hover:bg-zinc-900/40"
+                        draggedId === item._id
+                          ? "bg-zinc-100 opacity-70 dark:bg-zinc-900/70"
+                          : "hover:bg-zinc-50 dark:hover:bg-zinc-900/40"
                       }`}
                       onDragEnd={() => setDraggedId(null)}
                       onDragOver={(event) => event.preventDefault()}
@@ -168,7 +170,7 @@ function CategoryFilters() {
                       <td className="py-4 text-center">
                         <button
                           aria-label="تغییر ترتیب"
-                          className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition hover:border-zinc-600 hover:text-white active:cursor-grabbing"
+                          className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-lg border border-zinc-300 text-zinc-500 transition hover:border-zinc-400 hover:bg-white hover:text-zinc-900 active:cursor-grabbing dark:border-zinc-800 dark:hover:border-zinc-600 dark:hover:bg-transparent dark:hover:text-white"
                           type="button"
                         >
                           ⋮⋮

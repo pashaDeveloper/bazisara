@@ -10,6 +10,14 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "seed:icons": "node scripts/seedIcons.js",
+    "seed:filters": "node scripts/seedFilterDefinitions.js",
+    "seed:categories": "node scripts/seedCategories.js",
+    "seed:genres": "node scripts/seedGenres.js",
+    "seed:companies": "node scripts/seedCompanies.js",
+    "seed:category-filters": "node scripts/seedCategoryFilters.js",
+    "seed:tags": "node scripts/seedTags.js",
+    "seed:catalog": "npm run seed:icons && npm run seed:filters && npm run seed:categories && npm run seed:genres && npm run seed:companies && npm run seed:category-filters && npm run seed:tags",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

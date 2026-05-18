@@ -17,16 +17,16 @@ exports.createIcon = async (req, res) => {
   if (!name || !svg) {
     return res.status(400).json({
       acknowledgement: false,
-      message: "Bad Request",
-      description: "Icon name and SVG are required",
+      message: "درخواست نامعتبر",
+      description: "نام آیکون و SVG الزامی است",
     });
   }
 
   if (!isSvg(svg)) {
     return res.status(400).json({
       acknowledgement: false,
-      message: "Bad Request",
-      description: "SVG icon is not valid",
+      message: "درخواست نامعتبر",
+      description: "SVG آیکون معتبر نیست",
     });
   }
 
@@ -38,8 +38,8 @@ exports.createIcon = async (req, res) => {
 
   res.status(201).json({
     acknowledgement: true,
-    message: "Created",
-    description: "Icon created successfully",
+    message: "ایجاد شد",
+    description: "آیکون با موفقیت ایجاد شد",
     data: icon,
   });
 };
@@ -58,8 +58,8 @@ exports.getIcons = async (req, res) => {
 
   res.status(200).json({
     acknowledgement: true,
-    message: "OK",
-    description: "Icons received successfully",
+    message: "موفق",
+    description: "آیکون‌ها با موفقیت دریافت شدند",
     data: icons,
     pagination: buildPaginationMeta({ limit, page, totalItems }),
   });
@@ -71,8 +71,8 @@ exports.getIcon = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
       acknowledgement: false,
-      message: "Bad Request",
-      description: "Icon id is not valid",
+      message: "درخواست نامعتبر",
+      description: "شناسه آیکون معتبر نیست",
     });
   }
 
@@ -81,15 +81,15 @@ exports.getIcon = async (req, res) => {
   if (!icon) {
     return res.status(404).json({
       acknowledgement: false,
-      message: "Not Found",
-      description: "Icon not found",
+      message: "پیدا نشد",
+      description: "آیکون پیدا نشد",
     });
   }
 
   res.status(200).json({
     acknowledgement: true,
-    message: "OK",
-    description: "Icon received successfully",
+    message: "موفق",
+    description: "آیکون با موفقیت دریافت شد",
     data: icon,
   });
 };
@@ -101,8 +101,8 @@ exports.updateIcon = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
       acknowledgement: false,
-      message: "Bad Request",
-      description: "Icon id is not valid",
+      message: "درخواست نامعتبر",
+      description: "شناسه آیکون معتبر نیست",
     });
   }
 
@@ -110,8 +110,8 @@ exports.updateIcon = async (req, res) => {
   if (!icon) {
     return res.status(404).json({
       acknowledgement: false,
-      message: "Not Found",
-      description: "Icon not found",
+      message: "پیدا نشد",
+      description: "آیکون پیدا نشد",
     });
   }
 
@@ -120,8 +120,8 @@ exports.updateIcon = async (req, res) => {
     if (!isSvg(svg)) {
       return res.status(400).json({
         acknowledgement: false,
-        message: "Bad Request",
-        description: "SVG icon is not valid",
+        message: "درخواست نامعتبر",
+        description: "SVG آیکون معتبر نیست",
       });
     }
 
@@ -133,8 +133,8 @@ exports.updateIcon = async (req, res) => {
 
   res.status(200).json({
     acknowledgement: true,
-    message: "OK",
-    description: "Icon updated successfully",
+    message: "موفق",
+    description: "آیکون با موفقیت به‌روزرسانی شد",
     data: icon,
   });
 };
@@ -145,8 +145,8 @@ exports.deleteIcon = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
       acknowledgement: false,
-      message: "Bad Request",
-      description: "Icon id is not valid",
+      message: "درخواست نامعتبر",
+      description: "شناسه آیکون معتبر نیست",
     });
   }
 
@@ -159,14 +159,14 @@ exports.deleteIcon = async (req, res) => {
   if (!icon) {
     return res.status(404).json({
       acknowledgement: false,
-      message: "Not Found",
-      description: "Icon not found",
+      message: "پیدا نشد",
+      description: "آیکون پیدا نشد",
     });
   }
 
   res.status(200).json({
     acknowledgement: true,
-    message: "OK",
-    description: "Icon deleted successfully",
+    message: "موفق",
+    description: "آیکون با موفقیت حذف شد",
   });
 };

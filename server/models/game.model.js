@@ -116,6 +116,9 @@ const gameSchema = new mongoose.Schema(
       max: [100, "Score cannot be more than 100"],
     },
     cover: mediaSchema,
+    cardDesktopCover: mediaSchema,
+    cardMobileCover: mediaSchema,
+    desktopCover: mediaSchema,
     gallery: [mediaSchema],
     trailerUrl: {
       type: String,

@@ -67,6 +67,16 @@ function normalizeTagPayload(body, uploadedFiles) {
   );
 }
 
+async function tagSlugExists(slug, currentId = null) {
+  if (!slug) return false;
+
+  return Tag.exists({
+    slug,
+    isDeleted: false,
+    ...(currentId ? { _id: { $ne: currentId } } : {}),
+  });
+}
+
 exports.createTag = async (req, res) => {
   const payload = normalizeTagPayload(req.body, req.uploadedFiles);
 
@@ -83,6 +93,14 @@ exports.createTag = async (req, res) => {
       acknowledgement: false,
       message: "Bad Request",
       description: "اسلاگ تگ الزامی است",
+    });
+  }
+
+  if (await tagSlugExists(payload.slug)) {
+    return res.status(409).json({
+      acknowledgement: false,
+      message: "Conflict",
+      description: "این اسلاگ قبلا برای تگ دیگری ثبت شده است",
     });
   }
 
@@ -174,6 +192,15 @@ exports.updateTag = async (req, res) => {
   }
 
   const payload = normalizeTagPayload(req.body, req.uploadedFiles);
+
+  if (payload.slug && (await tagSlugExists(payload.slug, id))) {
+    return res.status(409).json({
+      acknowledgement: false,
+      message: "Conflict",
+      description: "این اسلاگ قبلا برای تگ دیگری ثبت شده است",
+    });
+  }
+
   Object.assign(tag, payload);
   await tag.save();
 

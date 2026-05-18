@@ -6,7 +6,7 @@ import {
 } from "../services/tagApi";
 
 const tagFields = [
-  { name: "name", title: "نام", label: "نام", placeholder: "مثلا بازی اکشن" },
+  { name: "name", title: "نام", label: "نام تگ", placeholder: "مثلا بازی اکشن" },
   { name: "slug", title: "اسلاگ", label: "اسلاگ", placeholder: "action-games" },
   { name: "image", title: "تصویر", label: "تصویر تگ", type: "image" },
   {
@@ -24,8 +24,8 @@ const tagFields = [
   },
   {
     name: "seoDescription",
-    title: "متای توضیح",
-    label: "متای توضیح",
+    title: "توضیح متا",
+    label: "توضیح متا",
     placeholder: "توضیح متا برای صفحه تگ",
     type: "textarea",
   },
@@ -34,6 +34,7 @@ const tagFields = [
     title: "کلمات کلیدی",
     label: "کلمات کلیدی",
     type: "keywords",
+    defaultValue: [],
   },
 ];
 

@@ -2,9 +2,12 @@
 import { NavLink, useLocation } from "react-router-dom";
 import SidebarItem from "./SidebarItem";
 import Expand from "@/components/icons/Expand";
-import Dashboard from "@/components/icons/Dashboard";
 import Category from "@/components/icons/Category";
-import Star from "@/components/icons/Star";
+import Company from "@/components/icons/Company";
+import Gallery from "@/components/icons/Gallery";
+import Keyword from "@/components/icons/Keyword";
+import Products from "@/components/icons/Products";
+import Rank from "@/components/icons/Rank";
 import Setting from "@/components/icons/Setting";
 import Tag from "@/components/icons/Tag";
 import logo from "../favicon.svg";
@@ -50,19 +53,14 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
   }, [sidebarExpanded]);
 
   const sidebarItems = [
-    {
-      title: "داشبورد",
-      icon: Dashboard,
-      path: "/",
-    },
-    { title: "بازی‌ها", icon: Star, path: "/games" },
-    { title: "آیکون‌ها", icon: Tag, path: "/icons" },
+    { title: "آیکون‌ها", icon: Gallery, path: "/icons" },
+    { title: "تگ‌ها", icon: Tag, path: "/tags" },
     { title: "دسته بندی", icon: Category, path: "/categories" },
     { title: "تعریف فیلترها", icon: Setting, path: "/filter-definitions" },
-    { title: "فیلتر دسته‌بندی", icon: Setting, path: "/category-filters" },
-    { title: "ژانر", icon: Star, path: "/genres" },
-    { title: "کمپانی", icon: Star, path: "/companies" },
-    { title: "تگ‌ها", icon: Tag, path: "/tags" },
+    { title: "فیلتر دسته‌بندی", icon: Keyword, path: "/category-filters" },
+    { title: "ژانر", icon: Rank, path: "/genres" },
+    { title: "کمپانی", icon: Company, path: "/companies" },
+    { title: "بازی‌ها", icon: Products, path: "/games" },
   ];
 
   return (

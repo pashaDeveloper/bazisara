@@ -197,7 +197,7 @@ function CategoryFilterForm({ mode = "create" }) {
                     required
                     value={form.category}
                   >
-                    <option value="">انتخاب دسته‌بندی</option>
+                    <option value="" className="text-left">انتخاب دسته‌بندی</option>
                     {renderTreeOptions(tree)}
                   </select>
                 </label>

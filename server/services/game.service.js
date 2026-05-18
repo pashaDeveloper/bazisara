@@ -205,6 +205,15 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
 
+  const cardDesktopCover = buildMedia(uploadedFiles?.cardDesktopCover?.[0]);
+  if (cardDesktopCover) payload.cardDesktopCover = cardDesktopCover;
+
+  const cardMobileCover = buildMedia(uploadedFiles?.cardMobileCover?.[0]);
+  if (cardMobileCover) payload.cardMobileCover = cardMobileCover;
+
+  const desktopCover = buildMedia(uploadedFiles?.desktopCover?.[0]);
+  if (desktopCover) payload.desktopCover = desktopCover;
+
   const galleryFiles = uploadedFiles?.gallery || [];
   if (galleryFiles.length) {
     payload.gallery = [

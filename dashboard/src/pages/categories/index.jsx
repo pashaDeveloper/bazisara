@@ -1,4 +1,5 @@
 ﻿import React from "react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useState } from "react";
 import ControlPanel from "../ControlPanel";
@@ -7,6 +8,7 @@ import DisplayImages from "@/components/shared/DisplayImages";
 import IconPreview from "@/components/shared/IconPreview";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
+import Pencil from "@/components/icons/Pencil";
 import Trash from "@/components/icons/Trash";
 import {
   useDeleteCategoryMutation,
@@ -143,15 +145,24 @@ function Categories() {
                           )}
                         </td>
                         <td className="py-4">
-                          <button
-                            aria-label="حذف دسته‌بندی"
-                            className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            disabled={isDeleting}
-                            onClick={() => handleDelete(item._id)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <Link
+                              aria-label="ویرایش دسته‌بندی"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
+                              to={`/categories/edit/${item._id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Link>
+                            <button
+                              aria-label="حذف دسته‌بندی"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
+                              disabled={isDeleting}
+                              onClick={() => handleDelete(item._id)}
+                              type="button"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

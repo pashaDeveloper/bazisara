@@ -15,7 +15,7 @@ function IconPreview({
   return (
     <div
       aria-label={label}
-      className={`flex items-center justify-center rounded-lg border border-zinc-800 bg-black text-white ${sizeClass} ${className}`.trim()}
+      className={`flex items-center justify-center rounded-lg border border-gray-200 bg-white text-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white ${sizeClass} ${className}`.trim()}
       style={{ color: color || undefined }}
       dangerouslySetInnerHTML={{ __html: svgMarkup }}
     />

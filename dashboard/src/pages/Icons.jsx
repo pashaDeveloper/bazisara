@@ -27,7 +27,7 @@ function SvgPreview({ svg, color, label }) {
   return (
     <div
       aria-label={label}
-      className="flex h-12 w-12 items-center justify-center rounded-lg border border-zinc-800 bg-black text-white [&_svg]:h-6 [&_svg]:w-6"
+      className="flex h-12 w-12 items-center justify-center rounded-lg border border-gray-200 bg-white text-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white [&_svg]:h-6 [&_svg]:w-6"
       style={{ color: color || undefined }}
       dangerouslySetInnerHTML={{ __html: svg }}
     />

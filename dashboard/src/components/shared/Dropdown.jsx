@@ -25,7 +25,7 @@ function SvgIcon({ icon, label }) {
   return (
     <span
       aria-label={label}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-white [&_svg]:h-4 [&_svg]:w-4"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white [&_svg]:h-4 [&_svg]:w-4"
       style={{ color: icon?.color || undefined }}
       dangerouslySetInnerHTML={{ __html: svgMarkup }}
     />

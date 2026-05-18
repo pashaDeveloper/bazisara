@@ -82,9 +82,12 @@ function Games() {
                     <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
                       <td className="py-4 pl-3">
                         <div className="flex min-w-0 items-center gap-3">
-                          {item.cover?.url ? (
+                          {(item.cardDesktopCover?.url || item.cover?.url) ? (
                             <DisplayImages
-                              galleryPreview={[{ url: item.cover.url, type: item.cover.type || "image" }]}
+                              galleryPreview={[{
+                                url: item.cardDesktopCover?.url || item.cover.url,
+                                type: item.cardDesktopCover?.type || item.cover?.type || "image",
+                              }]}
                               imageSize={56}
                               className="mt-0"
                             />

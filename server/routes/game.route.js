@@ -15,6 +15,9 @@ router.post(
   authorize("owner", "superAdmin", "admin", "operator"),
   upload("games").fields([
     { name: "cover", maxCount: 1 },
+    { name: "cardDesktopCover", maxCount: 1 },
+    { name: "cardMobileCover", maxCount: 1 },
+    { name: "desktopCover", maxCount: 1 },
     { name: "gallery", maxCount: 12 },
     { name: "trailerVideo", maxCount: 1 },
     { name: "gameplayVideo", maxCount: 1 },
@@ -28,6 +31,9 @@ router.patch(
   authorize("owner", "superAdmin", "admin", "operator"),
   upload("games").fields([
     { name: "cover", maxCount: 1 },
+    { name: "cardDesktopCover", maxCount: 1 },
+    { name: "cardMobileCover", maxCount: 1 },
+    { name: "desktopCover", maxCount: 1 },
     { name: "gallery", maxCount: 12 },
     { name: "trailerVideo", maxCount: 1 },
     { name: "gameplayVideo", maxCount: 1 },
