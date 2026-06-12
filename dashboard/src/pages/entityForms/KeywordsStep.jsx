@@ -63,3 +63,4 @@ function KeywordsStep({ label = "کلمات کلیدی", onChange, value = [] })
 }
 
 export default KeywordsStep;
+

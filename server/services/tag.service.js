@@ -59,6 +59,7 @@ function normalizeTagPayload(body, uploadedFiles) {
     payload.image = {
       url: uploadedFiles.image[0].url,
       public_id: uploadedFiles.image[0].public_id,
+      storage: uploadedFiles.image[0].storage || "",
     };
   }
 

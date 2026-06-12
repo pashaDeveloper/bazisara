@@ -1,4 +1,4 @@
-﻿import { configureStore } from "@reduxjs/toolkit";
+import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./features/auth/authSlice";
 import { bazisaraApi } from "./services/bazisara";
 
@@ -10,3 +10,4 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(bazisaraApi.middleware),
 });
+

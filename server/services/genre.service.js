@@ -41,9 +41,10 @@ exports.createGenre = async (req, res) => {
     description,
     icon: icon || null,
     image: req.uploadedFiles?.image?.[0]
-      ? {
+        ? {
           url: req.uploadedFiles.image[0].url,
           public_id: req.uploadedFiles.image[0].public_id,
+          storage: req.uploadedFiles.image[0].storage || "",
         }
       : undefined,
   });
@@ -145,6 +146,7 @@ exports.updateGenre = async (req, res) => {
     genre.image = {
       url: req.uploadedFiles.image[0].url,
       public_id: req.uploadedFiles.image[0].public_id,
+      storage: req.uploadedFiles.image[0].storage || "",
     };
   }
 

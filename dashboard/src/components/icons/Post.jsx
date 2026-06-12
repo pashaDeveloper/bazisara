@@ -24,3 +24,4 @@ const Post = ({ className, ...props }) => {
 };
 
 export default Post;
+

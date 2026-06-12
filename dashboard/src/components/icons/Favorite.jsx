@@ -9,3 +9,4 @@ const Favorite = ({ className, ...props }) => {
 };
 
 export default Favorite;
+

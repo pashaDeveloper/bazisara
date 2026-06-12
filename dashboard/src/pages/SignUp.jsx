@@ -1,16 +1,16 @@
-﻿import React, { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import MutationFeedback from "@/components/MutationFeedback";
 import { useSignUpAdminMutation } from "@/services/auth/authApi";
 
 const steps = [
-  { id: 1, title: "هویت" },
-  { id: 2, title: "تماس" },
-  { id: 3, title: "امنیت" },
-  { id: 4, title: "موقعیت" },
-  { id: 5, title: "نشانی" },
-  { id: 6, title: "مرور" },
+  { id: 1, title: "????" },
+  { id: 2, title: "????" },
+  { id: 3, title: "?????" },
+  { id: 4, title: "??????" },
+  { id: 5, title: "?????" },
+  { id: 6, title: "????" },
 ];
 
 const initialForm = {
@@ -63,21 +63,21 @@ function SignUp() {
   const validateStep = () => {
     if (step === 1) {
       if (!form.name) {
-        toast.error("نام را وارد کنید", { id: "signup-step-1" });
+        toast.error("??? ?? ???? ????", { id: "signup-step-1" });
         return false;
       }
     }
 
     if (step === 2) {
       if (!form.email || !form.phone) {
-        toast.error("ایمیل و شماره موبایل را کامل کنید", {
+        toast.error("????? ? ????? ?????? ?? ???? ????", {
           id: "signup-step-2",
         });
         return false;
       }
 
       if (!/^09\d{9}$/.test(form.phone)) {
-        toast.error("شماره موبایل باید 11 رقم باشد و با 09 شروع شود", {
+        toast.error("????? ?????? ???? 11 ??? ???? ? ?? 09 ???? ???", {
           id: "signup-step-2-phone",
         });
         return false;
@@ -86,21 +86,21 @@ function SignUp() {
 
     if (step === 3) {
       if (!form.password || !form.confirmPassword) {
-        toast.error("رمز عبور و تکرار آن را وارد کنید", {
+        toast.error("??? ???? ? ????? ?? ?? ???? ????", {
           id: "signup-step-3",
         });
         return false;
       }
 
       if (form.password.length < 6) {
-        toast.error("رمز عبور باید حداقل 6 کاراکتر باشد", {
+        toast.error("??? ???? ???? ????? 6 ??????? ????", {
           id: "signup-step-3-length",
         });
         return false;
       }
 
       if (form.password !== form.confirmPassword) {
-        toast.error("رمز عبور و تکرار آن یکسان نیستند", {
+        toast.error("??? ???? ? ????? ?? ????? ??????", {
           id: "signup-step-3-match",
         });
         return false;
@@ -109,14 +109,14 @@ function SignUp() {
 
     if (step === 4) {
       if (!form.province || !form.city) {
-        toast.error("استان و شهر را وارد کنید", { id: "signup-step-4" });
+        toast.error("????? ? ??? ?? ???? ????", { id: "signup-step-4" });
         return false;
       }
     }
 
     if (step === 5) {
       if (!form.address || !form.plateNumber || !form.postalCode) {
-        toast.error("اطلاعات نشانی را کامل کنید", { id: "signup-step-5" });
+        toast.error("??????? ????? ?? ???? ????", { id: "signup-step-5" });
         return false;
       }
     }
@@ -180,9 +180,9 @@ function SignUp() {
       <MutationFeedback
         state={{ data, isLoading, isSuccess, isError, error }}
         toastId="signup"
-        loadingMessage="در حال ثبت نام..."
-        successMessage="ثبت نام با موفقیت انجام شد"
-        errorMessage="ثبت نام انجام نشد"
+        loadingMessage="?? ??? ??? ???..."
+        successMessage="??? ??? ?? ?????? ????? ??"
+        errorMessage="??? ??? ????? ???"
         navigateTo="/signin"
       />
 
@@ -190,20 +190,20 @@ function SignUp() {
         <section className="w-full rounded-3xl border border-zinc-900 bg-zinc-950 p-6 sm:p-8">
           <div className="mb-8">
             <p className="text-xs tracking-[0.45em] text-zinc-500">
-              ثبت نام ادمین
+              ??? ??? ?????
             </p>
             <h1 className="mt-4 text-3xl font-semibold text-white">
-              ساخت حساب مدیریت
+              ???? ???? ??????
             </h1>
             <p className="mt-3 text-sm leading-7 text-zinc-400">
-              فرم ثبت نام مرحله به مرحله طراحی شده تا ورود اطلاعات دقیق‌تر و
-              ساده‌تر باشد.
+              ??? ??? ??? ????? ?? ????? ????? ??? ?? ???? ??????? ??????? ?
+              ??????? ????.
             </p>
           </div>
 
           <div className="mb-8">
             <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
-              <span>پیشرفت ثبت نام</span>
+              <span>?????? ??? ???</span>
               <span>{Math.round(progress)}%</span>
             </div>
 
@@ -244,13 +244,13 @@ function SignUp() {
             {step === 1 && (
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block md:col-span-2">
-                  <span className="mb-2 block text-sm text-zinc-300">نام و نام خانوادگی</span>
+                  <span className="mb-2 block text-sm text-zinc-300">??? ? ??? ????????</span>
                   <input
                     autoFocus
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     name="name"
                     onChange={handleChange}
-                    placeholder="نام مدیر"
+                    placeholder="??? ????"
                     type="text"
                     value={form.name}
                   />
@@ -261,7 +261,7 @@ function SignUp() {
             {step === 2 && (
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">ایمیل</span>
+                  <span className="mb-2 block text-sm text-zinc-300">?????</span>
                   <input
                     autoFocus
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
@@ -274,7 +274,7 @@ function SignUp() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">شماره موبایل</span>
+                  <span className="mb-2 block text-sm text-zinc-300">????? ??????</span>
                   <input
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     inputMode="numeric"
@@ -285,7 +285,7 @@ function SignUp() {
                     type="text"
                     value={form.phone}
                   />
-                  <p className="mt-2 text-xs text-zinc-500">شماره باید دقیقا 11 رقم و با 09 شروع شود.</p>
+                  <p className="mt-2 text-xs text-zinc-500">????? ???? ????? 11 ??? ? ?? 09 ???? ???.</p>
                 </label>
               </div>
             )}
@@ -293,25 +293,25 @@ function SignUp() {
             {step === 3 && (
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">رمز عبور</span>
+                  <span className="mb-2 block text-sm text-zinc-300">??? ????</span>
                   <input
                     autoFocus
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     name="password"
                     onChange={handleChange}
-                    placeholder="حداقل 6 کاراکتر"
+                    placeholder="????? 6 ???????"
                     type="password"
                     value={form.password}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">تکرار رمز عبور</span>
+                  <span className="mb-2 block text-sm text-zinc-300">????? ??? ????</span>
                   <input
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     name="confirmPassword"
                     onChange={handleChange}
-                    placeholder="رمز عبور را دوباره وارد کنید"
+                    placeholder="??? ???? ?? ?????? ???? ????"
                     type="password"
                     value={form.confirmPassword}
                   />
@@ -322,25 +322,25 @@ function SignUp() {
             {step === 4 && (
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">استان</span>
+                  <span className="mb-2 block text-sm text-zinc-300">?????</span>
                   <input
                     autoFocus
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     name="province"
                     onChange={handleChange}
-                    placeholder="مثلا تهران"
+                    placeholder="???? ?????"
                     type="text"
                     value={form.province}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">شهر</span>
+                  <span className="mb-2 block text-sm text-zinc-300">???</span>
                   <input
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     name="city"
                     onChange={handleChange}
-                    placeholder="مثلا تهران"
+                    placeholder="???? ?????"
                     type="text"
                     value={form.city}
                   />
@@ -351,38 +351,38 @@ function SignUp() {
             {step === 5 && (
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block md:col-span-2">
-                  <span className="mb-2 block text-sm text-zinc-300">آدرس کامل</span>
+                  <span className="mb-2 block text-sm text-zinc-300">???? ????</span>
                   <textarea
                     className="min-h-32 w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     name="address"
                     onChange={handleChange}
-                    placeholder="آدرس کامل را وارد کنید"
+                    placeholder="???? ???? ?? ???? ????"
                     value={form.address}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">پلاک</span>
+                  <span className="mb-2 block text-sm text-zinc-300">????</span>
                   <input
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     inputMode="numeric"
                     name="plateNumber"
                     onChange={handleChange}
-                    placeholder="مثلا 12"
+                    placeholder="???? 12"
                     type="text"
                     value={form.plateNumber}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm text-zinc-300">کد پستی</span>
+                  <span className="mb-2 block text-sm text-zinc-300">?? ????</span>
                   <input
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
                     inputMode="numeric"
                     maxLength={10}
                     name="postalCode"
                     onChange={handleChange}
-                    placeholder="مثلا 1234567890"
+                    placeholder="???? 1234567890"
                     type="text"
                     value={form.postalCode}
                   />
@@ -393,23 +393,23 @@ function SignUp() {
             {step === 6 && (
               <div className="grid gap-4">
                 <div className="rounded-2xl border border-zinc-900 bg-black p-5">
-                  <h2 className="mb-4 text-sm font-medium text-white">اطلاعات حساب</h2>
+                  <h2 className="mb-4 text-sm font-medium text-white">??????? ????</h2>
                   <div className="grid gap-3 text-sm text-zinc-400 md:grid-cols-2">
-                    <p>نام: {form.name || "-"}</p>
-                    <p>ایمیل: {form.email || "-"}</p>
-                    <p>شماره موبایل: {form.phone || "-"}</p>
-                    <p>رمز عبور: {form.password ? "ثبت شده" : "-"}</p>
+                    <p>???: {form.name || "-"}</p>
+                    <p>?????: {form.email || "-"}</p>
+                    <p>????? ??????: {form.phone || "-"}</p>
+                    <p>??? ????: {form.password ? "??? ???" : "-"}</p>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-900 bg-black p-5">
-                  <h2 className="mb-4 text-sm font-medium text-white">اطلاعات آدرس</h2>
+                  <h2 className="mb-4 text-sm font-medium text-white">??????? ????</h2>
                   <div className="grid gap-3 text-sm text-zinc-400 md:grid-cols-2">
-                    <p>استان: {form.province || "-"}</p>
-                    <p>شهر: {form.city || "-"}</p>
-                    <p>پلاک: {form.plateNumber || "-"}</p>
-                    <p>کد پستی: {form.postalCode || "-"}</p>
-                    <p className="md:col-span-2">آدرس: {form.address || "-"}</p>
+                    <p>?????: {form.province || "-"}</p>
+                    <p>???: {form.city || "-"}</p>
+                    <p>????: {form.plateNumber || "-"}</p>
+                    <p>?? ????: {form.postalCode || "-"}</p>
+                    <p className="md:col-span-2">????: {form.address || "-"}</p>
                   </div>
                 </div>
               </div>
@@ -423,7 +423,7 @@ function SignUp() {
                     onClick={previousStep}
                     type="button"
                   >
-                    مرحله قبل
+                    ????? ???
                   </button>
                 )}
 
@@ -433,7 +433,7 @@ function SignUp() {
                     onClick={nextStep}
                     type="button"
                   >
-                    ادامه
+                    ?????
                   </button>
                 )}
 
@@ -443,18 +443,18 @@ function SignUp() {
                     disabled={isLoading}
                     type="submit"
                   >
-                    {isLoading ? "در حال ثبت نام..." : "ثبت نام ادمین"}
+                    {isLoading ? "?? ??? ??? ???..." : "??? ??? ?????"}
                   </button>
                 )}
               </div>
 
               <p className="text-sm text-zinc-400">
-                قبلا حساب ساخته‌ای؟{" "}
+                ???? ???? ?????????{" "}
                 <Link
                   className="text-white underline underline-offset-4"
                   to="/signin"
                 >
-                  ورود
+                  ????
                 </Link>
               </p>
             </div>
@@ -466,3 +466,4 @@ function SignUp() {
 }
 
 export default SignUp;
+

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) {
   const [loadedMap, setLoadedMap] = useState({});
@@ -66,7 +66,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
                   src={item.url}
                   width={imageSize}
                 >
-                  مرورگر شما از پخش این فایل پشتیبانی نمی‌کند.
+                  ?????? ??? ?? ??? ??? ???? ???????? ???????.
                 </video>
               ) : (
                 <img
@@ -87,3 +87,4 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
 }
 
 export default DisplayImages;
+

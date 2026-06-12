@@ -145,7 +145,7 @@ function FilterDefinitions() {
   const [selectedFilter, setSelectedFilter] = useState(null);
   const [popupMode, setPopupMode] = useState(null);
   const debouncedSearch = useDebouncedValue(search);
-  const pagination = usePaginationState(10, debouncedSearch);
+  const pagination = usePaginationState(5, debouncedSearch);
 
   const { data, isLoading } = useGetFilterDefinitionsQuery({
     page: pagination.currentPage,
@@ -358,3 +358,4 @@ function FilterDefinitions() {
 }
 
 export default FilterDefinitions;
+

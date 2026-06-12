@@ -1,0 +1,10 @@
+export { ActionsRail } from "./actions-rail";
+export { ArticlesSection } from "./articles-section";
+export { Breadcrumbs } from "./breadcrumbs";
+export { CommentsSection } from "./comments-section";
+export { MobileProductHero } from "./mobile-product-hero";
+export { ProductGallery } from "./product-gallery";
+export { ProductInfoPanel } from "./product-info-panel";
+export { PurchaseSidebar } from "./purchase-sidebar";
+export { RelatedProductsSection } from "./related-products-section";
+export { TabsSection } from "./tabs-section";

@@ -21,3 +21,4 @@ function CategoryImageStep({ imagePreview, setForm, setImagePreview }) {
 }
 
 export default CategoryImageStep;
+

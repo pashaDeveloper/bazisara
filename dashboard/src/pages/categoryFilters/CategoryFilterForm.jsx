@@ -326,3 +326,4 @@ function CategoryFilterForm({ mode = "create" }) {
 }
 
 export default CategoryFilterForm;
+

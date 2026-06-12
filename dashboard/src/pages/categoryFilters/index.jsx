@@ -34,7 +34,7 @@ function CategoryFilters() {
   const [orderedFilters, setOrderedFilters] = useState([]);
   const [draggedId, setDraggedId] = useState(null);
   const debouncedSearch = useDebouncedValue(search);
-  const filtersPagination = usePaginationState(10, `${selectedCategory}-${debouncedSearch}`);
+  const filtersPagination = usePaginationState(5, `${selectedCategory}-${debouncedSearch}`);
 
   const { data: filtersData, isLoading } = useGetCategoryFiltersQuery({
     category: selectedCategory,
@@ -259,3 +259,4 @@ function CategoryFilters() {
 }
 
 export default CategoryFilters;
+

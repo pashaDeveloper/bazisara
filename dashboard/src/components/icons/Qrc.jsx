@@ -7,3 +7,4 @@ const Qrc = ({ className, ...props }) => {
 };
 
 export default Qrc;
+

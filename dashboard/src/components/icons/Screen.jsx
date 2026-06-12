@@ -42,3 +42,4 @@ export const ExitFullScreen = ({ className, ...props }) => {
     </svg>
   );
 };
+

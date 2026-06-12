@@ -17,15 +17,22 @@ export const bazisaraApi = createApi({
   }),
   tagTypes: [
     "User",
+    "Admin",
     "Address",
     "Category",
     "CategoryFilter",
     "FilterDefinition",
     "Genre",
+    "Platform",
     "Company",
     "Tag",
     "Game",
+    "Article",
+    "Slider",
     "Icon",
+    "Approval",
+    "Analytics",
   ],
   endpoints: () => ({})
 });
+

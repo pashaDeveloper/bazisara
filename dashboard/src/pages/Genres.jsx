@@ -17,7 +17,7 @@ import {
 function Genres() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const genresPagination = usePaginationState(10, debouncedSearch);
+  const genresPagination = usePaginationState(5, debouncedSearch);
   const { data: genresData, isLoading } = useGetGenresQuery({
     limit: genresPagination.pageSize,
     page: genresPagination.currentPage,
@@ -151,3 +151,4 @@ function Genres() {
 }
 
 export default Genres;
+

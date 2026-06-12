@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -30,11 +30,11 @@ function CategoryAdd() {
   const tree = treeData?.data || [];
   const icons = iconsData?.data || [];
   const steps = [
-    { key: "name", title: "نام" },
-    { key: "image", title: "تصویر" },
-    { key: "icon", title: "آیکون" },
-    { key: "description", title: "توضیح" },
-    { key: "parent", title: "والد" },
+    { key: "name", title: "???" },
+    { key: "image", title: "?????" },
+    { key: "icon", title: "?????" },
+    { key: "description", title: "?????" },
+    { key: "parent", title: "????" },
   ];
   const lastStepIndex = steps.length - 1;
   const isLastStep = currentStep === lastStepIndex;
@@ -71,19 +71,19 @@ function CategoryAdd() {
       if (canGoNext) {
         setCurrentStep((prev) => Math.min(prev + 1, lastStepIndex));
       } else {
-        toast.error("نام دسته‌بندی را وارد کنید", { id: "create-category" });
+        toast.error("??? ????????? ?? ???? ????", { id: "create-category" });
       }
       return;
     }
 
     if (!form.name.trim()) {
-      toast.error("نام دسته‌بندی را وارد کنید", { id: "create-category" });
+      toast.error("??? ????????? ?? ???? ????", { id: "create-category" });
       setCurrentStep(nameStepIndex);
       return;
     }
 
     try {
-      toast.loading("در حال ثبت دسته‌بندی...", { id: "create-category" });
+      toast.loading("?? ??? ??? ?????????...", { id: "create-category" });
 
       const formData = new FormData();
       formData.append("name", form.name.trim());
@@ -94,12 +94,12 @@ function CategoryAdd() {
 
       const response = await createCategory(formData).unwrap();
 
-      toast.success(response.description || "دسته‌بندی با موفقیت ثبت شد", {
+      toast.success(response.description || "????????? ?? ?????? ??? ??", {
         id: "create-category",
       });
       navigate("/categories");
     } catch (error) {
-      toast.error(error?.data?.description || "ثبت دسته‌بندی انجام نشد", {
+      toast.error(error?.data?.description || "??? ????????? ????? ???", {
         id: "create-category",
       });
     }
@@ -111,7 +111,7 @@ function CategoryAdd() {
 
   const goToNextStep = () => {
     if (!canGoNext) {
-      toast.error("نام دسته‌بندی را وارد کنید", { id: "create-category" });
+      toast.error("??? ????????? ?? ???? ????", { id: "create-category" });
       return;
     }
 
@@ -127,7 +127,7 @@ function CategoryAdd() {
     }
 
     if (!form.name.trim() && targetIndex > nameStepIndex) {
-      toast.error("نام دسته‌بندی را وارد کنید", { id: "create-category" });
+      toast.error("??? ????????? ?? ???? ????", { id: "create-category" });
       setCurrentStep(nameStepIndex);
       return;
     }
@@ -140,13 +140,13 @@ function CategoryAdd() {
       <section className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div>
-            <h1 className="mt-1 text-2xl text-white">افزودن دسته‌بندی</h1>
+            <h1 className="mt-1 text-2xl text-white">?????? ?????????</h1>
           </div>
           <Link
             className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white"
             to="/categories"
           >
-            بازگشت به لیست
+            ?????? ?? ????
           </Link>
         </div>
 
@@ -178,8 +178,8 @@ function CategoryAdd() {
             {isLastStep ? (
               <SendButton
                 isLoading={mutationState.isLoading}
-                label="ثبت دسته‌بندی"
-                loadingLabel="در حال ثبت..."
+                label="??? ?????????"
+                loadingLabel="?? ??? ???..."
               />
             ) : (
               <NavigationButton
@@ -202,3 +202,4 @@ function CategoryAdd() {
 }
 
 export default CategoryAdd;
+

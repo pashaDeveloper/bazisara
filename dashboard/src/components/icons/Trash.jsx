@@ -9,3 +9,4 @@ const Trash = (props) => {
 };
 
 export default Trash;
+

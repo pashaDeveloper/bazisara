@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import Arrow from "@/components/icons/Arrow";
 
@@ -75,3 +75,4 @@ const SidebarItem = ({ item, sidebarExpanded, pathname }) => {
 };
 
 export default SidebarItem;
+

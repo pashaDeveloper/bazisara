@@ -28,6 +28,10 @@ const addressSchema = new mongoose.Schema(
     plateNumber: { 
       type: Number,
     },
+    unit: {
+      type: String,
+      trim: true,
+    },
     postalCode: {
       type: Number,
     },

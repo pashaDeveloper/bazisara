@@ -28,3 +28,4 @@ function SvgCodeStep({ value, onChange }) {
 }
 
 export default SvgCodeStep;
+

@@ -100,7 +100,7 @@ function IconForm({ form, isLoading, mode, onChange, onSubmit }) {
 function Icons() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const iconsPagination = usePaginationState(10, debouncedSearch);
+  const iconsPagination = usePaginationState(5, debouncedSearch);
   const { data: iconsData, isLoading } = useGetIconsQuery({
     limit: iconsPagination.pageSize,
     page: iconsPagination.currentPage,
@@ -360,3 +360,4 @@ function Icons() {
 }
 
 export default Icons;
+

@@ -23,3 +23,4 @@ const Button = ({ children, className, isLoading, ...rest }) => {
 };
 
 export default Button;
+

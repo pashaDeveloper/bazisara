@@ -16,3 +16,4 @@ function SvgPreview({ svg, label }) {
 }
 
 export default SvgPreview;
+

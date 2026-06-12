@@ -36,3 +36,4 @@ export const formatThousands = (value) => {
     notation: 'compact',
   }).format(value);
 };
+

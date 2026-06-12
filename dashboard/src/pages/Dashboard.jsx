@@ -1,222 +1,329 @@
-﻿import React from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
+import {
+  ArcElement,
+  BarController,
+  BarElement,
+  CategoryScale,
+  Chart,
+  DoughnutController,
+  Legend,
+  LinearScale,
+  Tooltip,
+} from "chart.js";
 import ControlPanel from "./ControlPanel";
+import { useGetAnalyticsSummaryQuery } from "../services/analyticsApi";
 
-const kpis = [
-  { title: "فروش امروز", value: "1,284,000,000", unit: "تومان", trend: "+12%" },
-  { title: "سفارش در انتظار", value: "186", unit: "سفارش", trend: "+8%" },
-  { title: "نرخ تبدیل", value: "4.92", unit: "%", trend: "+0.7%" },
-  { title: "بازدید فعال", value: "3,421", unit: "کاربر", trend: "-2%" },
-];
+Chart.register(
+  ArcElement,
+  BarController,
+  BarElement,
+  CategoryScale,
+  DoughnutController,
+  Legend,
+  LinearScale,
+  Tooltip
+);
 
-const traffic = [
-  { channel: "جستجوی ارگانیک", value: 44 },
-  { channel: "تبلیغات", value: 29 },
-  { channel: "شبکه اجتماعی", value: 19 },
-  { channel: "مستقیم", value: 8 },
-];
+const chartPalette = ["#38bdf8", "#34d399", "#fb7185", "#facc15", "#a78bfa", "#f97316"];
 
-const latestOrders = [
-  { id: "#8452", customer: "مریم کریمی", amount: "12,450,000", status: "ارسال شد" },
-  { id: "#8451", customer: "علی اسدی", amount: "2,800,000", status: "در حال آماده سازی" },
-  { id: "#8450", customer: "نازنین احمدی", amount: "8,100,000", status: "در انتظار پرداخت" },
-  { id: "#8449", customer: "مجتبی اکبری", amount: "4,750,000", status: "لغو شد" },
-];
-
-const tasks = [
-  { label: "بهینه سازی صفحه محصول", done: true },
-  { label: "تست مسیر پرداخت مهمان", done: false },
-  { label: "بررسی نرخ بازگشت سفارش", done: true },
-  { label: "آماده سازی کمپین نوروز", done: false },
-];
-
-const activity = [
-  "پرداخت سفارش #8452 تایید شد.",
-  "موجودی محصول «کتونی مشکی» به 7 رسید.",
-  "کاربر جدید با پلن فروشنده ثبت نام کرد.",
-  "گزارش فروش هفتگی تولید شد.",
-];
-
-function trendColor(value) {
-  return value.startsWith("-")
-    ? "text-zinc-400 border-zinc-700"
-    : "text-white border-zinc-500";
+function formatNumber(value) {
+  return new Intl.NumberFormat("fa-IR").format(Number(value || 0));
 }
 
-function statusStyle(status) {
-  if (status === "ارسال شد") return "bg-white text-black";
-  if (status === "لغو شد") return "bg-zinc-800 text-zinc-300";
-  if (status === "در انتظار پرداخت") return "bg-zinc-700 text-zinc-100";
-  return "bg-zinc-600 text-white";
+function formatDuration(ms) {
+  const totalSeconds = Math.round(Number(ms || 0) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${formatNumber(minutes)}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("fa-IR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function StatCard({ title, value, unit, accent = "from-zinc-800 to-black" }) {
+  return (
+    <article className={`rounded-2xl border border-zinc-700 bg-gradient-to-br ${accent} p-4 shadow-lg shadow-black/20`}>
+      <p className="text-xs text-zinc-400">{title}</p>
+      <p className="mt-4 text-2xl font-black text-white">{formatNumber(value)}</p>
+      <span className="mt-3 inline-block rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-300">
+        {unit}
+      </span>
+    </article>
+  );
+}
+
+function AnalyticsChart({ title, type, data, height = 260 }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return undefined;
+
+    const chart = new Chart(canvasRef.current, {
+      type,
+      data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: type === "doughnut" ? "66%" : undefined,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: "#d4d4d8",
+              boxWidth: 10,
+              boxHeight: 10,
+              padding: 16,
+              usePointStyle: true,
+              pointStyle: "circle",
+              font: { family: "Vazir, sans-serif", size: 11 },
+            },
+          },
+          tooltip: {
+            backgroundColor: "#09090b",
+            borderColor: "#3f3f46",
+            borderWidth: 1,
+            bodyColor: "#f4f4f5",
+            titleColor: "#ffffff",
+            displayColors: true,
+            callbacks: {
+              label: (context) => {
+                const label = context.dataset.label || context.label || "";
+                const value = type === "doughnut" ? context.parsed : context.parsed.y;
+                return `${label}: ${formatNumber(value)}`;
+              },
+            },
+          },
+        },
+        scales:
+          type === "bar"
+            ? {
+                x: {
+                  grid: { display: false },
+                  ticks: { color: "#a1a1aa", font: { family: "Vazir, sans-serif", size: 11 } },
+                },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: "rgba(82, 82, 91, 0.35)" },
+                  ticks: {
+                    color: "#a1a1aa",
+                    precision: 0,
+                    font: { family: "Vazir, sans-serif", size: 11 },
+                  },
+                },
+              }
+            : undefined,
+      },
+    });
+
+    return () => chart.destroy();
+  }, [data, type]);
+
+  return (
+    <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
+      <h2 className="text-sm font-bold text-white">{title}</h2>
+      <div className="mt-4" style={{ height }}>
+        <canvas ref={canvasRef} />
+      </div>
+    </article>
+  );
+}
+
+function ContentTable({ title, rows, type }) {
+  return (
+    <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-white">{title}</h2>
+        <Link className="text-xs text-zinc-400 transition hover:text-white" to={type === "game" ? "/games" : "/articles"}>
+          مدیریت
+        </Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[460px] text-right text-xs">
+          <thead>
+            <tr className="border-b border-zinc-800 text-zinc-500">
+              <th className="pb-3 font-medium">عنوان</th>
+              <th className="pb-3 font-medium">بازدید</th>
+              <th className="pb-3 font-medium">لایک</th>
+              <th className="pb-3 font-medium">نظر</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length ? (
+              rows.map((item) => (
+                <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
+                  <td className="max-w-48 truncate py-3">{item.title}</td>
+                  <td className="py-3">{formatNumber(item.views)}</td>
+                  <td className="py-3">{formatNumber(item.likes)}</td>
+                  <td className="py-3">{formatNumber(item.commentsCount)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="py-6 text-center text-zinc-500" colSpan="4">
+                  هنوز محتوایی ثبت نشده است.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  );
 }
 
 function Dashboard() {
+  const { data, isLoading, isFetching } = useGetAnalyticsSummaryQuery(undefined, {
+    pollingInterval: 30000,
+  });
+  const summary = data?.data || {};
+  const totals = summary.totals || {};
+  const recentSessions = summary.recentSessions || [];
+  const topArticles = summary.topContent?.articles || [];
+  const topGames = summary.topContent?.games || [];
+  const dailyTrend = summary.dailyTrend || [];
+  const deviceBreakdown = summary.deviceBreakdown || [];
+  const browserBreakdown = summary.browserBreakdown || [];
+
+  const trendChartData = useMemo(
+    () => ({
+      labels: dailyTrend.length ? dailyTrend.map((item) => item._id) : ["بدون داده"],
+      datasets: [
+        {
+          label: "بازدید",
+          data: dailyTrend.length ? dailyTrend.map((item) => item.pageViews || 0) : [0],
+          backgroundColor: "#38bdf8",
+          borderRadius: 8,
+          maxBarThickness: 48,
+        },
+      ],
+    }),
+    [dailyTrend]
+  );
+
+  const deviceChartData = useMemo(() => {
+    const items = deviceBreakdown.length ? deviceBreakdown : [{ _id: "بدون داده", count: 0 }];
+    return {
+      labels: items.map((item) => item._id || "نامشخص"),
+      datasets: [
+        {
+          label: "نشست",
+          data: items.map((item) => item.count || 0),
+          backgroundColor: chartPalette,
+          borderColor: "#09090b",
+          borderWidth: 3,
+        },
+      ],
+    };
+  }, [deviceBreakdown]);
+
+  const browserChartData = useMemo(() => {
+    const items = browserBreakdown.length ? browserBreakdown : [{ _id: "بدون داده", count: 0 }];
+    return {
+      labels: items.map((item) => item._id || "نامشخص"),
+      datasets: [
+        {
+          label: "نشست",
+          data: items.map((item) => item.count || 0),
+          backgroundColor: chartPalette,
+          borderColor: "#09090b",
+          borderWidth: 3,
+        },
+      ],
+    };
+  }, [browserBreakdown]);
+
   return (
     <ControlPanel>
       <section className="space-y-6">
         <div className="rounded-2xl border border-zinc-700 bg-black/80 p-4 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs text-zinc-400">پنل مدیریت فروشگاه</p>
-              <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">داشبورد پیشرفته</h1>
+              <p className="text-xs text-zinc-400">رفتار کاربران و محتوای سایت</p>
+              <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">داشبورد آمار بازدید</h1>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-              <button className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200 transition hover:border-white hover:text-white">
-                فیلتر 7 روز
-              </button>
-              <button className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200 transition hover:border-white hover:text-white">
-                خروجی گزارش
-              </button>
-              <button className="col-span-2 rounded-lg border border-white bg-white px-3 py-2 text-xs font-bold text-black transition hover:bg-zinc-200 sm:col-span-1">
-                ثبت اعلان جدید
-              </button>
-            </div>
+          
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((item) => (
-            <article key={item.title} className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
-              <p className="text-xs text-zinc-400">{item.title}</p>
-              <p className="mt-4 text-2xl font-bold text-white">{item.value}</p>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs text-zinc-500">{item.unit}</span>
-                <span
-                  className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${trendColor(item.trend)}`}
-                >
-                  {item.trend}
-                </span>
-              </div>
-            </article>
-          ))}
+          <StatCard title="بازدید امروز" value={totals.pageViewsToday} unit="page view" accent="from-sky-950 to-zinc-950" />
+          <StatCard title="نشست امروز" value={totals.sessionsToday} unit="session" accent="from-emerald-950 to-zinc-950" />
+          <StatCard title="کاربر فعال" value={totals.activeSessions} unit="۵ دقیقه اخیر" accent="from-rose-950 to-zinc-950" />
+          <StatCard title="میانگین حضور" value={Math.round((totals.averageDurationMs || 0) / 1000)} unit={formatDuration(totals.averageDurationMs)} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Link
-            to="/categories"
-            className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5 transition hover:border-white"
-          >
-            <p className="text-xs text-zinc-400">مدیریت ساختار</p>
-            <h2 className="mt-2 text-lg font-bold text-white">دسته‌بندی‌ها</h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              دسته‌بندی‌های چندسطحی با تصویر فایل و آیکون متنی را از اینجا بساز و مدیریت کن.
-            </p>
-          </Link>
-          <Link
-            to="/genres"
-            className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5 transition hover:border-white"
-          >
-            <p className="text-xs text-zinc-400">مدیریت ویژگی</p>
-            <h2 className="mt-2 text-lg font-bold text-white">ژانرها</h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              ژانرهای مستقل بازی را با تصویر و آیکون ثبت کن تا بعدا موقع افزودن بازی انتخاب شوند.
-            </p>
-          </Link>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <AnalyticsChart title="روند بازدید ۷ روز اخیر" type="bar" data={trendChartData} />
+          <AnalyticsChart title="نوع دستگاه کاربران" type="doughnut" data={deviceChartData} />
+          <AnalyticsChart title="مرورگر کاربران" type="doughnut" data={browserChartData} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-          <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4 xl:col-span-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white">روند فروش هفتگی</h2>
-              <span className="text-xs text-zinc-400">آخرین بروزرسانی: 5 دقیقه پیش</span>
-            </div>
-            <div className="flex h-40 items-end gap-2 rounded-xl border border-zinc-800 bg-black p-3 sm:h-52">
-              {[38, 22, 45, 30, 54, 41, 60].map((h, index) => (
-                <div key={index} className="flex flex-1 flex-col justify-end">
-                  <div className="w-full rounded-md bg-white/90" style={{ height: `${h}%` }} />
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 grid grid-cols-7 text-center text-[10px] text-zinc-500 sm:text-xs">
-              {["شنبه", "یکشنبه", "دوشنبه", "سه شنبه", "چهارشنبه", "پنج شنبه", "جمعه"].map((day) => (
-                <span key={day}>{day}</span>
-              ))}
-            </div>
-          </article>
-
-          <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4 xl:col-span-4">
-            <h2 className="text-sm font-bold text-white">منابع ترافیک</h2>
-            <div className="mt-4 space-y-3">
-              {traffic.map((item) => (
-                <div key={item.channel}>
-                  <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-zinc-300">{item.channel}</span>
-                    <span className="text-zinc-500">{item.value}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-zinc-800">
-                    <div className="h-2 rounded-full bg-white" style={{ width: `${item.value}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </article>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="کل بازدیدها" value={totals.totalPageViews} unit="ثبت شده" />
+          <StatCard title="بازدیدکننده یکتا" value={totals.totalVisitors} unit="visitor" />
+          <StatCard title="لایک‌ها" value={totals.totalLikes} unit="article / game" />
+          <StatCard title="نظرات" value={totals.totalComments} unit="رویداد ثبت شده" />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-          <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4 xl:col-span-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white">آخرین سفارش ها</h2>
-              <button className="text-xs text-zinc-400 transition hover:text-white">مشاهده همه</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-right text-xs sm:text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500">
-                    <th className="pb-3 font-medium">کد سفارش</th>
-                    <th className="pb-3 font-medium">مشتری</th>
-                    <th className="pb-3 font-medium">مبلغ</th>
-                    <th className="pb-3 font-medium">وضعیت</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-zinc-900 text-zinc-200">
-                      <td className="py-3">{order.id}</td>
-                      <td className="py-3">{order.customer}</td>
-                      <td className="py-3">{order.amount}</td>
-                      <td className="py-3">
-                        <span className={`rounded-full px-2 py-1 text-[11px] ${statusStyle(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <ContentTable title="مطالب پربازدید" rows={topArticles} type="article" />
+          <ContentTable title="بازی‌های پربازدید" rows={topGames} type="game" />
+        </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:col-span-4">
-            <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
-              <h2 className="text-sm font-bold text-white">تسک های تیم</h2>
-              <ul className="mt-3 space-y-2">
-                {tasks.map((item) => (
-                  <li
-                    key={item.label}
-                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-black px-3 py-2 text-xs sm:text-sm"
-                  >
-                    <span className={item.done ? "text-zinc-300" : "text-white"}>{item.label}</span>
-                    <span className="text-zinc-500">{item.done ? "انجام شد" : "باز"}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-
-            <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
-              <h2 className="text-sm font-bold text-white">فعالیت لحظه ای</h2>
-              <ul className="mt-3 space-y-2">
-                {activity.map((item) => (
-                  <li key={item} className="rounded-lg border border-zinc-800 bg-black px-3 py-2 text-xs text-zinc-300 sm:text-sm">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </article>
+        <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-white">آخرین نشست‌های کاربران</h2>
+            <span className="text-xs text-zinc-500">{formatNumber(recentSessions.length)} مورد اخیر</span>
           </div>
-        </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-right text-xs">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500">
+                  <th className="pb-3 font-medium">بازدیدکننده</th>
+                  <th className="pb-3 font-medium">IP</th>
+                  <th className="pb-3 font-medium">دستگاه</th>
+                  <th className="pb-3 font-medium">مرورگر</th>
+                  <th className="pb-3 font-medium">ورودی</th>
+                  <th className="pb-3 font-medium">آخرین صفحه</th>
+                  <th className="pb-3 font-medium">مدت حضور</th>
+                  <th className="pb-3 font-medium">آخرین فعالیت</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSessions.length ? (
+                  recentSessions.map((session) => (
+                    <tr key={session._id} className="border-b border-zinc-900 text-zinc-200">
+                      <td className="max-w-36 truncate py-3">{session.visitorId}</td>
+                      <td className="py-3">{session.ip || "-"}</td>
+                      <td className="py-3">{session.deviceType || "-"}</td>
+                      <td className="py-3">{session.browser || "-"}</td>
+                      <td className="max-w-44 truncate py-3">{session.referrer || "مستقیم"}</td>
+                      <td className="max-w-44 truncate py-3">{session.currentPath || session.landingPage || "-"}</td>
+                      <td className="py-3">{formatDuration(session.durationMs)}</td>
+                      <td className="py-3">{formatDate(session.lastSeenAt)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="py-8 text-center text-zinc-500" colSpan="8">
+                      هنوز نشست کاربری ثبت نشده است.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </article>
       </section>
     </ControlPanel>
   );
 }
 
 export default Dashboard;
+

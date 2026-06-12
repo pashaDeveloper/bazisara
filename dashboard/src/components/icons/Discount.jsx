@@ -44,3 +44,4 @@ const Discount = ({ className, ...props }) => {
 };
 
 export default Discount;
+

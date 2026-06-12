@@ -10,3 +10,4 @@ const Sosial = ({ className, ...props }) => {
 };
 
 export default Sosial;
+

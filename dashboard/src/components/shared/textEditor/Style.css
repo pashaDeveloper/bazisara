@@ -46,70 +46,128 @@ height:100vh;
 top:60px !important;
 }
 
-.page-builder,
-.page-builder * {
-  color: #f4f4f5;
+.page-builder {
+  color: #18181b;
 }
 
 .page-builder input:not([type="file"]),
 .page-builder textarea,
 .page-builder select {
-  background-color: #050505 !important;
-  border: 1px solid #3f3f46 !important;
-  color: #f8fafc !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d4d4d8 !important;
+  color: #18181b !important;
 }
 
 .page-builder input::placeholder,
 .page-builder textarea::placeholder {
-  color: #a1a1aa !important;
+  color: #71717a !important;
 }
 
 .page-builder input[type="file"] {
-  color: #e4e4e7 !important;
+  color: #3f3f46 !important;
 }
 
-.page-builder label,
-.page-builder p,
-.page-builder h2,
-.page-builder h3,
-.page-builder h4,
-.page-builder span {
-  color: #f4f4f5;
+.page-builder .content-block {
+  background-color: #ffffff;
+  border-color: #d4d4d8;
+  color: #18181b;
 }
 
 .page-builder .ck-editor__editable_inline,
 .page-builder .ck.ck-editor__main > .ck-editor__editable {
   min-height: 320px;
-  background-color: #050505 !important;
-  border-color: #3f3f46 !important;
-  color: #f8fafc !important;
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
 }
 
 .page-builder .ck-content,
 .page-builder .ck-content * {
-  color: #f8fafc !important;
+  color: #18181b !important;
 }
 
 .page-builder .ck.ck-toolbar,
 .page-builder .ck.ck-sticky-panel__content,
 .page-builder .ck.ck-dropdown__panel,
 .page-builder .ck.ck-list {
-  background-color: #18181b !important;
-  border-color: #3f3f46 !important;
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
 }
 
 .page-builder .ck.ck-button,
 .page-builder .ck.ck-button .ck-button__label,
 .page-builder .ck.ck-dropdown .ck-button__label {
-  color: #f8fafc !important;
+  color: #18181b !important;
 }
 
 .page-builder .preview-content,
 .page-builder .preview-content * {
-  color: #f4f4f5;
+  color: #18181b;
 }
 
 .page-builder .preview-content a {
+  color: #2563eb;
+}
+
+html.dark .page-builder {
+  color: #f4f4f5;
+}
+
+html.dark .page-builder input:not([type="file"]),
+html.dark .page-builder textarea,
+html.dark .page-builder select {
+  background-color: #050505 !important;
+  border-color: #3f3f46 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .page-builder input::placeholder,
+html.dark .page-builder textarea::placeholder {
+  color: #a1a1aa !important;
+}
+
+html.dark .page-builder input[type="file"] {
+  color: #e4e4e7 !important;
+}
+
+html.dark .page-builder .content-block {
+  background-color: transparent;
+  border-color: #3f3f46;
+  color: #f4f4f5;
+}
+
+html.dark .page-builder .ck-editor__editable_inline,
+html.dark .page-builder .ck.ck-editor__main > .ck-editor__editable {
+  background-color: #050505 !important;
+  border-color: #3f3f46 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .page-builder .ck-content,
+html.dark .page-builder .ck-content * {
+  color: #f8fafc !important;
+}
+
+html.dark .page-builder .ck.ck-toolbar,
+html.dark .page-builder .ck.ck-sticky-panel__content,
+html.dark .page-builder .ck.ck-dropdown__panel,
+html.dark .page-builder .ck.ck-list {
+  background-color: #18181b !important;
+  border-color: #3f3f46 !important;
+}
+
+html.dark .page-builder .ck.ck-button,
+html.dark .page-builder .ck.ck-button .ck-button__label,
+html.dark .page-builder .ck.ck-dropdown .ck-button__label {
+  color: #f8fafc !important;
+}
+
+html.dark .page-builder .preview-content,
+html.dark .page-builder .preview-content * {
+  color: #f4f4f5;
+}
+
+html.dark .page-builder .preview-content a {
   color: #93c5fd;
 }
 

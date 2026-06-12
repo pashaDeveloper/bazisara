@@ -10,3 +10,4 @@ const Blog = ({ className, ...props }) => {
 };
 
 export default Blog;
+

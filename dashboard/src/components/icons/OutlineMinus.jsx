@@ -9,3 +9,4 @@ const OutlineMinus = ({ className, ...props }) => {
 };
 
 export default OutlineMinus;
+

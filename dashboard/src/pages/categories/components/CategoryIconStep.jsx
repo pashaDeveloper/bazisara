@@ -13,3 +13,4 @@ function CategoryIconStep({ form, icons = [], isLoadingIcons = false, onChange }
 }
 
 export default CategoryIconStep;
+

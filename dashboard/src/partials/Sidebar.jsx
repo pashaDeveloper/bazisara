@@ -1,20 +1,26 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import SidebarItem from "./SidebarItem";
 import Expand from "@/components/icons/Expand";
 import Category from "@/components/icons/Category";
 import Company from "@/components/icons/Company";
 import Gallery from "@/components/icons/Gallery";
 import Keyword from "@/components/icons/Keyword";
+import Blog from "@/components/icons/Blog";
 import Products from "@/components/icons/Products";
 import Rank from "@/components/icons/Rank";
 import Setting from "@/components/icons/Setting";
 import Tag from "@/components/icons/Tag";
+import User from "@/components/icons/User";
 import logo from "../favicon.svg";
 
 function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const location = useLocation();
   const { pathname } = location;
+  const admin = useSelector((state) => state.auth.admin);
+  const isOwner = admin?.role === "owner";
+  const canManageUsers = ["owner", "superAdmin", "admin"].includes(admin?.role);
 
   const trigger = useRef(null);
   const sidebar = useRef(null);
@@ -53,14 +59,20 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
   }, [sidebarExpanded]);
 
   const sidebarItems = [
+    { title: "پروفایل", icon: User, path: "/profile" },
+    ...(canManageUsers ? [{ title: "کاربران", icon: User, path: "/users" }] : []),
+    ...(isOwner ? [{ title: "تأییدیه‌ها", icon: User, path: "/approvals" }] : []),
     { title: "آیکون‌ها", icon: Gallery, path: "/icons" },
     { title: "تگ‌ها", icon: Tag, path: "/tags" },
-    { title: "دسته بندی", icon: Category, path: "/categories" },
+    { title: "دسته‌بندی‌ها", icon: Category, path: "/categories" },
     { title: "تعریف فیلترها", icon: Setting, path: "/filter-definitions" },
-    { title: "فیلتر دسته‌بندی", icon: Keyword, path: "/category-filters" },
-    { title: "ژانر", icon: Rank, path: "/genres" },
-    { title: "کمپانی", icon: Company, path: "/companies" },
+    { title: "فیلترهای دسته‌بندی", icon: Keyword, path: "/category-filters" },
+    { title: "ژانرها", icon: Rank, path: "/genres" },
+    { title: "پلتفرم‌ها", icon: Rank, path: "/platforms" },
+    { title: "شرکت‌ها", icon: Company, path: "/companies" },
     { title: "بازی‌ها", icon: Products, path: "/games" },
+    { title: "مقالات", icon: Blog, path: "/articles" },
+    { title: "اسلایدرها", icon: Gallery, path: "/sliders" },
   ];
 
   return (
@@ -109,7 +121,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
             type="button"
             aria-controls="sidebar"
             aria-expanded={sidebarExpanded}
-            title={sidebarExpanded ? "بستن منو" : "باز کردن منو"}
+            title={sidebarExpanded ? "بستن نوار کناری" : "باز کردن نوار کناری"}
           >
             <Expand className={`h-4 w-4 transition-transform ${sidebarExpanded ? "rotate-180" : ""}`} />
           </button>
@@ -121,7 +133,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
               <span className={`hidden w-6 text-center ${sidebarExpanded ? "lg:hidden" : "lg:block"}`} aria-hidden="true">
                 ...
               </span>
-              <span className={`block ${sidebarExpanded ? "lg:block" : "lg:hidden"}`}>صفحات</span>
+              <span className={`block ${sidebarExpanded ? "lg:block" : "lg:hidden"}`}>مدیریت</span>
             </h3>
             <ul className="mt-3 max-h-screen overflow-h-auto">
               {sidebarItems.map((item, index) => (
@@ -145,3 +157,4 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
 }
 
 export default Sidebar;
+

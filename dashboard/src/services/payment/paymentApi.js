@@ -1,4 +1,4 @@
-﻿import { bazisaraApi } from "../bazisara";
+import { bazisaraApi } from "../bazisara";
 
 export const paymentApi = bazisaraApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -20,3 +20,4 @@ export const {
   useGetPaymentDetailsQuery,
   useGetSalesCountByProductQuery,
 } = paymentApi;
+

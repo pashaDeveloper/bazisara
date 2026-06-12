@@ -1,9 +1,126 @@
 const Admin = require("../models/admin.model");
 const Address = require("../models/address.model");
+const Game = require("../models/game.model");
+const Article = require("../models/article.model");
+const Slider = require("../models/slider.model");
 const remove = require("../utils/remove.util");
 const token = require("../utils/token.util");
+const { getAdminProfileSnapshot } = require("../utils/adminProfile.util");
 
 const OWNER_ROLES = ["owner", "superAdmin"];
+const adminProfileFields = [
+  "name",
+  "email",
+  "phone",
+  "nationalCode",
+  "biography",
+  "position",
+  "department",
+  "gender",
+  "birthDate",
+  "landline",
+  "emergencyPhone"
+];
+const addressFields = ["province", "city", "address", "plateNumber", "unit", "postalCode"];
+
+function pickFields(source, fields) {
+  return fields.reduce((payload, field) => {
+    if (source[field] !== undefined) payload[field] = source[field];
+    return payload;
+  }, {});
+}
+
+function normalizeNumber(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function buildAvatar(req, existingAdmin) {
+  const uploaded = req.uploadedFiles?.avatar?.[0] || req.file;
+  if (uploaded) {
+    return {
+      url: uploaded.url || uploaded.path,
+      public_id: uploaded.key || uploaded.public_id || uploaded.filename || "",
+      storage: uploaded.storage || ""
+    };
+  }
+
+  if (req.body.avatarUrl !== undefined) {
+    return {
+      url: req.body.avatarUrl || null,
+      public_id: existingAdmin?.avatar?.public_id || null,
+      storage: existingAdmin?.avatar?.storage || ""
+    };
+  }
+
+  return existingAdmin?.avatar;
+}
+
+async function upsertAdminAddress(adminId, body) {
+  const payload = pickFields(body, addressFields);
+  if (payload.plateNumber !== undefined) payload.plateNumber = normalizeNumber(payload.plateNumber);
+  if (payload.postalCode !== undefined) payload.postalCode = normalizeNumber(payload.postalCode);
+
+  const hasAnyAddressValue = Object.values(payload).some((value) => value !== undefined && value !== "");
+  if (!hasAnyAddressValue) return null;
+
+  return Address.findOneAndUpdate(
+    { admin: adminId, isDeleted: false },
+    { $set: { admin: adminId, isDefault: true, ...payload } },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  );
+}
+
+function populateAdmin(query) {
+  return query.populate("address");
+}
+
+function decorateAdmin(admin) {
+  if (!admin) return admin;
+  const plainAdmin = typeof admin.toObject === "function" ? admin.toObject() : { ...admin };
+  return {
+    ...plainAdmin,
+    ...getAdminProfileSnapshot(plainAdmin),
+  };
+}
+
+function buildApprovalItem(type, item) {
+  const base = typeof item.toObject === "function" ? item.toObject() : item;
+  return {
+    type,
+    _id: base._id,
+    title: base.title || base.name || base.subtitle || "محتوای بدون عنوان",
+    status: base.status,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+    slug: base.slug || "",
+    cover: base.cover || base.image || base.cardDesktopCover || null,
+    category: base.category || null,
+    author: base.author || "",
+    excerpt: base.excerpt || base.shortDescription || base.subtitle || "",
+  };
+}
+
+async function getPendingApprovals() {
+  const [games, articles, sliders] = await Promise.all([
+    Game.find({ isDeleted: false, status: "pending" })
+      .sort({ updatedAt: -1 })
+      .select("title slug status createdAt updatedAt cover cardDesktopCover category shortDescription"),
+    Article.find({ isDeleted: false, status: "pending" })
+      .sort({ updatedAt: -1 })
+      .select("title slug status createdAt updatedAt cover excerpt author category"),
+    Slider.find({ isDeleted: false, status: "pending" })
+      .sort({ updatedAt: -1 })
+      .select("title subtitle slug status createdAt updatedAt image category"),
+  ]);
+
+  return [
+    ...games.map((item) => buildApprovalItem("game", item)),
+    ...articles.map((item) => buildApprovalItem("article", item)),
+    ...sliders.map((item) => buildApprovalItem("slider", item)),
+  ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
 
 /* sign up an admin */
 exports.signUp = async (req, res) => {
@@ -49,7 +166,8 @@ exports.signUp = async (req, res) => {
   ) {
     avatar = {
       url: req.uploadedFiles["avatar"][0].url,
-      public_id: req.uploadedFiles["avatar"][0].key
+      public_id: req.uploadedFiles["avatar"][0].key,
+      storage: req.uploadedFiles["avatar"][0].storage || ""
     };
   } else {
     avatar = {
@@ -186,7 +304,7 @@ exports.forgotPassword = async (req, res) => {
 
 exports.persistLogin = async (req, res) => {
   console.log(req.admin)
-  const admin = await Admin.findById(req.admin._id).select("-password -phone");
+  const admin = await populateAdmin(Admin.findById(req.admin._id).select("-password"));
 
   if (!admin) {
     res.status(404).json({
@@ -199,7 +317,7 @@ exports.persistLogin = async (req, res) => {
       acknowledgement: true,
       message: "OK",
       description: "ورود با موفقیت انجام شد",
-      data: admin
+      data: decorateAdmin(admin)
     });
   }
 };
@@ -209,11 +327,24 @@ exports.getAdmins = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const role = req.query.role;
-    
+    const status = req.query.status;
+    const search = (req.query.search || "").trim();
+
     // Build query
-    let query = {};
-    if (role && role !== 'all') {
+    let query = { isDeleted: false };
+    if (role && role !== "all") {
       query.role = role;
+    }
+    if (status && status !== "all") {
+      query.status = status;
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { position: { $regex: search, $options: "i" } },
+      ];
     }
     
     // Calculate pagination
@@ -223,7 +354,9 @@ exports.getAdmins = async (req, res) => {
     const admins = await Admin.find(query)
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .select("-password")
+      .populate("address");
       
     // Get total count for pagination
     const total = await Admin.countDocuments(query);
@@ -234,7 +367,7 @@ exports.getAdmins = async (req, res) => {
       message: "OK",
       description: "دریافت موفق مدیران",
       data: {
-        admins,
+        admins: admins.map((admin) => decorateAdmin(admin)),
         total,
         page,
         totalPages
@@ -251,13 +384,98 @@ exports.getAdmins = async (req, res) => {
 };
 
 exports.getAdmin = async (req, res) => {
-  const admin = await Admin.findById(req.params.id);
+  const admin = await populateAdmin(Admin.findById(req.params.id).select("-password"));
 
   res.status(200).json({
     acknowledgement: true,
     message: "OK",
     description: `اطلاعات کاربر${admin.name}' با موفقیت دریافت شد`,
-    data: admin
+    data: decorateAdmin(admin)
+  });
+};
+
+exports.updateProfile = async (req, res) => {
+  const existingAdmin = await Admin.findById(req.admin._id);
+
+  if (!existingAdmin) {
+    return res.status(404).json({
+      acknowledgement: false,
+      message: "Not Found",
+      description: "کاربر یافت نشد"
+    });
+  }
+
+  const adminPayload = pickFields(req.body, adminProfileFields);
+  const avatar = buildAvatar(req, existingAdmin);
+  if (avatar) adminPayload.avatar = avatar;
+
+  const updatedAdmin = await Admin.findByIdAndUpdate(
+    existingAdmin._id,
+    { $set: adminPayload },
+    { runValidators: true, new: true }
+  );
+
+  const address = await upsertAdminAddress(existingAdmin._id, req.body);
+  if (address && String(updatedAdmin.address || "") !== String(address._id)) {
+    updatedAdmin.address = address._id;
+    await updatedAdmin.save({ validateBeforeSave: false });
+  }
+
+  const populatedAdmin = await populateAdmin(Admin.findById(updatedAdmin._id).select("-password"));
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "پروفایل با موفقیت به‌روزرسانی شد",
+    data: decorateAdmin(populatedAdmin)
+  });
+};
+
+exports.getApprovals = async (req, res) => {
+  const data = await getPendingApprovals();
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "لیست محتوای در انتظار تایید دریافت شد",
+    data,
+  });
+};
+
+exports.approveApproval = async (req, res) => {
+  const { type, id } = req.params;
+  const modelMap = {
+    game: Game,
+    article: Article,
+    slider: Slider,
+  };
+
+  const Model = modelMap[type];
+  if (!Model) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "نوع محتوا معتبر نیست",
+    });
+  }
+
+  const item = await Model.findOne({ _id: id, isDeleted: false, status: "pending" });
+  if (!item) {
+    return res.status(404).json({
+      acknowledgement: false,
+      message: "Not Found",
+      description: "محتوای در انتظار تایید پیدا نشد",
+    });
+  }
+
+  item.status = "active";
+  await item.save();
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "محتوا با موفقیت تایید شد",
+    data: buildApprovalItem(type, item),
   });
 };
 
@@ -287,7 +505,8 @@ exports.updateAdmin = async (req, res) => {
     // تنظیم تصویر جدید
     avatar = {
       url: req.uploadedFiles["avatar"][0].url,
-      public_id: req.uploadedFiles["avatar"][0].key
+      public_id: req.uploadedFiles["avatar"][0].key,
+      storage: req.uploadedFiles["avatar"][0].storage || ""
     };
   } else if (!req.body.avatarUrl) {
     // اگر تصویر جدید نیست، حذف تصویر قبلی
@@ -353,7 +572,8 @@ exports.updateAdminInfo = async (req, res) => {
     // تنظیم تصویر جدید
     avatar = {
       url: req.uploadedFiles["avatar"][0].url,
-      public_id: req.uploadedFiles["avatar"][0].key
+      public_id: req.uploadedFiles["avatar"][0].key,
+      storage: req.uploadedFiles["avatar"][0].storage || ""
     };
   } else if (req.body.avatarUrl) {
     // اگر تصویر جدید نیست، حذف تصویر قبلی

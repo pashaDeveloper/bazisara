@@ -34,3 +34,4 @@ export function stringifyOptions(options = []) {
 export function getTypeLabel(type) {
   return filterTypes.find((item) => item.value === type)?.label || type;
 }
+

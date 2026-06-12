@@ -13,7 +13,7 @@ import { useDeleteTagMutation, useGetTagsQuery } from "../services/tagApi";
 function Tags() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const tagsPagination = usePaginationState(10, debouncedSearch);
+  const tagsPagination = usePaginationState(5, debouncedSearch);
   const { data: tagsData, isLoading } = useGetTagsQuery({
     limit: tagsPagination.pageSize,
     page: tagsPagination.currentPage,
@@ -163,3 +163,4 @@ function Tags() {
 }
 
 export default Tags;
+

@@ -56,3 +56,4 @@ function TagCreate({ mode = "create" }) {
 }
 
 export default TagCreate;
+

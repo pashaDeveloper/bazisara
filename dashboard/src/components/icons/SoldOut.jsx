@@ -24,3 +24,4 @@ const SoldOut = ({ className, ...props }) => {
 };
 
 export default SoldOut;
+

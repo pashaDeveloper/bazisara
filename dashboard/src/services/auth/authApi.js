@@ -18,6 +18,15 @@ export const authApi = bazisaraApi.injectEndpoints({
     }),
     persistLogin: builder.query({
       query: () => ({ url: "/admin/me", method: "GET" }),
+      providesTags: ["Admin"],
+    }),
+    updateAdminProfile: builder.mutation({
+      query: (body) => ({
+        url: "/admin/profile",
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Admin"],
     }),
   }),
   overrideExisting: false,
@@ -27,4 +36,6 @@ export const {
   useSignInAdminMutation,
   useSignUpAdminMutation,
   usePersistLoginQuery,
+  useUpdateAdminProfileMutation,
 } = authApi;
+

@@ -22,3 +22,4 @@ const PSale = ({ className, ...props }) => {
 };
 
 export default PSale;
+

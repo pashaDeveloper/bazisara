@@ -30,6 +30,11 @@ const genreSchema = new mongoose.Schema(
         type: String,
         default: "",
       },
+      storage: {
+        type: String,
+        enum: ["", "cloudinary", "arvan", "local"],
+        default: "",
+      },
     },
     ...baseSchema.obj,
   },

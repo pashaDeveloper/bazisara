@@ -35,6 +35,16 @@ export const regionOptions = [
   { label: "Argentina", value: "Argentina" },
 ];
 
+export const dlcTypeOptions = [
+  { label: "Story - داستانی", value: "story" },
+  { label: "Item - آیتم", value: "item" },
+  { label: "Map - نقشه", value: "map" },
+  { label: "Character - شخصیت", value: "character" },
+  { label: "Car - ماشین", value: "car" },
+  { label: "Motor - موتور", value: "motor" },
+  { label: "Stage - مرحله", value: "stage" },
+];
+
 export const ageRatingOptions = [
   { label: "Everyone - مناسب همه", value: "مناسب همه", legacyValues: ["Everyone"] },
   { label: "Everyone 10+ - مناسب بالای ۱۰ سال", value: "مناسب بالای ۱۰ سال", legacyValues: ["Everyone 10+"] },
@@ -66,3 +76,4 @@ export const editionOptions = [
   { label: "Collector's - کالکتور", value: "کالکتور", legacyValues: ["Collector's"] },
   { label: "Complete - کامل", value: "کامل", legacyValues: ["Complete"] },
 ];
+

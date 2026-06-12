@@ -20,3 +20,4 @@ export const uploadApi = bazisaraApi.injectEndpoints({
 });
 
 export const { useUploadMutation, useDeleteUploadMutation } = uploadApi;
+

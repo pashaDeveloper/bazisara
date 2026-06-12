@@ -9,3 +9,4 @@ const Rank = ({...props }) => {
 };
 
 export default Rank;
+

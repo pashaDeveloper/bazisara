@@ -83,9 +83,10 @@ exports.createCategory = async (req, res) => {
     description,
     icon: icon || null,
     image: req.uploadedFiles?.image?.[0]
-      ? {
+        ? {
           url: req.uploadedFiles.image[0].url,
           public_id: req.uploadedFiles.image[0].public_id,
+          storage: req.uploadedFiles.image[0].storage || "",
         }
       : undefined,
     parent: parent || null,
@@ -211,6 +212,7 @@ exports.updateCategory = async (req, res) => {
     category.image = {
       url: req.uploadedFiles.image[0].url,
       public_id: req.uploadedFiles.image[0].public_id,
+      storage: req.uploadedFiles.image[0].storage || "",
     };
   }
 

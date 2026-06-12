@@ -41,6 +41,11 @@ const adminSchema = new mongoose.Schema(
         type: String,
         default: "N/A",
       },
+      storage: {
+        type: String,
+        enum: ["", "cloudinary", "arvan", "local"],
+        default: "",
+      },
     },
     address: {
       type: ObjectId,
@@ -58,6 +63,45 @@ const adminSchema = new mongoose.Schema(
         message: "شماره تماس {VALUE} معتبر نیست. شماره باید 11 رقم باشد و با 09 شروع شود",
       },
       unique: true,
+    },
+    nationalCode: {
+      type: String,
+      trim: true,
+      maxLength: [10, "کد ملی باید حداکثر 10 رقم باشد"],
+    },
+    biography: {
+      type: String,
+      trim: true,
+      maxLength: [1200, "بیوگرافی باید حداکثر 1200 کاراکتر باشد"],
+    },
+    position: {
+      type: String,
+      trim: true,
+      maxLength: [120, "عنوان شغلی باید حداکثر 120 کاراکتر باشد"],
+    },
+    department: {
+      type: String,
+      trim: true,
+      maxLength: [120, "واحد سازمانی باید حداکثر 120 کاراکتر باشد"],
+    },
+    gender: {
+      type: String,
+      enum: ["", "male", "female", "other"],
+      default: "",
+    },
+    birthDate: {
+      type: Date,
+      default: null,
+    },
+    landline: {
+      type: String,
+      trim: true,
+      maxLength: [20, "تلفن ثابت باید حداکثر 20 کاراکتر باشد"],
+    },
+    emergencyPhone: {
+      type: String,
+      trim: true,
+      maxLength: [20, "شماره اضطراری باید حداکثر 20 کاراکتر باشد"],
     },
     role: {
       type: String,

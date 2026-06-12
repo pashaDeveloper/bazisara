@@ -24,3 +24,4 @@ const Arrival = ({ className, ...props }) => {
 };
 
 export default Arrival;
+

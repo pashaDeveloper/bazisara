@@ -27,7 +27,7 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
     buyer: "خریدار",
   };
 
-  const displayRole = roleLabels[admin?.role] || admin?.role || "مهمان";
+  const displayRole = roleLabels[admin?.role] || "مهمان";
 
   return (
     <header
@@ -48,19 +48,13 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
               }}
             >
               <span className="sr-only">باز کردن منوی کناری</span>
-              <svg
-                className="h-6 w-6 fill-current"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
+              <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <rect x="4" y="5" width="16" height="2" />
                 <rect x="4" y="11" width="16" height="2" />
                 <rect x="4" y="17" width="16" height="2" />
               </svg>
             </button>
-            <span className="hidden text-sm text-zinc-400 sm:block">
-              وضعیت سیستم: پایدار
-            </span>
+            <span className="hidden text-sm text-zinc-400 sm:block">وضعیت سیستم: پایدار</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -73,7 +67,10 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
             >
               {isDark ? (
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M3 12h2M19 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" strokeLinecap="round" />
+                  <path
+                    d="M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M3 12h2M19 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                    strokeLinecap="round"
+                  />
                   <circle cx="12" cy="12" r="4" />
                 </svg>
               ) : (
@@ -84,9 +81,7 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
             </button>
             <div className="hidden text-left sm:block">
               <p className="text-sm text-white">{admin?.name || "مدیر"}</p>
-              <p className="text-xs text-zinc-500">
-                {displayRole}
-              </p>
+              <p className="text-xs text-zinc-500">{displayRole}</p>
             </div>
             <button
               className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-white hover:text-white"
@@ -103,3 +98,4 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
 }
 
 export default Header;
+

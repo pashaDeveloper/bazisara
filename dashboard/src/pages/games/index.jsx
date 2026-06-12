@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -7,22 +7,45 @@ import DisplayImages from "@/components/shared/DisplayImages";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Edit from "@/components/icons/Edit";
+import Plus from "@/components/icons/Plus";
 import Trash from "@/components/icons/Trash";
-import { useDeleteGameMutation, useGetGamesQuery } from "../../services/gameApi";
+import { useDeleteGameMutation, useGetGamesQuery, useUpdateGameMutation } from "../../services/gameApi";
+
+const statusLabels = {
+  active: "فعال",
+  inactive: "غیرفعال",
+  pending: "در انتظار تایید",
+};
 
 function Games() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const gamesPagination = usePaginationState(10, debouncedSearch);
+  const gamesPagination = usePaginationState(5, debouncedSearch);
   const { data: gamesData, isLoading } = useGetGamesQuery({
     limit: gamesPagination.pageSize,
     page: gamesPagination.currentPage,
     search: debouncedSearch,
   });
   const [deleteGame, { isLoading: isDeleting }] = useDeleteGameMutation();
+  const [updateGame, { isLoading: isUpdating }] = useUpdateGameMutation();
+  const [contextMenu, setContextMenu] = useState(null);
 
   const games = gamesData?.data || [];
   const gamesMeta = gamesData?.pagination;
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("resize", closeMenu);
+
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm("این بازی حذف شود؟")) return;
@@ -32,6 +55,36 @@ function Games() {
       toast.success(response.description || "بازی حذف شد");
     } catch (error) {
       toast.error(error?.data?.description || "حذف بازی انجام نشد");
+    }
+  };
+
+  const openContextMenu = (event, item) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({
+      item,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+
+  const addQuickItem = async (field, label) => {
+    const currentItem = contextMenu?.item;
+    if (!currentItem) return;
+
+    const rawValue = window.prompt(`نام ${label} را وارد کنید`);
+    if (!rawValue || !rawValue.trim()) return;
+
+    const nextValues = [...(Array.isArray(currentItem[field]) ? currentItem[field] : []), rawValue.trim()];
+    const formData = new FormData();
+    formData.append(field, JSON.stringify(nextValues));
+
+    try {
+      await updateGame({ id: currentItem._id, formData }).unwrap();
+      toast.success(`${label} اضافه شد`);
+      setContextMenu(null);
+    } catch (error) {
+      toast.error(error?.data?.description || `افزودن ${label} انجام نشد`);
     }
   };
 
@@ -79,7 +132,11 @@ function Games() {
                   </tr>
                 ) : games.length ? (
                   games.map((item) => (
-                    <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
+                    <tr
+                      key={item._id}
+                      className="cursor-context-menu border-b border-zinc-900 text-zinc-200"
+                      onContextMenu={(event) => openContextMenu(event, item)}
+                    >
                       <td className="py-4 pl-3">
                         <div className="flex min-w-0 items-center gap-3">
                           {(item.cardDesktopCover?.url || item.cover?.url) ? (
@@ -95,6 +152,9 @@ function Games() {
                           <div className="min-w-0">
                             <span className="block truncate">{item.title}</span>
                             <span className="mt-1 block truncate text-xs text-zinc-500">{item.slug}</span>
+                            <span className="mt-2 inline-flex rounded-full bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300">
+                              {statusLabels[item.status] || item.status || "-"}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -152,8 +212,46 @@ function Games() {
           />
         </div>
       </section>
+
+      {contextMenu ? (
+        <div
+          className="fixed z-50 w-56 rounded-xl border border-zinc-800 bg-zinc-950 p-1 shadow-2xl shadow-black/40"
+          onClick={(event) => event.stopPropagation()}
+          style={{
+            left: `${Math.min(contextMenu.x, window.innerWidth - 240)}px`,
+            top: `${Math.min(contextMenu.y, window.innerHeight - 170)}px`,
+          }}
+        >
+          <Link
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-200 transition hover:bg-zinc-900 hover:text-white"
+            to={`/games/edit/${contextMenu.item._id}`}
+          >
+            <Edit className="h-4 w-4" />
+            ویرایش
+          </Link>
+          <button
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-sm text-zinc-200 transition hover:bg-zinc-900 hover:text-white disabled:opacity-60"
+            disabled={isUpdating}
+            onClick={() => addQuickItem("dlcs", "DLC")}
+            type="button"
+          >
+            <Plus className="h-4 w-4" />
+            افزودن DLC
+          </button>
+          <button
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-right text-sm text-zinc-200 transition hover:bg-zinc-900 hover:text-white disabled:opacity-60"
+            disabled={isUpdating}
+            onClick={() => addQuickItem("extraEditions", "Edition")}
+            type="button"
+          >
+            <Plus className="h-4 w-4" />
+            افزودن Edition
+          </button>
+        </div>
+      ) : null}
     </ControlPanel>
   );
 }
 
 export default Games;
+

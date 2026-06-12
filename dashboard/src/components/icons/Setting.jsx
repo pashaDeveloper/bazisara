@@ -10,3 +10,4 @@ const Setting = ({ className, ...props }) => {
 };
 
 export default Setting;
+

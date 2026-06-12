@@ -23,7 +23,7 @@ const companyTypeLabels = {
 function Companies() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const companiesPagination = usePaginationState(10, debouncedSearch);
+  const companiesPagination = usePaginationState(5, debouncedSearch);
   const { data: companiesData, isLoading } = useGetCompaniesQuery({
     limit: companiesPagination.pageSize,
     page: companiesPagination.currentPage,
@@ -158,3 +158,4 @@ function Companies() {
 }
 
 export default Companies;
+

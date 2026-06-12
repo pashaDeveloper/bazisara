@@ -30,11 +30,32 @@ router.patch("/forgot-password", adminController.forgotPassword);
 // login persistance
 router.get("/me", verify,  adminController.persistLogin);
 
+router.patch(
+  "/profile",
+  verify,
+  upload("avatar").single("avatar"),
+  adminController.updateProfile
+);
+
+router.get(
+  "/approvals",
+  verify,
+  authorize("owner"),
+  adminController.getApprovals
+);
+
+router.patch(
+  "/approvals/:type/:id/approve",
+  verify,
+  authorize("owner"),
+  adminController.approveApproval
+);
+
 // get all admins
 router.get(
   "/all-admins",
   verify,
-  authorize("owner", "superAdmin"),
+  authorize("owner", "superAdmin", "admin"),
   adminController.getAdmins
 );
 
@@ -42,7 +63,7 @@ router.get(
 router.get(
   "/get-admin/:id",
   verify,
-  authorize("owner", "superAdmin"),
+  authorize("owner", "superAdmin", "admin"),
   adminController.getAdmin
 );
 

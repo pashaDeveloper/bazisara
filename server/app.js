@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser");
 const error = require("./middleware/error.middleware");
 
 const app = express();
+app.set("trust proxy", true);
 
 /* allowed origins */
 const allowedOrigins = [
@@ -61,9 +62,13 @@ app.use("/api/categories", require("./routes/category.route"));
 app.use("/api/filter-definitions", require("./routes/filterDefinition.route"));
 app.use("/api/category-filters", require("./routes/categoryFilter.route"));
 app.use("/api/genres", require("./routes/genre.route"));
+app.use("/api/platforms", require("./routes/platform.route"));
 app.use("/api/companies", require("./routes/company.route"));
 app.use("/api/tags", require("./routes/tag.route"));
 app.use("/api/games", require("./routes/game.route"));
+app.use("/api/articles", require("./routes/article.route"));
+app.use("/api/analytics", require("./routes/analytics.route"));
+app.use("/api/sliders", require("./routes/slider.route"));
 app.use("/api/uploads", require("./routes/upload.route"));
 
 

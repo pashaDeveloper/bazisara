@@ -25,7 +25,7 @@ function getPageNumbers(currentPage, totalPages) {
   return pages;
 }
 
-export function usePagination(items = [], initialPageSize = 10, resetKey = "") {
+export function usePagination(items = [], initialPageSize = 5, resetKey = "") {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const totalItems = items.length;
@@ -59,7 +59,7 @@ export function usePagination(items = [], initialPageSize = 10, resetKey = "") {
   };
 }
 
-export function usePaginationState(initialPageSize = 10, resetKey = "") {
+export function usePaginationState(initialPageSize = 5, resetKey = "") {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
 
@@ -87,7 +87,7 @@ function Pagination({
   totalPages,
 }) {
   const resolvedCurrentPage = currentPage || 1;
-  const resolvedPageSize = pageSize || 10;
+  const resolvedPageSize = pageSize || 5;
   const resolvedTotalPages = totalPages || Math.max(1, Math.ceil(totalItems / resolvedPageSize));
   const resolvedStartItem =
     startItem ?? (totalItems ? (resolvedCurrentPage - 1) * resolvedPageSize + 1 : 0);
@@ -180,3 +180,4 @@ function Pagination({
 }
 
 export default Pagination;
+

@@ -14,3 +14,4 @@ function CategoryNameStep({ value, onChange }) {
 }
 
 export default CategoryNameStep;
+

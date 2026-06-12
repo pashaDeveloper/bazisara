@@ -60,3 +60,4 @@ const DeleteModal = ({ message, isLoading, onDelete }) => {
 };
 
 export default DeleteModal;
+

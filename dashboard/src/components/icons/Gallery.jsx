@@ -24,3 +24,4 @@ const Gallery = ({ className, ...props }) => {
 };
 
 export default Gallery;
+

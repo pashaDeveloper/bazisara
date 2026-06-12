@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 
 function Banner() {
   const confrimedBanner = localStorage.getItem("banner_confrimed");
@@ -11,7 +11,7 @@ function Banner() {
           <div className="flex justify-between border border-zinc-700 bg-black p-3 text-sm text-zinc-200 shadow-lg md:rounded">
             <div className="inline-flex text-zinc-400">
               <p>
-                کلیه حقوق این پنل متعلق به شرکت است و هرگونه استفاده غیرمجاز پیگرد قانونی خواهد داشت.
+                ???? ???? ??? ??? ????? ?? ???? ??? ? ?????? ??????? ??????? ????? ?????? ????? ????.
               </p>
             </div>
             <button
@@ -34,3 +34,4 @@ function Banner() {
 }
 
 export default Banner;
+

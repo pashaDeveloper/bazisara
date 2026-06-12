@@ -67,6 +67,36 @@ exports.getAdmin = async (req, res, next) => {
   }
 };
 
+exports.updateProfile = async (req, res, next) => {
+  try {
+    await adminService.updateProfile(req, res);
+  } catch (error) {
+    next(error);
+  } finally {
+    console.log(`Route: ${req.url} || Method: ${req.method}`);
+  }
+};
+
+exports.getApprovals = async (req, res, next) => {
+  try {
+    await adminService.getApprovals(req, res);
+  } catch (error) {
+    next(error);
+  } finally {
+    console.log(`Route: ${req.url} || Method: ${req.method}`);
+  }
+};
+
+exports.approveApproval = async (req, res, next) => {
+  try {
+    await adminService.approveApproval(req, res);
+  } catch (error) {
+    next(error);
+  } finally {
+    console.log(`Route: ${req.url} || Method: ${req.method}`);
+  }
+};
+
 /* update admin information */
 exports.updateAdmin = async (req, res, next) => {
   try {

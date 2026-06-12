@@ -50,3 +50,4 @@ export const {
   useUpdateCompanyMutation,
   useDeleteCompanyMutation,
 } = companyApi;
+

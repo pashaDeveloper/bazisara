@@ -60,3 +60,4 @@ function StepIndicator({
 }
 
 export default StepIndicator;
+

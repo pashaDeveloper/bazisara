@@ -12,3 +12,4 @@ const Company = ({ ...props }) => {
 };
 
 export default Company;
+

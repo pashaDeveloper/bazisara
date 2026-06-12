@@ -18,3 +18,4 @@ const Banner = ({ className, ...props }) => {
 };
 
 export default Banner;
+

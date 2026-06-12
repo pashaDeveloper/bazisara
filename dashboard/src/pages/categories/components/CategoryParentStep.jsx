@@ -24,3 +24,4 @@ function CategoryParentStep({ tree, value, onChange }) {
 }
 
 export default CategoryParentStep;
+

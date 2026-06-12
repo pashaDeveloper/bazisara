@@ -14,12 +14,22 @@ import FilterDefinitions from "./pages/filterDefinitions";
 import Icons from "./pages/Icons";
 import Genres from "./pages/Genres";
 import GenreCreate from "./pages/GenreCreate";
+import Platforms from "./pages/platforms";
+import PlatformForm from "./pages/platforms/PlatformForm";
 import Companies from "./pages/Companies";
 import CompanyCreate from "./pages/CompanyCreate";
 import Tags from "./pages/Tags";
 import TagCreate from "./pages/TagCreate";
 import Games from "./pages/games";
 import GameForm from "./pages/games/GameForm";
+import Articles from "./pages/articles";
+import ArticleForm from "./pages/articles/ArticleForm";
+import Sliders from "./pages/sliders";
+import SliderForm from "./pages/sliders/SliderForm";
+import AdminProfile from "./pages/AdminProfile";
+import Approvals from "./pages/Approvals";
+import Users from "./pages/users";
+import UserForm from "./pages/users/UserForm";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Auth from "./auth";
@@ -45,6 +55,38 @@ function App() {
           element={
             <Auth>
               <Dashboard />
+            </Auth>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Auth>
+              <AdminProfile />
+            </Auth>
+          }
+        />
+        <Route
+          path="/approvals"
+          element={
+            <Auth>
+              <Approvals />
+            </Auth>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <Auth>
+              <Users />
+            </Auth>
+          }
+        />
+        <Route
+          path="/users/edit/:id"
+          element={
+            <Auth>
+              <UserForm />
             </Auth>
           }
         />
@@ -138,6 +180,30 @@ function App() {
           }
         />
         <Route
+          path="/platforms"
+          element={
+            <Auth>
+              <Platforms />
+            </Auth>
+          }
+        />
+        <Route
+          path="/platforms/create"
+          element={
+            <Auth>
+              <PlatformForm />
+            </Auth>
+          }
+        />
+        <Route
+          path="/platforms/edit/:id"
+          element={
+            <Auth>
+              <PlatformForm mode="edit" />
+            </Auth>
+          }
+        />
+        <Route
           path="/companies"
           element={
             <Auth>
@@ -209,6 +275,54 @@ function App() {
             </Auth>
           }
         />
+        <Route
+          path="/articles"
+          element={
+            <Auth>
+              <Articles />
+            </Auth>
+          }
+        />
+        <Route
+          path="/articles/create"
+          element={
+            <Auth>
+              <ArticleForm />
+            </Auth>
+          }
+        />
+        <Route
+          path="/articles/edit/:id"
+          element={
+            <Auth>
+              <ArticleForm mode="edit" />
+            </Auth>
+          }
+        />
+        <Route
+          path="/sliders"
+          element={
+            <Auth>
+              <Sliders />
+            </Auth>
+          }
+        />
+        <Route
+          path="/sliders/create"
+          element={
+            <Auth>
+              <SliderForm />
+            </Auth>
+          }
+        />
+        <Route
+          path="/sliders/edit/:id"
+          element={
+            <Auth>
+              <SliderForm mode="edit" />
+            </Auth>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Providers>
@@ -216,4 +330,5 @@ function App() {
 }
 
 export default App;
+
 

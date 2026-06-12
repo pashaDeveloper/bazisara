@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import toast from "react-hot-toast";
 import { useState } from "react";
 import ControlPanel from "./ControlPanel";
@@ -15,7 +15,7 @@ import {
 
 function SvgPreview({ svg, label }) {
   if (!svg?.trim()) {
-    return <span className="text-zinc-500">ندارد</span>;
+    return <span className="text-zinc-500">?????</span>;
   }
 
   return (
@@ -49,7 +49,7 @@ function renderTreePreview(nodes, depth = 0) {
 function Categories() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const categoriesPagination = usePaginationState(10, debouncedSearch);
+  const categoriesPagination = usePaginationState(5, debouncedSearch);
   const { data: categoriesData, isLoading } = useGetCategoriesQuery({
     limit: categoriesPagination.pageSize,
     page: categoriesPagination.currentPage,
@@ -63,13 +63,13 @@ function Categories() {
   const tree = treeData?.data || [];
 
   const handleDelete = async (id) => {
-    if (!window.confirm("این دسته‌بندی حذف شود؟")) return;
+    if (!window.confirm("??? ????????? ??? ????")) return;
 
     try {
       const response = await deleteCategory(id).unwrap();
-      toast.success(response.description || "دسته‌بندی حذف شد");
+      toast.success(response.description || "????????? ??? ??");
     } catch (error) {
-      toast.error(error?.data?.description || "حذف دسته‌بندی انجام نشد");
+      toast.error(error?.data?.description || "??? ????????? ????? ???");
     }
   };
 
@@ -79,10 +79,10 @@ function Categories() {
         <div className="rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs text-zinc-400">مدیریت ساختار بازی</p>
-              <h1 className="mt-1 text-2xl font-bold text-white">دسته‌بندی‌ها</h1>
+              <p className="text-xs text-zinc-400">?????? ?????? ????</p>
+              <h1 className="mt-1 text-2xl font-bold text-white">????????????</h1>
               <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                دسته‌بندی‌ها به‌صورت درختی ساخته می‌شوند و برای نمایش می‌توانند تصویر و آیکون SVG داشته باشند.
+                ???????????? ??????? ????? ????? ??????? ? ???? ????? ????????? ????? ? ????? SVG ????? ?????.
               </p>
             </div>
             <AddButton link="/categories/create" />
@@ -93,15 +93,15 @@ function Categories() {
           <div className="space-y-6 xl:col-span-5">
             <div className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-white">درخت دسته‌بندی</h2>
-                <span className="text-xs text-zinc-500">{tree.length} ریشه</span>
+                <h2 className="text-sm font-bold text-white">???? ?????????</h2>
+                <span className="text-xs text-zinc-500">{tree.length} ????</span>
               </div>
               <div className="mt-4 space-y-3">
                 {tree.length ? (
                   renderTreePreview(tree)
                 ) : (
                   <div className="rounded-xl border border-zinc-800 bg-black px-4 py-6 text-sm text-zinc-500">
-                    هنوز دسته‌بندی ثبت نشده است.
+                    ???? ????????? ??? ???? ???.
                   </div>
                 )}
               </div>
@@ -111,27 +111,27 @@ function Categories() {
           <div className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5 xl:col-span-7">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-sm font-bold text-white">لیست دسته‌بندی‌ها</h2>
-                <span className="mt-1 block text-xs text-zinc-500">{categoriesMeta?.totalItems || categories.length} مورد</span>
+                <h2 className="text-sm font-bold text-white">???? ????????????</h2>
+                <span className="mt-1 block text-xs text-zinc-500">{categoriesMeta?.totalItems || categories.length} ????</span>
               </div>
-              <SearchBox onChange={setSearch} placeholder="جستجوی نام یا توضیح دسته‌بندی..." value={search} />
+              <SearchBox onChange={setSearch} placeholder="?????? ??? ?? ????? ?????????..." value={search} />
             </div>
             <div className="mt-4 overflow-hidden">
               <table className="w-full table-fixed text-right text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800 text-zinc-500">
-                    <th className="w-[42%] pb-3 font-medium sm:w-[34%]">نام</th>
-                    <th className="w-[24%] pb-3 font-medium">آیکون</th>
-                    <th className="hidden pb-3 font-medium md:table-cell">والد</th>
-                    <th className="hidden w-24 pb-3 font-medium sm:table-cell">تصویر</th>
-                    <th className="w-16 pb-3 text-center font-medium">عملیات</th>
+                    <th className="w-[42%] pb-3 font-medium sm:w-[34%]">???</th>
+                    <th className="w-[24%] pb-3 font-medium">?????</th>
+                    <th className="hidden pb-3 font-medium md:table-cell">????</th>
+                    <th className="hidden w-24 pb-3 font-medium sm:table-cell">?????</th>
+                    <th className="w-16 pb-3 text-center font-medium">??????</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
                       <td className="py-6 text-center text-zinc-500" colSpan="5">
-                        در حال دریافت...
+                        ?? ??? ??????...
                       </td>
                     </tr>
                   ) : categories.length ? (
@@ -143,7 +143,7 @@ function Categories() {
                         <td className="py-4">
                           <SvgPreview svg={item.icon} label={item.name} />
                         </td>
-                        <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name || "ریشه"}</td>
+                        <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name || "????"}</td>
                         <td className="hidden py-4 sm:table-cell">
                           {item.image?.url ? (
                             <DisplayImages
@@ -152,12 +152,12 @@ function Categories() {
                               className="mt-0"
                             />
                           ) : (
-                            <span className="text-zinc-500">ندارد</span>
+                            <span className="text-zinc-500">?????</span>
                           )}
                         </td>
                         <td className="py-4">
                           <button
-                            aria-label="حذف دسته‌بندی"
+                            aria-label="??? ?????????"
                             className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
                             disabled={isDeleting}
                             onClick={() => handleDelete(item._id)}
@@ -171,7 +171,7 @@ function Categories() {
                   ) : (
                     <tr>
                       <td className="py-6 text-center text-zinc-500" colSpan="5">
-                        موردی برای نمایش وجود ندارد.
+                        ????? ???? ????? ???? ?????.
                       </td>
                     </tr>
                   )}
@@ -194,3 +194,4 @@ function Categories() {
 }
 
 export default Categories;
+

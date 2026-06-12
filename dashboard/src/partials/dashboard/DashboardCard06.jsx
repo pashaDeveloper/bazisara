@@ -44,3 +44,4 @@ function DashboardCard06() {
 }
 
 export default DashboardCard06;
+

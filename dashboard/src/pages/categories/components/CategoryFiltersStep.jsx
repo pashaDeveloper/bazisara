@@ -55,3 +55,4 @@ function CategoryFiltersStep({ definitions = [], selectedFilters = [], setForm }
 }
 
 export default CategoryFiltersStep;
+

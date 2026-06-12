@@ -64,6 +64,7 @@ const normalizeCompanyPayload = (body, uploadedFiles) => {
     payload.logo = {
       url: uploadedFiles.logo[0].url,
       public_id: uploadedFiles.logo[0].public_id,
+      storage: uploadedFiles.logo[0].storage || "",
     };
   }
 

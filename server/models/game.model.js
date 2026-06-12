@@ -6,6 +6,11 @@ const mediaSchema = new mongoose.Schema(
   {
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
+    storage: {
+      type: String,
+      enum: ["", "cloudinary", "arvan", "local"],
+      default: "",
+    },
     type: { type: String, enum: ["image", "video"], default: "image" },
   },
   { _id: false }
@@ -16,6 +21,42 @@ const socialLinkSchema = new mongoose.Schema(
     platform: { type: String, trim: true, default: "" },
     label: { type: String, trim: true, default: "" },
     url: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const reviewItemSchema = new mongoose.Schema(
+  {
+    title: { type: String, trim: true, default: "" },
+    link: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const platformSizeSchema = new mongoose.Schema(
+  {
+    platform: { type: ObjectId, ref: "Platform", default: null },
+    variant: { type: String, trim: true, default: "" },
+    size: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const dlcSchema = new mongoose.Schema(
+  {
+    title: { type: String, trim: true, default: "" },
+    type: { type: String, trim: true, default: "" },
+    image: mediaSchema,
+    versionSize: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const extraEditionSchema = new mongoose.Schema(
+  {
+    title: { type: String, trim: true, default: "" },
+    versionSize: { type: String, trim: true, default: "" },
+    image: mediaSchema,
   },
   { _id: false }
 );
@@ -46,6 +87,22 @@ const gameSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    reviewSiteTitle: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    reviewSource: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    reviewLink: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    reviewItems: [reviewItemSchema],
     category: {
       type: ObjectId,
       ref: "Category",
@@ -75,20 +132,27 @@ const gameSchema = new mongoose.Schema(
         ref: "Tag",
       },
     ],
-    platforms: [{ type: String, trim: true }],
+    platforms: [{ type: ObjectId, ref: "Platform" }],
+    platformSizes: [platformSizeSchema],
     gameModes: [{ type: String, trim: true }],
     languages: [{ type: String, trim: true }],
     regions: [{ type: String, trim: true }],
-    launcher: {
-      type: String,
-      trim: true,
-      default: "",
-    },
+    launcher: [{ type: String, trim: true }],
     edition: {
       type: String,
       trim: true,
       default: "استاندارد",
     },
+    hasDubbing: {
+      type: Boolean,
+      default: false,
+    },
+    hasSubtitle: {
+      type: Boolean,
+      default: false,
+    },
+    dlcs: [dlcSchema],
+    extraEditions: [extraEditionSchema],
     releaseDate: {
       type: Date,
       default: null,
@@ -109,6 +173,21 @@ const gameSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    reviewSiteTitle: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    reviewSource: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    reviewLink: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     metacriticScore: {
       type: Number,
       default: null,
@@ -119,6 +198,7 @@ const gameSchema = new mongoose.Schema(
     cardDesktopCover: mediaSchema,
     cardMobileCover: mediaSchema,
     desktopCover: mediaSchema,
+    mobileCover: mediaSchema,
     gallery: [mediaSchema],
     trailerUrl: {
       type: String,
@@ -126,7 +206,15 @@ const gameSchema = new mongoose.Schema(
       default: "",
     },
     trailerVideo: mediaSchema,
+    trailerThumbnail: mediaSchema,
     gameplayVideo: mediaSchema,
+    gameplayThumbnail: mediaSchema,
+    patchTitle: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    patchImage: mediaSchema,
     seoTitle: {
       type: String,
       trim: true,
@@ -151,6 +239,18 @@ const gameSchema = new mongoose.Schema(
       default: false,
     },
     views: {
+      type: Number,
+      default: 0,
+    },
+    likes: {
+      type: Number,
+      default: 0,
+    },
+    commentsCount: {
+      type: Number,
+      default: 0,
+    },
+    shares: {
       type: Number,
       default: 0,
     },

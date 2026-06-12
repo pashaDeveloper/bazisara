@@ -15,3 +15,4 @@ function CategoryDescriptionStep({ value, onChange }) {
 }
 
 export default CategoryDescriptionStep;
+

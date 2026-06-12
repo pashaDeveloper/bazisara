@@ -36,3 +36,4 @@ function GenreCreate({ mode = "create" }) {
 }
 
 export default GenreCreate;
+

@@ -11,3 +11,4 @@ const Payment =({className,...props }) => {
 };
 
 export default Payment;
+

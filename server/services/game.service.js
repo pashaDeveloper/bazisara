@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Game = require("../models/game.model");
 const Category = require("../models/category.model");
 const Genre = require("../models/genre.model");
+const Platform = require("../models/platform.model");
 const Company = require("../models/company.model");
 const Tag = require("../models/tag.model");
 const {
@@ -15,6 +16,8 @@ const populateGame = (query) =>
   query
     .populate("category", "name")
     .populate("genres", "name icon image")
+    .populate("platforms", "name slug parent")
+    .populate("platformSizes.platform", "name slug parent")
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image");
@@ -87,6 +90,43 @@ function parseSocialLinks(value) {
     .filter((item) => item.platform && item.url);
 }
 
+function parseObjectArray(value, shape) {
+  if (value === undefined || value === null || value === "") return [];
+  const rawItems = Array.isArray(value)
+    ? value
+    : (() => {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      })();
+
+  return rawItems
+    .map((item) => shape(item))
+    .filter((item) => Object.values(item).some((part) => String(part || "").trim()));
+}
+
+function normalizeStructuredImages(items, uploadedFiles, fieldName) {
+  if (!Array.isArray(items)) return [];
+  const files = Array.isArray(uploadedFiles?.[fieldName]) ? uploadedFiles[fieldName] : [];
+  let fileIndex = 0;
+
+  return items.map((item) => {
+    const hasImageUrl = typeof item.image === "string" && item.image.trim();
+    if (!hasImageUrl && fileIndex < files.length) {
+      const image = buildMedia(files[fileIndex]);
+      fileIndex += 1;
+      return { ...item, image };
+    }
+
+    return hasImageUrl
+      ? { ...item, image: { url: item.image.trim(), public_id: "", type: "image" } }
+      : { ...item, image: undefined };
+  });
+}
+
 function parseBoolean(value) {
   return value === true || value === "true" || value === "1" || value === 1;
 }
@@ -103,6 +143,7 @@ function buildMedia(file) {
   return {
     url: file.url,
     public_id: file.public_id,
+    storage: file.storage || "",
     type: file.resource_type === "video" ? "video" : "image",
   };
 }
@@ -162,6 +203,19 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         : undefined,
     description:
       body.description !== undefined ? String(body.description).trim() : undefined,
+    reviewSiteTitle:
+      body.reviewSiteTitle !== undefined ? String(body.reviewSiteTitle).trim() : undefined,
+    reviewSource:
+      body.reviewSource !== undefined ? String(body.reviewSource).trim() : undefined,
+    reviewLink:
+      body.reviewLink !== undefined ? String(body.reviewLink).trim() : undefined,
+    reviewItems:
+      body.reviewItems !== undefined
+        ? parseObjectArray(body.reviewItems, (item) => ({
+            title: String(item?.title || "").trim(),
+            link: String(item?.link || "").trim(),
+          }))
+        : undefined,
     category: body.category !== undefined ? body.category || null : undefined,
     genres: body.genres !== undefined ? parseArray(body.genres) : undefined,
     developers:
@@ -176,8 +230,35 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     languages:
       body.languages !== undefined ? parseArray(body.languages) : undefined,
     regions: body.regions !== undefined ? parseArray(body.regions) : undefined,
-    launcher: body.launcher !== undefined ? String(body.launcher).trim() : undefined,
+    launcher: body.launcher !== undefined ? parseArray(body.launcher) : undefined,
     edition: body.edition !== undefined ? String(body.edition).trim() : undefined,
+    hasDubbing: body.hasDubbing !== undefined ? parseBoolean(body.hasDubbing) : undefined,
+    hasSubtitle: body.hasSubtitle !== undefined ? parseBoolean(body.hasSubtitle) : undefined,
+    dlcs:
+      body.dlcs !== undefined
+        ? parseObjectArray(body.dlcs, (item) => ({
+            title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
+            type: typeof item === "string" ? "" : String(item?.type || "").trim(),
+            versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
+            image: typeof item === "string" ? "" : String(item?.image || "").trim(),
+          }))
+        : undefined,
+    extraEditions:
+      body.extraEditions !== undefined
+        ? parseObjectArray(body.extraEditions, (item) => ({
+            title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
+            versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
+            image: typeof item === "string" ? "" : String(item?.image || "").trim(),
+          }))
+        : undefined,
+    platformSizes:
+      body.platformSizes !== undefined
+        ? parseObjectArray(body.platformSizes, (item) => ({
+            platform: String(item?.platform || "").trim() || null,
+            variant: String(item?.variant || "").trim(),
+            size: String(item?.size || "").trim(),
+          }))
+        : undefined,
     releaseDate:
       body.releaseDate !== undefined
         ? body.releaseDate
@@ -194,6 +275,12 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.ageRating !== undefined ? String(body.ageRating).trim() : undefined,
     gameplayTime:
       body.gameplayTime !== undefined ? String(body.gameplayTime).trim() : undefined,
+    reviewSiteTitle:
+      body.reviewSiteTitle !== undefined ? String(body.reviewSiteTitle).trim() : undefined,
+    reviewSource:
+      body.reviewSource !== undefined ? String(body.reviewSource).trim() : undefined,
+    reviewLink:
+      body.reviewLink !== undefined ? String(body.reviewLink).trim() : undefined,
     metacriticScore:
       body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
     trailerUrl:
@@ -214,6 +301,9 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   const desktopCover = buildMedia(uploadedFiles?.desktopCover?.[0]);
   if (desktopCover) payload.desktopCover = desktopCover;
 
+  const mobileCover = buildMedia(uploadedFiles?.mobileCover?.[0]);
+  if (mobileCover) payload.mobileCover = mobileCover;
+
   const galleryFiles = uploadedFiles?.gallery || [];
   if (galleryFiles.length) {
     payload.gallery = [
@@ -225,10 +315,28 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   const trailerVideo = buildMedia(uploadedFiles?.trailerVideo?.[0]);
   if (trailerVideo) payload.trailerVideo = trailerVideo;
 
+  const trailerThumbnail = buildMedia(uploadedFiles?.trailerThumbnail?.[0]);
+  if (trailerThumbnail) payload.trailerThumbnail = trailerThumbnail;
+
   const gameplayVideo = buildMedia(uploadedFiles?.gameplayVideo?.[0]);
   if (gameplayVideo) payload.gameplayVideo = gameplayVideo;
 
+  const gameplayThumbnail = buildMedia(uploadedFiles?.gameplayThumbnail?.[0]);
+  if (gameplayThumbnail) payload.gameplayThumbnail = gameplayThumbnail;
+
+  const patchImage = buildMedia(uploadedFiles?.patchImage?.[0]);
+  if (patchImage) payload.patchImage = patchImage;
+
+  if (payload.dlcs !== undefined) {
+    payload.dlcs = normalizeStructuredImages(payload.dlcs, uploadedFiles, "dlcImages");
+  }
+
+  if (payload.extraEditions !== undefined) {
+    payload.extraEditions = normalizeStructuredImages(payload.extraEditions, uploadedFiles, "extraEditionImages");
+  }
+
   applySeoFromContent(payload, currentGame);
+  payload.status = "pending";
 
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
@@ -241,6 +349,14 @@ async function validatePayload(payload) {
     await ensureExists(Category, payload.category, "Category");
   }
   if (payload.genres !== undefined) await ensureExists(Genre, payload.genres, "Genre");
+  if (payload.platforms !== undefined) await ensureExists(Platform, payload.platforms, "Platform");
+  if (payload.platformSizes !== undefined) {
+    await ensureExists(
+      Platform,
+      payload.platformSizes.map((item) => item.platform).filter(Boolean),
+      "Platform"
+    );
+  }
   if (payload.developers !== undefined) {
     await ensureExists(Company, payload.developers, "Developer");
   }
@@ -252,8 +368,12 @@ async function validatePayload(payload) {
 
 exports.createGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles);
+  console.log("[games:create] body:", req.body);
+  console.log("[games:create] files:", Object.keys(req.uploadedFiles || {}));
+  console.log("[games:create] payload:", payload);
 
   if (!payload.title) {
+    console.log("[games:create] missing title");
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -276,10 +396,24 @@ exports.createGame = async (req, res) => {
   });
 };
 
+
+
+
+
 exports.getGames = async (req, res) => {
   const search = getSearchTerm(req.query);
+  const category = String(req.query.category || "").trim();
+  if (category && !mongoose.Types.ObjectId.isValid(category)) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "شناسه دسته‌بندی بازی معتبر نیست",
+    });
+  }
   const query = {
     isDeleted: false,
+    ...(req.adminRecord ? {} : { status: "active" }),
+    ...(category ? { category } : {}),
     ...buildSearchQuery(search, [
       "title",
       "slug",
@@ -292,7 +426,7 @@ exports.getGames = async (req, res) => {
   };
   const { limit, page, skip } = getPaginationOptions(req.query);
   const [games, totalItems] = await Promise.all([
-    populateGame(Game.find(query)).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    populateGame(Game.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)),
     Game.countDocuments(query),
   ]);
 
@@ -316,7 +450,13 @@ exports.getGame = async (req, res) => {
     });
   }
 
-  const game = await populateGame(Game.findOne({ _id: id, isDeleted: false }));
+  const game = await populateGame(
+    Game.findOne({
+      _id: id,
+      isDeleted: false,
+      ...(req.adminRecord ? {} : { status: "active" }),
+    })
+  );
 
   if (!game) {
     return res.status(404).json({

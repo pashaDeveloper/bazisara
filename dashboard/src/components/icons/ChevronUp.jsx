@@ -19,3 +19,4 @@ const ChevronUp = ({ className, ...props }) => {
 };
 
 export default ChevronUp;
+

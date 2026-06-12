@@ -15,3 +15,4 @@ function TextInputStep({ label, name, onChange, placeholder, type = "text", valu
 }
 
 export default TextInputStep;
+

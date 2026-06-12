@@ -456,20 +456,20 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
     <div className="page-builder">
       {!showEditor ? (
         <div 
-          className="flex h-32 cursor-pointer items-center justify-center rounded-lg border border-zinc-800 bg-black transition-colors hover:border-zinc-600"
+          className="flex h-32 cursor-pointer items-center justify-center rounded-lg border border-zinc-300 bg-white transition-colors hover:border-zinc-500 dark:border-zinc-800 dark:bg-black dark:hover:border-zinc-600"
           onClick={() => setShowEditor(true)}
         >
-          <p className="text-lg font-medium text-zinc-100">افزودن محتوا</p>
+          <p className="text-lg font-medium text-zinc-800 dark:text-zinc-100">افزودن محتوا</p>
         </div>
       ) : (
         // Full-screen modal overlay
-        <div className="fixed inset-0 z-50 bg-zinc-950">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-zinc-950">
           <div className="flex flex-col h-screen">
             {/* Header with close button */}
-            <div className="flex justify-between items-center border-b border-zinc-800 p-4">
-              <h2 className="text-xl font-bold text-white">ویرایشگر محتوا</h2>
+            <div className="flex justify-between items-center border-b border-zinc-200 p-4 dark:border-zinc-800">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">ویرایشگر محتوا</h2>
               <button 
-                className="rounded border border-zinc-700 bg-black px-4 py-2 text-zinc-100 transition hover:border-white"
+                className="rounded border border-zinc-300 bg-white px-4 py-2 text-zinc-800 transition hover:border-zinc-700 dark:border-zinc-700 dark:bg-black dark:text-zinc-100 dark:hover:border-white"
                 onClick={() => setShowEditor(false)}
               >
                 بستن
@@ -479,8 +479,8 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
             {/* Main content area - full screen */}
             <div className="flex flex-col lg:flex-row flex-grow overflow-hidden">
               {/* Editor Panel - Full width on mobile, half on desktop */}
-              <div className="lg:w-1/2 w-full flex flex-col border-l border-zinc-800 bg-zinc-950">
-                <div className="border-b border-zinc-800 p-4">
+              <div className="lg:w-1/2 w-full flex flex-col border-l border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                <div className="border-b border-zinc-200 p-4 dark:border-zinc-800">
                   <BlockToolbar onAddBlock={addBlock} />
                 </div>
                 
@@ -505,12 +505,12 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
               </div>
               
               {/* Preview Panel - Full width on mobile, half on desktop */}
-              <div className="lg:w-1/2 w-full flex flex-col bg-zinc-900">
-                <div className="border-b border-zinc-800 p-4">
-                  <h3 className="text-lg font-medium text-white">پیش‌نمایش محتوا</h3>
+              <div className="lg:w-1/2 w-full flex flex-col bg-zinc-50 dark:bg-zinc-900">
+                <div className="border-b border-zinc-200 p-4 dark:border-zinc-800">
+                  <h3 className="text-lg font-medium text-zinc-900 dark:text-white">پیش‌نمایش محتوا</h3>
                 </div>
                 
-                <div className="flex-grow overflow-y-auto bg-zinc-900 p-4">
+                <div className="flex-grow overflow-y-auto bg-zinc-50 p-4 dark:bg-zinc-900">
                   <div className="preview-content" dangerouslySetInnerHTML={{ __html: serializeBlocks(blocks) }} />
                 </div>
               </div>
@@ -523,3 +523,4 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
 };
 
 export default PageBuilder;
+

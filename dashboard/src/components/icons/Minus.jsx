@@ -17,3 +17,4 @@ const Minus = (props) => {
 };
 
 export default Minus;
+

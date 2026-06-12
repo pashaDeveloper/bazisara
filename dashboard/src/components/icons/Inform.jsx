@@ -23,3 +23,4 @@ const Inform = (props) => {
 };
 
 export default Inform;
+

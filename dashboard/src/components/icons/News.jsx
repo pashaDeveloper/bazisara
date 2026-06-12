@@ -10,3 +10,4 @@ const News = ({ className, ...props }) => {
 };
 
 export default News;
+
