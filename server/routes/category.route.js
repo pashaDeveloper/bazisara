@@ -3,7 +3,7 @@ const verify = require("../middleware/verifyAdmin.middleware");
 const authorize = require("../middleware/authorize.middleware");
 const requireAdminProfileLevel = require("../middleware/adminProfileLevel.middleware");
 const categoryController = require("../controllers/category.controller");
-const upload = require("../middleware/upload.middleware");
+const uploadArvan = require("../middleware/arvanUpload.middleware");
 const {
   registerStoragePatch,
   registerStoragePost,
@@ -38,14 +38,14 @@ registerStoragePatch(
 router.post(
   "/create",
   ...categoryAccess,
-  upload("categories").fields(categoryUploadFields),
+  uploadArvan("categories").fields(categoryUploadFields),
   categoryController.createCategory
 );
 
 router.patch(
   "/:id",
   ...categoryAccess,
-  upload("categories").fields(categoryUploadFields),
+  uploadArvan("categories").fields(categoryUploadFields),
   categoryController.updateCategory
 );
 

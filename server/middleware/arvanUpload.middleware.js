@@ -6,6 +6,15 @@ const {
   prepareFile,
 } = require("../utils/uploadFile.util");
 
+console.log("[ARVAN_UPLOAD] initializing S3 client", {
+  endpoint: process.env.ARVAN_S3_ENDPOINT,
+  region: process.env.ARVAN_S3_REGION || "us-east-1",
+  bucket: process.env.ARVAN_S3_BUCKET,
+  hasAccessKey: Boolean(process.env.ARVAN_S3_ACCESS_KEY),
+  hasSecretKey: Boolean(process.env.ARVAN_S3_SECRET_KEY),
+  forcePathStyle: process.env.ARVAN_S3_FORCE_PATH_STYLE !== "false",
+});
+
 const s3Client = new S3Client({
   endpoint: process.env.ARVAN_S3_ENDPOINT,
   region: process.env.ARVAN_S3_REGION || "us-east-1",
@@ -26,7 +35,15 @@ const uploadArvan = (customFolder = null) => {
 
   const arvanUploadMiddleware = (fieldConfig) => async (req, res, next) => {
     multerInstance.fields(fieldConfig)(req, res, async (err) => {
+      console.log("[ARVAN_UPLOAD] multer callback start", {
+        fieldConfig,
+        hasFiles: Boolean(req.files),
+        fileKeys: req.files ? Object.keys(req.files) : [],
+        bodyKeys: Object.keys(req.body || {}),
+      });
+
       if (err) {
+        console.error("[ARVAN_UPLOAD] multer error", err);
         return res.status(400).json({ error: err.message || "File upload error" });
       }
 
@@ -39,8 +56,25 @@ const uploadArvan = (customFolder = null) => {
           req.uploadedFiles[field] = [];
 
           for (const file of req.files[field]) {
+            console.log("[ARVAN_UPLOAD] processing file", {
+              field,
+              originalname: file.originalname,
+              mimetype: file.mimetype,
+              size: file.size,
+              customFolder,
+            });
+
             const { extension, fileBuffer, contentType } = await prepareFile(file);
             const { filename, key } = makeObjectName(customFolder, extension);
+
+            console.log("[ARVAN_UPLOAD] prepared file", {
+              field,
+              extension,
+              contentType,
+              filename,
+              key,
+              bufferLength: fileBuffer?.length,
+            });
 
             await s3Client.send(
               new PutObjectCommand({
@@ -50,6 +84,13 @@ const uploadArvan = (customFolder = null) => {
                 ContentType: contentType,
               })
             );
+
+            console.log("[ARVAN_UPLOAD] upload success", {
+              field,
+              key,
+              url: getPublicUrl(key),
+              bucket: process.env.ARVAN_S3_BUCKET,
+            });
 
             req.uploadedFiles[field].push({
               url: getPublicUrl(key),
@@ -65,6 +106,7 @@ const uploadArvan = (customFolder = null) => {
 
         next();
       } catch (error) {
+        console.error("[ARVAN_UPLOAD] upload failed", error);
         next(error);
       }
     });

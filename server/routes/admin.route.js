@@ -2,7 +2,7 @@
 const express = require("express");
 
 /* middleware imports */
-const upload = require("../middleware/upload.middleware");
+const uploadArvan = require("../middleware/arvanUpload.middleware");
 const verify = require("../middleware/verifyAdmin.middleware");
 
 /* internal import */
@@ -17,7 +17,7 @@ const router = express.Router();
 // sign up an admin
 router.post(
   "/sign-up",
-  upload("avatar").single("avatar"),
+  uploadArvan("avatar").single("avatar"),
   adminController.signUp
 );
 
@@ -33,7 +33,7 @@ router.get("/me", verify,  adminController.persistLogin);
 router.patch(
   "/profile",
   verify,
-  upload("avatar").fields([
+  uploadArvan("avatar").fields([
     { name: "avatar", maxCount: 1 },
     { name: "nationalCard", maxCount: 1 },
   ]),
@@ -89,7 +89,7 @@ router.patch(
   "/update-information",
   verify,
   authorize("owner", "superAdmin", "admin"),
-  upload("avatar").single("avatar"),
+  uploadArvan("avatar").single("avatar"),
   adminController.updateAdmin
 );
 
@@ -97,7 +97,7 @@ router.patch(
   "/update-admin/:id",
   verify,
   authorize("owner", "superAdmin", "admin"),
-  upload("avatar").single("avatar"),
+  uploadArvan("avatar").single("avatar"),
   adminController.updateAdminInfo
 );
 
