@@ -58,13 +58,6 @@ export function ArticleCard({ article }: { article: Article }) {
       className="group block w-full space-y-2 transition hover:-translate-y-1"
       dir="rtl"
     >
-      <div className="aspect-square overflow-hidden rounded-xl bg-zinc-900">
-        {image ? (
-          <img alt={article.title} className="h-full w-full object-cover" src={image} />
-        ) : (
-          <SkeletonBlock className="h-full w-full rounded-xl" />
-        )}
-      </div>
       {article.title ? (
         <h2 className="line-clamp-2 text-right text-md font-bold leading-5 text-zinc-950">
           {article.title}
@@ -72,6 +65,13 @@ export function ArticleCard({ article }: { article: Article }) {
       ) : (
         <SkeletonBlock className="h-4 w-2/3" />
       )}
+      <div className="aspect-square overflow-hidden rounded-xl bg-zinc-900">
+        {image ? (
+          <img alt={article.title} className="h-full w-full object-cover" src={image} />
+        ) : (
+          <SkeletonBlock className="h-full w-full rounded-xl" />
+        )}
+      </div>
     </Link>
   );
 }

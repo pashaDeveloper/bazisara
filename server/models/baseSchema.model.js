@@ -7,6 +7,27 @@ const baseSchema =  new mongoose.Schema(
       enum: ["active", "inactive", "pending"],
       default: "active",
     },
+    approvalReview: {
+      status: {
+        type: String,
+        enum: ["", "approved", "rejected"],
+        default: "",
+      },
+      reason: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      reviewedAt: {
+        type: Date,
+        default: null,
+      },
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+        default: null,
+      },
+    },
     isDeleted: {
       type: Boolean,
       default: false,

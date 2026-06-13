@@ -4,10 +4,11 @@ import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import Cross from "@/components/icons/Cross";
+import Minus from "@/components/icons/Minus";
 import Plus from "@/components/icons/Plus";
-import Trash from "@/components/icons/Trash";
 import NavigationButton from "@/components/shared/button/NavigationButton";
 import SendButton from "@/components/shared/button/SendButton";
+import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import StepIndicator from "../categories/components/StepIndicator";
 import PageBuilder from "@/components/shared/pageBuilder/PageBuilder";
 import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
@@ -18,6 +19,14 @@ import { useGetCategoriesQuery } from "@/services/category/categoryApi";
 import { useGetGamesQuery } from "@/services/gameApi";
 import { useGetTagsQuery } from "@/services/tagApi";
 import { useCreateArticleMutation, useGenerateArticleSlugMutation, useGetArticleQuery, useUpdateArticleMutation } from "@/services/articleApi";
+
+function getTodayDateInput() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 const initialForm = {
   title: "",
@@ -30,7 +39,7 @@ const initialForm = {
   tags: [],
   relatedGames: [],
   faqs: [],
-  publishedAt: "",
+  publishedAt: getTodayDateInput(),
   isFeatured: false,
   status: "active",
   cover: null,
@@ -98,67 +107,72 @@ function Textarea({ label, name, onChange, placeholder, rows = 4, value }) {
 }
 
 function FaqRowsEditor({ items = [], onChange }) {
-  const rows = items.length ? items : [{ question: "", answer: "" }];
+  const rows = Array.isArray(items) && items.length ? items : [{ question: "", answer: "" }];
 
-  const cleanRows = (next) =>
-    next.filter((item) => String(item.question || "").trim() || String(item.answer || "").trim());
-
-  const updateItem = (index, patch) => {
-    const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
-    onChange?.(cleanRows(next));
+  const handleAddItem = () => {
+    onChange?.([...rows, { question: "", answer: "" }]);
   };
 
-  const addItem = () => onChange?.([...rows, { question: "", answer: "" }]);
-  const removeItem = (index) => onChange?.(cleanRows(rows.filter((_, itemIndex) => itemIndex !== index)));
+  const handleRemoveItem = (index) => {
+    const next = [...rows];
+    next.splice(index, 1);
+    onChange?.(next);
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const next = rows.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, [field]: value } : item
+    );
+    onChange?.(next);
+  };
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-800 dark:bg-black">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <span className="text-sm font-bold text-zinc-200">سوالات متداول مطلب</span>
-          <p className="mt-1 text-xs text-zinc-500">برای هر ردیف سوال و پاسخ را وارد کن؛ هر تعداد خواستی اضافه می‌شود.</p>
+          <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">سوالات متداول مطلب</span>
+          <p className="mt-1 text-xs text-zinc-500">هر سطر یک سوال و پاسخ دارد؛ در آخرین سطر دکمه اضافه و در سطرهای دیگر دکمه حذف می‌آید.</p>
         </div>
-        <button
-          aria-label="افزودن سوال"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
-          onClick={addItem}
-          type="button"
-        >
-          <Plus />
-        </button>
       </div>
 
-      <div className="space-y-3">
-        {rows.map((item, index) => (
-          <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4" key={`article-faq-${index}`}>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_48px]">
-              <Field
-                label={`سوال ${index + 1}`}
-                name={`faq-question-${index}`}
-                onChange={(event) => updateItem(index, { question: event.target.value })}
-                placeholder="مثلا این مطلب برای چه کسانی مناسب است؟"
-                value={item.question || ""}
-              />
-              <Textarea
-                label="پاسخ"
-                name={`faq-answer-${index}`}
-                onChange={(event) => updateItem(index, { answer: event.target.value })}
-                placeholder="پاسخ سوال را بنویسید"
-                rows={3}
-                value={item.answer || ""}
-              />
-              <button
-                aria-label="حذف سوال"
-                className="mt-7 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
-                onClick={() => removeItem(index)}
-                type="button"
-              >
-                <Trash className="h-4 w-4" />
-              </button>
-            </div>
+      {rows.map((item, index) => (
+        <div className="flex flex-row items-start gap-x-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950" key={`article-faq-${index}`}>
+          <div className="flex w-full flex-col gap-y-2">
+            <input
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-700 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
+              onChange={(event) => handleItemChange(index, "question", event.target.value)}
+              placeholder="مثلا این مطلب برای چه کسانی مناسب است؟"
+              type="text"
+              value={item?.question || ""}
+            />
+            <textarea
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-700 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
+              onChange={(event) => handleItemChange(index, "answer", event.target.value)}
+              placeholder="پاسخ سوال را بنویسید"
+              rows={3}
+              value={item?.answer || ""}
+            />
           </div>
-        ))}
-      </div>
+
+          {index > 0 && (
+            <span
+              className="cursor-pointer rounded-full border border-zinc-300 bg-red-500 p-1 text-white transition hover:bg-red-400 dark:border-zinc-800"
+              onClick={() => handleRemoveItem(index)}
+            >
+              <Minus />
+            </span>
+          )}
+
+          {index === rows.length - 1 && (
+            <span
+              className="cursor-pointer rounded-full border border-zinc-300 bg-green-500 p-1 text-white transition hover:bg-green-400 dark:border-zinc-800"
+              onClick={handleAddItem}
+            >
+              <Plus />
+            </span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -323,6 +337,7 @@ function ArticleForm({ mode = "create" }) {
   const buildFormData = () => {
     const formData = new FormData();
     const activeAuthor = activeAdmin.name || activeAdmin.email || form.author || "";
+    const activeAuthorAvatar = activeAdmin.avatar || {};
 
     Object.entries({ ...form, author: activeAuthor }).forEach(([key, value]) => {
       if (key === "cover") {
@@ -335,6 +350,11 @@ function ArticleForm({ mode = "create" }) {
       }
       formData.append(key, String(value ?? ""));
     });
+    if (activeAuthorAvatar.url) {
+      formData.append("authorAvatarUrl", activeAuthorAvatar.url);
+      formData.append("authorAvatarPublicId", activeAuthorAvatar.public_id || "");
+      formData.append("authorAvatarStorage", activeAuthorAvatar.storage || "");
+    }
 
     return formData;
   };
@@ -429,10 +449,14 @@ function ArticleForm({ mode = "create" }) {
               onChange={(value) => setForm((prev) => ({ ...prev, publishedAt: value }))}
               value={form.publishedAt}
             />
-            <label className="flex items-center justify-between rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-black dark:text-zinc-300">
-              <span>مطلب ویژه</span>
-              <input checked={form.isFeatured} name="isFeatured" onChange={handleChange} type="checkbox" />
-            </label>
+            <StatusSwitch
+              checked={form.isFeatured}
+              id="article-is-featured"
+              label="مطلب ویژه"
+              name="isFeatured"
+              onChange={handleChange}
+              tone="dark"
+            />
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="زمان مطالعه" name="readingTime" onChange={handleChange} placeholder="مثلا ۶ دقیقه" value={form.readingTime} />
               <div className="flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-black dark:text-zinc-300">
@@ -539,5 +563,3 @@ function ArticleForm({ mode = "create" }) {
 }
 
 export default ArticleForm;
-
-

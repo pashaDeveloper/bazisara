@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Article, Game } from "../lib/api";
 import { mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
+import { DashboardCardSkeleton } from "./cards";
 
 type CategoryChip = {
   id: string;
@@ -162,8 +163,10 @@ function FilteredSection<T extends Article | Game>({
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500">
-          موردی با این دسته‌بندی پیدا نشد.
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <DashboardCardSkeleton key={index} />
+          ))}
         </div>
       )}
     </section>

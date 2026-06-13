@@ -3,10 +3,10 @@ import toast from "react-hot-toast";
 import { useState } from "react";
 import ControlPanel from "./ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
+import DeleteModal from "@/components/shared/DeleteModal";
 import DisplayImages from "@/components/shared/DisplayImages";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
-import Trash from "@/components/icons/Trash";
 import {
   useDeleteCategoryMutation,
   useGetCategoriesQuery,
@@ -63,8 +63,6 @@ function Categories() {
   const tree = treeData?.data || [];
 
   const handleDelete = async (id) => {
-    if (!window.confirm("??? ????????? ??? ????")) return;
-
     try {
       const response = await deleteCategory(id).unwrap();
       toast.success(response.description || "????????? ??? ??");
@@ -156,15 +154,14 @@ function Categories() {
                           )}
                         </td>
                         <td className="py-4">
-                          <button
-                            aria-label="??? ?????????"
-                            className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            disabled={isDeleting}
-                            onClick={() => handleDelete(item._id)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="??? ?????????"
+                            isLoading={isDeleting}
+                            itemTitle={item.name}
+                            message="این دسته‌بندی حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                            triggerClassName="delete-button mx-auto inline-flex h-9 w-9 items-center justify-center disabled:cursor-not-allowed disabled:opacity-60"
+                          />
                         </td>
                       </tr>
                     ))
@@ -194,4 +191,3 @@ function Categories() {
 }
 
 export default Categories;
-

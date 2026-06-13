@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import Popup from "@/components/ui/Popup";
+import DeleteModal from "@/components/shared/DeleteModal";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Pencil from "@/components/icons/Pencil";
-import Trash from "@/components/icons/Trash";
 import ControlPanel from "./ControlPanel";
 import {
   useCreateIconMutation,
@@ -141,11 +141,6 @@ function Icons() {
     setPopupMode("edit");
   };
 
-  const openDeletePopup = (icon) => {
-    setSelectedIcon(icon);
-    setPopupMode("delete");
-  };
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -178,13 +173,12 @@ function Icons() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedIcon?._id) return;
+  const handleDelete = async (id) => {
+    if (!id) return;
 
     try {
-      const response = await deleteIcon(selectedIcon._id).unwrap();
+      const response = await deleteIcon(id).unwrap();
       toast.success(response.description || "آیکون حذف شد");
-      closePopup();
     } catch (error) {
       toast.error(error?.data?.description || "حذف آیکون انجام نشد");
     }
@@ -258,14 +252,13 @@ function Icons() {
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button
-                            aria-label="حذف آیکون"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            onClick={() => openDeletePopup(item)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="حذف آیکون"
+                            isLoading={isDeleting}
+                            itemTitle={item.name}
+                            message="این آیکون حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -317,47 +310,8 @@ function Icons() {
       >
         <IconForm form={form} isLoading={isFormLoading} mode={popupMode} onChange={handleChange} onSubmit={handleSubmit} />
       </Popup>
-
-      <Popup
-        isOpen={popupMode === "delete"}
-        onClose={closePopup}
-        title="حذف آیکون"
-        footer={
-          <div className="flex items-center justify-end gap-3">
-            <button
-              className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white"
-              onClick={closePopup}
-              type="button"
-            >
-              انصراف
-            </button>
-            <button
-              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isDeleting}
-              onClick={handleDelete}
-              type="button"
-            >
-              {isDeleting ? "در حال حذف..." : "حذف آیکون"}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-zinc-300">آیا از حذف این آیکون مطمئن هستید؟</p>
-          {selectedIcon ? (
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-black px-3 py-3">
-              <SvgPreview svg={selectedIcon.svg} color={selectedIcon.color} label={selectedIcon.name} />
-              <div>
-                <p className="text-sm font-bold text-white">{selectedIcon.name}</p>
-                <p className="mt-1 text-xs text-zinc-500">{selectedIcon.color || "بدون رنگ"}</p>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Popup>
     </ControlPanel>
   );
 }
 
 export default Icons;
-

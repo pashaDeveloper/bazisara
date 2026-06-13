@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
+import DeleteModal from "@/components/shared/DeleteModal";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Pencil from "@/components/icons/Pencil";
-import Trash from "@/components/icons/Trash";
 import {
   useDeleteCategoryFilterMutation,
   useGetCategoryFiltersQuery,
@@ -55,8 +55,6 @@ function CategoryFilters() {
   }, [filters]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("این فیلتر حذف شود؟")) return;
-
     try {
       const response = await deleteFilter(id).unwrap();
       toast.success(response.description || "فیلتر حذف شد");
@@ -220,15 +218,13 @@ function CategoryFilters() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Link>
-                          <button
-                            aria-label="حذف فیلتر"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            disabled={isDeleting}
-                            onClick={() => handleDelete(item._id)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="حذف فیلتر"
+                            isLoading={isDeleting}
+                            itemTitle={item.label}
+                            message="این فیلتر حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -259,4 +255,3 @@ function CategoryFilters() {
 }
 
 export default CategoryFilters;
-

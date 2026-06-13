@@ -114,6 +114,9 @@ export default {
       screens: {
         xs: '480px',
       },
+      borderColor: {
+        DEFAULT: '#E4E4E7',
+      },
       borderWidth: {
         3: '3px',
       },

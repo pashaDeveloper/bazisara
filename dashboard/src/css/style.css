@@ -21,6 +21,57 @@
     font-family: 'Vazir'; 
   }
 
+  @layer components {
+    .delete-button {
+      @apply line-clamp-1 cursor-pointer rounded-full border border-red-500/5 bg-red-500/5 p-2 text-red-500 transition-colors hover:border-red-500/10 hover:bg-red-500/10 hover:!opacity-100 group-hover:opacity-70;
+    }
+
+    .edit-button {
+      @apply line-clamp-1 cursor-pointer rounded-full border border-green-500/5 bg-green-500/5 p-2 text-green-500 transition-colors hover:border-green-500/10 hover:bg-green-500/10 hover:!opacity-100 group-hover:opacity-70;
+    }
+
+    .view-children-button {
+      @apply line-clamp-1 cursor-pointer rounded-full border border-gray-500/5 bg-gray-500/5 p-2 text-gray-500 transition-colors hover:border-gray-500/10 hover:bg-gray-500/10 hover:!opacity-100 group-hover:opacity-70;
+    }
+
+    .apply-button {
+      @apply flex cursor-pointer items-center justify-center border border-white bg-white py-2 text-center text-green-500 shadow-lg shadow-black/10 transition-colors hover:bg-green-50 hover:!opacity-100 group-hover:opacity-70 dark:border-zinc-800 dark:bg-white dark:text-green-500 dark:hover:bg-green-50;
+    }
+
+    .custom-button {
+      @apply cursor-pointer rounded-full border border-green-500/5 bg-green-500/5 p-2 text-green-500 transition-colors hover:border-green-500/10 hover:bg-green-500/10 hover:!opacity-100 group-hover:opacity-70 dark:border-blue-500/5 dark:bg-blue-500/5 dark:text-blue-500 dark:hover:border-blue-500/10 dark:hover:bg-blue-500/10;
+    }
+
+    .reject-button {
+      @apply flex items-center justify-center border border-white bg-white py-2 text-center text-red-500 shadow-lg shadow-black/10 transition-colors hover:bg-red-50 hover:!opacity-100 group-hover:opacity-70 dark:border-zinc-800 dark:bg-white dark:text-red-500 dark:hover:bg-red-50;
+    }
+  }
+
+  @layer utilities {
+    @keyframes gradientChange {
+      0% {
+        background-position: 0%;
+      }
+
+      50% {
+        background-position: 100%;
+      }
+
+      100% {
+        background-position: 0%;
+      }
+    }
+
+    .gradient {
+      background: linear-gradient(90deg, blue, red);
+      background-size: 200% 200%;
+    }
+
+    .element-to-rotate {
+      animation: gradientChange 4s ease infinite;
+    }
+  }
+
   .dashboard-content-scroll {
     direction: ltr;
     scrollbar-color: #22c55e #09090b;
@@ -72,9 +123,17 @@
     background-image: linear-gradient(to bottom, #f8fafc, #f4f4f5, #ffffff) !important;
   }
 
+  html:not(.dark) .border,
+  html:not(.dark) .border-2,
+  html:not(.dark) .border-4,
   html:not(.dark) .border-zinc-700,
   html:not(.dark) .border-zinc-800,
-  html:not(.dark) .border-zinc-800\/80 {
+  html:not(.dark) .border-zinc-800\/80,
+  html:not(.dark) .border-gray-100,
+  html:not(.dark) .border-gray-200,
+  html:not(.dark) .border-gray-300,
+  html:not(.dark) .border-gray-700,
+  html:not(.dark) .border-gray-800 {
     border-color: #d4d4d8 !important;
   }
 

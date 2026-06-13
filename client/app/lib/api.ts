@@ -20,6 +20,7 @@ export type NamedEntity = {
   _id?: string;
   name?: string;
   slug?: string;
+  parent?: NamedEntity | null;
   icon?: Media;
   image?: Media;
   logo?: Media;
@@ -79,6 +80,7 @@ export type Article = {
   excerpt?: string;
   content?: string;
   author?: string;
+  authorAvatar?: Media;
   readingTime?: string;
   category?: NamedEntity | null;
   tags?: NamedEntity[];
@@ -126,7 +128,7 @@ export function mediaUrl(media?: Media | string | null) {
 export async function getApiList<T>(path: string, limit = 24) {
   try {
     const response = await fetch(`${API_BASE}${path}?limit=${limit}`, {
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
 
     if (!response.ok) return [];
@@ -141,7 +143,7 @@ export async function getApiList<T>(path: string, limit = 24) {
 export async function getApiItem<T>(path: string, id: string) {
   try {
     const response = await fetch(`${API_BASE}${path}/${id}`, {
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
 
     if (!response.ok) return null;

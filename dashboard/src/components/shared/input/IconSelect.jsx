@@ -25,15 +25,7 @@ function IconSelect({
         placeholder={isLoading ? "در حال دریافت آیکون‌ها..." : placeholder}
         value={currentValue}
       />
-      {currentValue ? (
-        <button
-          className="mt-2 text-xs text-zinc-400 transition hover:text-white"
-          onClick={() => onChange?.(null)}
-          type="button"
-        >
-          حذف آیکون
-        </button>
-      ) : null}
+    
     </div>
   );
 }

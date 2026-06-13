@@ -33,7 +33,10 @@ router.get("/me", verify,  adminController.persistLogin);
 router.patch(
   "/profile",
   verify,
-  upload("avatar").single("avatar"),
+  upload("avatar").fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "nationalCard", maxCount: 1 },
+  ]),
   adminController.updateProfile
 );
 
@@ -49,6 +52,20 @@ router.patch(
   verify,
   authorize("owner"),
   adminController.approveApproval
+);
+
+router.patch(
+  "/approvals/:type/:id/reject",
+  verify,
+  authorize("owner"),
+  adminController.rejectApproval
+);
+
+router.get(
+  "/approval-messages",
+  verify,
+  authorize("owner", "superAdmin", "admin"),
+  adminController.getApprovalMessages
 );
 
 // get all admins

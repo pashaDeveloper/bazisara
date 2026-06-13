@@ -15,6 +15,11 @@ const adminSchema = new mongoose.Schema(
       trim: true,
       maxLength: [100, "نام شما باید حداکثر 100 کاراکتر باشد"],
     },
+    fatherName: {
+      type: String,
+      trim: true,
+      maxLength: [100, "نام پدر باید حداکثر 100 کاراکتر باشد"],
+    },
 
     email: {
       type: String,
@@ -45,6 +50,63 @@ const adminSchema = new mongoose.Schema(
         type: String,
         enum: ["", "cloudinary", "arvan", "local"],
         default: "",
+      },
+    },
+    nationalCard: {
+      url: {
+        type: String,
+        default: "",
+      },
+      public_id: {
+        type: String,
+        default: "",
+      },
+      storage: {
+        type: String,
+        enum: ["", "cloudinary", "arvan", "local"],
+        default: "",
+      },
+    },
+    profileApproval: {
+      approvedLevel: {
+        type: Number,
+        min: 0,
+        max: 3,
+        default: 0,
+      },
+      pendingLevel: {
+        type: Number,
+        min: 0,
+        max: 3,
+        default: 0,
+      },
+      approvedLevels: {
+        level1: { type: Boolean, default: false },
+        level2: { type: Boolean, default: false },
+        level3: { type: Boolean, default: false },
+      },
+      approvedAt: {
+        type: Date,
+        default: null,
+      },
+      approvedBy: {
+        type: ObjectId,
+        ref: "Admin",
+        default: null,
+      },
+      rejectionReason: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      rejectedAt: {
+        type: Date,
+        default: null,
+      },
+      rejectedBy: {
+        type: ObjectId,
+        ref: "Admin",
+        default: null,
       },
     },
     address: {

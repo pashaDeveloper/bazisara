@@ -2,64 +2,42 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import ControlPanel from "./ControlPanel";
+import StepIndicator from "./categories/components/StepIndicator";
+import NavigationButton from "@/components/shared/button/NavigationButton";
+import SendButton from "@/components/shared/button/SendButton";
 import { addAdmin } from "@/features/auth/authSlice";
 import { useUpdateAdminProfileMutation } from "@/services/auth/authApi";
 
 const initialForm = {
   name: "",
+  fatherName: "",
   email: "",
   phone: "",
   nationalCode: "",
-  position: "",
-  department: "",
   gender: "",
   birthDate: "",
-  landline: "",
-  emergencyPhone: "",
-  province: "",
-  city: "",
-  address: "",
-  plateNumber: "",
-  unit: "",
-  postalCode: "",
   biography: "",
   avatarUrl: "",
+  nationalCardUrl: "",
 };
 
 const steps = [
-  { key: "profile", title: "نمایه", hint: "تصویر و سطح" },
-  { key: "main", title: "اطلاعات اصلی", hint: "نام و سمت" },
-  { key: "identity", title: "هویتی و تماس", hint: "کد ملی و تلفن" },
-  { key: "address", title: "آدرس", hint: "نشانی کامل" },
-  { key: "review", title: "تایید نهایی", hint: "بیوگرافی و ذخیره" },
+  { key: "level1", title: "سطح یک", fields: ["avatar", "name", "fatherName", "email", "phone"] },
+  { key: "level2", title: "سطح دو", fields: ["nationalCode", "birthDate", "gender", "nationalCard"] },
+  { key: "level3", title: "سطح سه", fields: ["biography"] },
 ];
 
-const completionFields = [
-  "name",
-  "email",
-  "phone",
-  "nationalCode",
-  "position",
-  "department",
-  "gender",
-  "birthDate",
-  "landline",
-  "emergencyPhone",
-  "province",
-  "city",
-  "address",
-  "plateNumber",
-  "unit",
-  "postalCode",
-  "biography",
-];
-
-const roleLabels = {
-  owner: "مدیر کل",
-  superAdmin: "مدیر ارشد",
-  admin: "مدیر",
-  operator: "اپراتور",
-  buyer: "خریدار",
+const fieldLabels = {
+  avatar: "عکس نمایه",
+  name: "نام و نام خانوادگی",
+  fatherName: "نام پدر",
+  email: "ایمیل",
+  phone: "شماره موبایل",
+  nationalCode: "کد ملی",
+  birthDate: "تاریخ تولد",
+  gender: "جنسیت",
+  nationalCard: "کارت ملی",
+  biography: "بیوگرافی",
 };
 
 function toDateInput(value) {
@@ -69,373 +47,304 @@ function toDateInput(value) {
   return date.toISOString().slice(0, 10);
 }
 
-function fieldIsFilled(value) {
+function isFilled(value) {
   return String(value ?? "").trim().length > 0;
 }
 
-function getProfileLevel(percent) {
-  if (percent >= 90) {
-    return {
-      level: 3,
-      title: "سطح سه",
-      description: "پروفایل کامل و آماده استفاده اداری است.",
-      badgeClass: "bg-emerald-500 text-white",
-    };
-  }
-  if (percent >= 50) {
-    return {
-      level: 2,
-      title: "سطح دو",
-      description: "اطلاعات اصلی کامل شده و چند مورد تکمیلی باقی مانده است.",
-      badgeClass: "bg-blue-500 text-white",
-    };
-  }
-  return {
-    level: 1,
-    title: "سطح یک",
-    description: "برای ارتقای سطح، اطلاعات هویتی، تماس و آدرس را کامل کنید.",
-    badgeClass: "bg-amber-500 text-white",
-  };
-}
-
-function TextField({ label, name, value, onChange, type = "text", placeholder = "" }) {
+function TextField({ label, name, onChange, type = "text", value }) {
   return (
     <label className="block">
       <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">{label}</span>
       <input
+        className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white"
         name={name}
+        onChange={onChange}
+        placeholder={label}
         type={type}
         value={value}
-        onChange={onChange}
-        placeholder={placeholder || label}
-        className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white"
       />
     </label>
   );
 }
 
-function SelectField({ label, name, value, onChange, children }) {
+function FileField({ accept = "image/*", label, onChange, preview }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">{label}</span>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
-      >
-        {children}
-      </select>
-    </label>
-  );
-}
-
-function Stepper({ currentStep, setCurrentStep, completedSteps }) {
-  return (
-    <div className="grid gap-2 md:grid-cols-5">
-      {steps.map((step, index) => {
-        const isActive = currentStep === index;
-        const isCompleted = completedSteps[index];
-        return (
-          <button
-            key={step.key}
-            type="button"
-            onClick={() => setCurrentStep(index)}
-            className={`rounded-xl border px-3 py-3 text-right transition ${
-              isActive
-                ? "border-zinc-950 bg-zinc-950 text-white shadow-lg shadow-zinc-950/10 dark:border-white dark:bg-white dark:text-black"
-                : isCompleted
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200"
-                  : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:border-zinc-500"
-            }`}
-          >
-            <span className="block text-sm font-black">{step.title}</span>
-            <span className={`mt-1 block text-[11px] ${isActive ? "text-white/70 dark:text-black/60" : "text-zinc-500"}`}>
-              {step.hint}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Panel({ title, description, children }) {
-  return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-200/60 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none sm:p-6">
-      <div className="mb-5">
-        <h2 className="text-lg font-black text-zinc-950 dark:text-white">{title}</h2>
-        {description ? <p className="mt-1 text-xs leading-6 text-zinc-500 dark:text-zinc-400">{description}</p> : null}
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-black">
+      <span className="mb-3 block text-xs font-bold text-zinc-600 dark:text-zinc-400">{label}</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="h-28 w-28 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+          {preview ? <img alt={label} className="h-full w-full object-cover" src={preview} /> : null}
+        </div>
+        <label className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 text-sm font-black text-zinc-800 transition hover:border-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-white">
+          انتخاب فایل
+          <input accept={accept} className="hidden" onChange={onChange} type="file" />
+        </label>
       </div>
-      {children}
-    </section>
+    </div>
   );
 }
 
-function SummaryItem({ label, value }) {
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-black">
-      <span className="block text-[11px] font-bold text-zinc-500">{label}</span>
-      <span className="mt-1 block min-h-5 text-sm font-bold text-zinc-900 dark:text-white">{value || "تکمیل نشده"}</span>
-    </div>
-  );
+function levelFieldFilled(form, avatarFile, nationalCardFile, field) {
+  if (field === "avatar") return Boolean(avatarFile || (form.avatarUrl && !form.avatarUrl.includes("placehold.co")));
+  if (field === "nationalCard") return Boolean(nationalCardFile || form.nationalCardUrl);
+  return isFilled(form[field]);
 }
 
 export default function AdminProfile() {
   const dispatch = useDispatch();
-  const admin = useSelector((state) => state.auth.admin);
+  const admin = useSelector((state) => state.auth.admin || {});
   const [updateProfile, { isLoading }] = useUpdateAdminProfileMutation();
   const [form, setForm] = useState(initialForm);
   const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState("https://placehold.co/300x300.png");
+  const [nationalCardFile, setNationalCardFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [nationalCardPreview, setNationalCardPreview] = useState("");
   const [currentStep, setCurrentStep] = useState(0);
 
+  const approvedLevel = Number(admin.approvedLevel || admin.profileApproval?.approvedLevel || 0);
+  const pendingLevel = Number(admin.pendingLevel || admin.profileApproval?.pendingLevel || 0);
+  const currentLevel = currentStep + 1;
+  const hasPendingCurrentLevel = pendingLevel === currentLevel && pendingLevel > approvedLevel;
+  const isLastStep = currentStep === steps.length - 1;
+
   useEffect(() => {
-    const address = admin?.address || {};
-    const nextForm = {
-      name: admin?.name || "",
-      email: admin?.email || "",
-      phone: admin?.phone || "",
-      nationalCode: admin?.nationalCode || "",
-      position: admin?.position || "",
-      department: admin?.department || "",
-      gender: admin?.gender || "",
-      birthDate: toDateInput(admin?.birthDate),
-      landline: admin?.landline || "",
-      emergencyPhone: admin?.emergencyPhone || "",
-      province: address?.province || "",
-      city: address?.city || "",
-      address: address?.address || "",
-      plateNumber: address?.plateNumber || "",
-      unit: address?.unit || "",
-      postalCode: address?.postalCode || "",
-      biography: admin?.biography || "",
-      avatarUrl: admin?.avatar?.url || "",
-    };
-    setForm(nextForm);
-    if (!avatarFile) setAvatarPreview(nextForm.avatarUrl || "https://placehold.co/300x300.png");
-  }, [admin, avatarFile]);
+    setForm({
+      name: admin.name || "",
+      fatherName: admin.fatherName || "",
+      email: admin.email || "",
+      phone: admin.phone || "",
+      nationalCode: admin.nationalCode || "",
+      gender: admin.gender || "",
+      birthDate: toDateInput(admin.birthDate),
+      biography: admin.biography || "",
+      avatarUrl: admin.avatar?.url || "",
+      nationalCardUrl: admin.nationalCard?.url || "",
+    });
+    if (!avatarFile) setAvatarPreview(admin.avatar?.url || "https://placehold.co/300x300.png");
+    if (!nationalCardFile) setNationalCardPreview(admin.nationalCard?.url || "");
+  }, [admin, avatarFile, nationalCardFile]);
 
   useEffect(() => {
     if (!avatarFile) return undefined;
-    const previewUrl = URL.createObjectURL(avatarFile);
-    setAvatarPreview(previewUrl);
-    return () => URL.revokeObjectURL(previewUrl);
+    const url = URL.createObjectURL(avatarFile);
+    setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
   }, [avatarFile]);
 
-  const completion = useMemo(() => {
-    const avatarCompleted = Boolean(avatarFile || form.avatarUrl);
-    const completedCount = completionFields.filter((field) => fieldIsFilled(form[field])).length + (avatarCompleted ? 1 : 0);
-    const total = completionFields.length + 1;
-    const percent = Math.round((completedCount / total) * 100);
-    return { completedCount, total, percent };
-  }, [avatarFile, form]);
+  useEffect(() => {
+    if (!nationalCardFile) return undefined;
+    const url = URL.createObjectURL(nationalCardFile);
+    setNationalCardPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [nationalCardFile]);
 
-  const profileLevel = useMemo(() => getProfileLevel(completion.percent), [completion.percent]);
-  const isLastStep = currentStep === steps.length - 1;
-  const completedSteps = useMemo(
+  useEffect(() => {
+    const nextEditableStep = Math.min(approvedLevel, steps.length - 1);
+    if (currentStep > nextEditableStep && !pendingLevel) setCurrentStep(nextEditableStep);
+  }, [approvedLevel, currentStep, pendingLevel]);
+
+  const levelCompletion = useMemo(
     () =>
-      steps.map((step) => {
-        if (step.key === "profile") return Boolean(avatarFile || form.avatarUrl);
-        if (step.key === "main") return ["name", "email", "position", "department"].every((field) => fieldIsFilled(form[field]));
-        if (step.key === "identity") return ["phone", "nationalCode", "gender", "birthDate"].every((field) => fieldIsFilled(form[field]));
-        if (step.key === "address") return ["province", "city", "address", "postalCode"].every((field) => fieldIsFilled(form[field]));
-        return fieldIsFilled(form.biography);
-      }),
-    [avatarFile, form]
+      steps.map((step) => ({
+        total: step.fields.length,
+        completed: step.fields.filter((field) => levelFieldFilled(form, avatarFile, nationalCardFile, field)).length,
+      })),
+    [avatarFile, form, nationalCardFile]
   );
+
+  const completedSteps = steps.reduce((acc, _step, index) => {
+    acc[index + 1] = approvedLevel >= index + 1;
+    return acc;
+  }, {});
+
+  const invalidSteps = steps.reduce((acc, _step, index) => {
+    const level = index + 1;
+    acc[level] = pendingLevel === level && pendingLevel > approvedLevel;
+    return acc;
+  }, {});
+
+  const missingFields = steps[currentStep].fields.filter((field) => !levelFieldFilled(form, avatarFile, nationalCardFile, field));
+  const currentLevelComplete = missingFields.length === 0;
+  const canMoveToPrevious = currentStep > 0;
+  const canOpenStep = (step) => step <= approvedLevel + 1 || step <= currentLevel;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const buildPayload = () => {
     const payload = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      payload.append(key, value ?? "");
-    });
+    Object.entries(form).forEach(([key, value]) => payload.append(key, value ?? ""));
     if (avatarFile) payload.append("avatar", avatarFile);
+    if (nationalCardFile) payload.append("nationalCard", nationalCardFile);
+    return payload;
+  };
+
+  const saveCurrentLevel = async () => {
+    if (!currentLevelComplete) {
+      toast.error(`این موارد را تکمیل کنید: ${missingFields.map((field) => fieldLabels[field]).join("، ")}`);
+      return null;
+    }
 
     try {
-      const response = await updateProfile(payload).unwrap();
+      const response = await updateProfile(buildPayload()).unwrap();
       if (response?.data) dispatch(addAdmin(response.data));
-      toast.success(response?.description || "پروفایل با موفقیت ذخیره شد");
+      toast.success(response?.description || "پروفایل ذخیره شد و برای تایید ارسال شد");
+      return response?.data || null;
     } catch (error) {
       toast.error(error?.data?.description || "ذخیره پروفایل انجام نشد");
+      return null;
     }
   };
 
-  const goNext = () => setCurrentStep((step) => Math.min(step + 1, steps.length - 1));
-  const goPrev = () => setCurrentStep((step) => Math.max(step - 1, 0));
+  const handleNext = async () => {
+    if (approvedLevel < currentLevel) {
+      await saveCurrentLevel();
+      return;
+    }
+    setCurrentStep((step) => Math.min(step + 1, steps.length - 1));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    await saveCurrentLevel();
+  };
 
   const renderStep = () => {
-    switch (steps[currentStep].key) {
-      case "profile":
-        return (
-          <Panel title="نمایه ادمین" description="تصویر پروفایل و سطح تکمیل حساب از همین بخش مدیریت می‌شود.">
-            <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-              <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-zinc-50 p-5 text-center dark:border-zinc-800 dark:bg-black">
-                <img src={avatarPreview} alt={form.name || "avatar"} className="h-36 w-36 rounded-full border border-zinc-200 object-cover dark:border-zinc-800" />
-                <label className="mt-4 inline-flex cursor-pointer rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-bold text-zinc-800 transition hover:border-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-white">
-                  تغییر تصویر
-                  <input type="file" accept="image/*" className="hidden" onChange={(event) => setAvatarFile(event.target.files?.[0] || null)} />
-                </label>
-                <p className="mt-4 text-sm font-black text-zinc-950 dark:text-white">{form.name || "مدیر"}</p>
-                <p className="mt-1 text-xs text-zinc-500">{roleLabels[admin?.role] || "مهمان"}</p>
-              </div>
+    if (currentStep === 0) {
+      return (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <h2 className="text-lg font-black text-zinc-950 dark:text-white">سطح یک</h2>
+          <p className="mt-1 text-sm leading-7 text-zinc-500">عکس نمایه، نام و نام خانوادگی، نام پدر، ایمیل و شماره موبایل را تکمیل کنید.</p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[260px_1fr]">
+            <FileField label="عکس نمایه" onChange={(event) => setAvatarFile(event.target.files?.[0] || null)} preview={avatarPreview} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField label="نام و نام خانوادگی" name="name" onChange={handleChange} value={form.name} />
+              <TextField label="نام پدر" name="fatherName" onChange={handleChange} value={form.fatherName} />
+              <TextField label="ایمیل" name="email" onChange={handleChange} type="email" value={form.email} />
+              <TextField label="شماره موبایل" name="phone" onChange={handleChange} value={form.phone} />
+            </div>
+          </div>
+        </section>
+      );
+    }
 
-              <div className="flex flex-col justify-center rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold text-zinc-500">سطح پروفایل</p>
-                    <h3 className="mt-1 text-2xl font-black text-zinc-950 dark:text-white">{profileLevel.title}</h3>
-                  </div>
-                  <span className={`rounded-full px-4 py-2 text-sm font-black ${profileLevel.badgeClass}`}>Level {profileLevel.level}</span>
-                </div>
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold text-zinc-500">
-                    <span>{completion.completedCount} از {completion.total} مورد کامل شده</span>
-                    <span>{completion.percent}%</span>
-                  </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                    <div className="h-full rounded-full bg-zinc-950 transition-all dark:bg-white" style={{ width: `${completion.percent}%` }} />
-                  </div>
-                </div>
-                <p className="mt-4 text-sm leading-7 text-zinc-600 dark:text-zinc-400">{profileLevel.description}</p>
-              </div>
-            </div>
-          </Panel>
-        );
-      case "main":
-        return (
-          <Panel title="اطلاعات اصلی" description="نام، ایمیل و جایگاه سازمانی مدیر را تکمیل کنید.">
+    if (currentStep === 1) {
+      return (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <h2 className="text-lg font-black text-zinc-950 dark:text-white">سطح دو</h2>
+          <p className="mt-1 text-sm leading-7 text-zinc-500">کد ملی، تاریخ تولد، جنسیت و تصویر کارت ملی را تکمیل کنید.</p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[260px_1fr]">
+            <FileField label="کارت ملی" onChange={(event) => setNationalCardFile(event.target.files?.[0] || null)} preview={nationalCardPreview} />
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="نام و نام خانوادگی" name="name" value={form.name} onChange={handleChange} />
-              <TextField label="ایمیل" name="email" type="email" value={form.email} onChange={handleChange} />
-              <TextField label="سمت" name="position" value={form.position} onChange={handleChange} />
-              <TextField label="واحد سازمانی" name="department" value={form.department} onChange={handleChange} />
-            </div>
-          </Panel>
-        );
-      case "identity":
-        return (
-          <Panel title="اطلاعات هویتی و تماس" description="کد ملی، شماره‌ها و مشخصات تکمیلی مدیر.">
-            <div className="grid gap-4 md:grid-cols-3">
-              <TextField label="کد ملی" name="nationalCode" value={form.nationalCode} onChange={handleChange} />
-              <TextField label="موبایل" name="phone" value={form.phone} onChange={handleChange} />
-              <TextField label="تلفن ثابت" name="landline" value={form.landline} onChange={handleChange} />
-              <TextField label="شماره اضطراری" name="emergencyPhone" value={form.emergencyPhone} onChange={handleChange} />
-              <TextField label="تاریخ تولد" name="birthDate" type="date" value={form.birthDate} onChange={handleChange} />
-              <SelectField label="جنسیت" name="gender" value={form.gender} onChange={handleChange}>
-                <option value="">انتخاب نشده</option>
-                <option value="male">آقا</option>
-                <option value="female">خانم</option>
-                <option value="other">سایر</option>
-              </SelectField>
-            </div>
-          </Panel>
-        );
-      case "address":
-        return (
-          <Panel title="آدرس" description="نشانی کامل مدیر برای مدارک و مکاتبات داخلی.">
-            <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="استان" name="province" value={form.province} onChange={handleChange} />
-              <TextField label="شهر" name="city" value={form.city} onChange={handleChange} />
-              <TextField label="پلاک" name="plateNumber" value={form.plateNumber} onChange={handleChange} />
-              <TextField label="واحد" name="unit" value={form.unit} onChange={handleChange} />
-              <TextField label="کد پستی" name="postalCode" value={form.postalCode} onChange={handleChange} />
+              <TextField label="کد ملی" name="nationalCode" onChange={handleChange} value={form.nationalCode} />
+              <TextField label="تاریخ تولد" name="birthDate" onChange={handleChange} type="date" value={form.birthDate} />
               <label className="block md:col-span-2">
-                <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">آدرس کامل</span>
-                <textarea
-                  name="address"
-                  value={form.address}
+                <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">جنسیت</span>
+                <select
+                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
+                  name="gender"
                   onChange={handleChange}
-                  rows={4}
-                  className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-7 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white"
-                  placeholder="آدرس کامل"
-                />
+                  value={form.gender}
+                >
+                  <option value="">انتخاب نشده</option>
+                  <option value="male">آقا</option>
+                  <option value="female">خانم</option>
+                  <option value="other">سایر</option>
+                </select>
               </label>
             </div>
-          </Panel>
-        );
-      default:
-        return (
-          <Panel title="بیوگرافی" description="در پایان، توضیح کوتاهی درباره نقش و تجربه مدیر ثبت کنید و پروفایل را ذخیره کنید.">
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">بیوگرافی</span>
-              <textarea
-                name="biography"
-                value={form.biography}
-                onChange={handleChange}
-                rows={9}
-                className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-7 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white"
-                placeholder="بیوگرافی، تجربه‌ها و مسئولیت‌ها"
-              />
-            </label>
-          </Panel>
-        );
+          </div>
+        </section>
+      );
     }
+
+    return (
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="text-lg font-black text-zinc-950 dark:text-white">سطح سه</h2>
+        <p className="mt-1 text-sm leading-7 text-zinc-500">بیوگرافی کوتاه مدیر را ثبت کنید.</p>
+        <label className="mt-5 block">
+          <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">بیوگرافی</span>
+          <textarea
+            className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-8 text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
+            name="biography"
+            onChange={handleChange}
+            placeholder="بیوگرافی، تجربه‌ها و مسئولیت‌ها"
+            rows={8}
+            value={form.biography}
+          />
+        </label>
+      </section>
+    );
   };
 
   return (
     <ControlPanel>
-      <form onSubmit={handleSubmit} className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm shadow-zinc-200/70 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
+      <form className="mx-auto max-w-6xl space-y-5" onSubmit={handleSubmit}>
+        <div className="rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-bold text-zinc-500">حساب مدیر</p>
-              <h1 className="mt-1 text-2xl font-black text-zinc-950 dark:text-white">پروفایل ادمین</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-                اطلاعات پروفایل را مرحله‌ای کامل کنید. سطح پروفایل براساس کامل بودن تصویر، اطلاعات شخصی، تماس، آدرس و بیوگرافی تعیین می‌شود.
+              <p className="text-xs text-zinc-400">حساب مدیر</p>
+              <h1 className="mt-1 text-2xl font-bold text-white">پروفایل مرحله‌ای</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-300">
+                هر سطح بعد از تکمیل ذخیره می‌شود و برای تایید مدیر کل به صف تاییدها می‌رود.
               </p>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-black">
-              <span className={`rounded-full px-3 py-1 text-xs font-black ${profileLevel.badgeClass}`}>{profileLevel.title}</span>
-              <span className="text-sm font-black text-zinc-950 dark:text-white">{completion.percent}%</span>
+            <div className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-200">
+              سطح تایید شده: <span className="font-black text-white">{approvedLevel || "هیچ‌کدام"}</span>
+              {pendingLevel > approvedLevel ? <span className="mr-3 text-amber-300">در انتظار تایید سطح {pendingLevel}</span> : null}
             </div>
           </div>
         </div>
 
-        <div className="sticky top-16 z-20 rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
-          <Stepper completedSteps={completedSteps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
+        <div className="sticky top-16 z-20 rounded-xl border border-gray-200 bg-white/95 p-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <StepIndicator
+            completedSteps={completedSteps}
+            currentStep={currentStep + 1}
+            invalidSteps={invalidSteps}
+            onStepClick={(step) => {
+              if (!canOpenStep(step)) {
+                toast.error("ابتدا سطح قبلی باید توسط مدیر کل تایید شود");
+                return;
+              }
+              setCurrentStep(step - 1);
+            }}
+            totalSteps={steps.length}
+          />
+          <div className="grid gap-2 md:grid-cols-3">
+            {steps.map((step, index) => (
+              <div className="rounded-xl bg-zinc-100 px-3 py-2 text-xs dark:bg-black" key={step.key}>
+                <div className="flex items-center justify-between font-black text-zinc-800 dark:text-zinc-100">
+                  <span>{step.title}</span>
+                  <span>{levelCompletion[index].completed}/{levelCompletion[index].total}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {hasPendingCurrentLevel ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
+            اطلاعات این سطح ذخیره شده و منتظر تایید مدیر کل است. بعد از تایید، سطح بعدی فعال می‌شود.
+          </div>
+        ) : null}
 
         {renderStep()}
 
-        <div className="flex flex-col-reverse gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            type="button"
-            onClick={goPrev}
-            disabled={currentStep === 0 || isLoading}
-            className="h-11 rounded-xl border border-zinc-200 px-5 text-sm font-black text-zinc-700 transition hover:border-zinc-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-white"
-          >
-            مرحله قبلی
-          </button>
-
-          {isLastStep ? (
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-zinc-950 px-6 text-sm font-black text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-            >
-              {isLoading ? "در حال ذخیره..." : "ذخیره پروفایل"}
-            </button>
+        <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-950 p-4">
+          <NavigationButton direction="prev" disabled={!canMoveToPrevious || isLoading} onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))} />
+          {isLastStep || approvedLevel < currentLevel ? (
+            <SendButton
+              isLoading={isLoading}
+              label={approvedLevel < currentLevel ? `ذخیره و ارسال سطح ${currentLevel}` : "ذخیره پروفایل"}
+              loadingLabel="در حال ذخیره..."
+            />
           ) : (
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-zinc-950 px-6 text-sm font-black text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-            >
-              مرحله بعد
-            </button>
+            <NavigationButton direction="next" disabled={isLoading} onClick={handleNext} />
           )}
         </div>
       </form>
     </ControlPanel>
   );
 }
-

@@ -54,36 +54,7 @@ export type ProductDetail = {
   comments: DetailComment[];
 };
 
-const defaultArticles: DetailArticle[] = [
-  {
-    id: 1,
-    title: "راهنمای خرید کنسول PS5",
-    excerpt: "ریجن چند بخرم؟ دیجیتال یا استاندارد؟ جواب همه سوالات اینجاست.",
-    image: "/games/alan-wake-2.jpg",
-    date: "۱۲ خرداد ۱۴۰۳",
-  },
-  {
-    id: 2,
-    title: "راهنمای خرید اشتراک پلاس",
-    excerpt: "مقایسه سطح های مختلف اشتراک پلاس، تفاوتشان در چیست؟",
-    image: "/games/prince-of-persia-the-lost-crown.jpg",
-    date: "۱۴ خرداد ۱۴۰۳",
-  },
-  {
-    id: 3,
-    title: "راهنمای خرید کنسول PS3 کارکرده",
-    excerpt: "کنسول PS3 با داشتن بازی‌های شاهکاری مثل Max Payne 3 همچنان ارزش خرید بالایی دارد.",
-    image: "/games/the-quarry.png",
-    date: "۱۲ خرداد ۱۴۰۳",
-  },
-  {
-    id: 4,
-    title: "راهنمای خرید کنسول PS4 کارکرده",
-    excerpt: "قبل از خرید PS4 دست دوم، این نکات را بررسی کنید.",
-    image: "/games/dead-space.jpg",
-    date: "۱۲ خرداد ۱۴۰۳",
-  },
-];
+const defaultArticles: DetailArticle[] = [];
 
 const defaultComments: DetailComment[] = [
   {

@@ -1,63 +1,89 @@
 import React, { useState } from "react";
-
-import MoonLoader from "@/components/shared/loading/MoonLoaderLoading";
 import Apply from "@/components/icons/Apply";
 import Reject from "@/components/icons/Reject";
 import Trash from "@/components/icons/Trash";
 
-const DeleteModal = ({ message, isLoading, onDelete }) => {
+const defaultTriggerClassName =
+  "delete-button inline-flex h-9 w-9 items-center justify-center disabled:cursor-not-allowed disabled:opacity-60";
+
+function getEntityLabel(message) {
+  return String(message || "")
+    .replace(/^این\s+/, "")
+    .replace(/\s+حذف شود\؟?$/, "")
+    .replace(/\?$/, "")
+    .trim();
+}
+
+function DeleteModal({
+  ariaLabel = "حذف",
+  iconClassName = "h-4 w-4",
+  isLoading = false,
+  itemTitle = "",
+  message = "این مورد حذف شود؟",
+  onDelete,
+  triggerClassName = defaultTriggerClassName,
+}) {
   const [isOpen, setIsOpen] = useState(false);
+  const entityLabel = getEntityLabel(message) || "مورد";
+  const confirmMessage = itemTitle
+    ? `آیا از پاک کردن ${entityLabel} ${itemTitle} مطمئن هستین؟`
+    : `آیا از پاک کردن ${entityLabel} مطمئن هستین؟`;
+
+  const handleDelete = async () => {
+    if (isLoading) return;
+    await onDelete?.();
+    setIsOpen(false);
+  };
+
   return (
     <>
-      <span className="delete-button" onClick={() => setIsOpen(true)}>
-        <Trash className="w-5 h-5" />
-      </span>
-      {isOpen && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-opacity-70 transition-all ease-in-out duration-500"
-          style={{ transform: "translateY(0)", opacity: 1 }}
-        >
-          <div className="bg-white dark:bg-gray-900 dark:text-blue-100 p-4 rounded-lg shadow-[0_4px_6px_rgba(0,0,0,0.1),0_-4px_6px_rgba(0,0,0,0.1)]">
-            <div className="text-center mb-4">
-              <h3 className="text-xl">{message} </h3>
-              <p className="text-red-500 text-sm mt-2">
-                این عملیات غیر قابل بازگشت است.
-              </p>
+      <button
+        aria-label={ariaLabel}
+        className={triggerClassName}
+        disabled={isLoading}
+        onClick={() => setIsOpen(true)}
+        type="button"
+      >
+        <Trash className={iconClassName} />
+      </button>
+
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:p-6">
+          <div className="mb-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-5 text-right shadow-2xl shadow-black/50 sm:max-w-md">
+            <div className="text-center">
+              <h3 className="text-lg font-bold leading-8 text-white">{confirmMessage}</h3>
+              <p className="mt-2 text-sm text-red-400">این عملیات غیر قابل بازگشت است.</p>
             </div>
-            <div className="flex justify-around items-center">
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <button
-                onClick={() => {
-                  onDelete();
-                  setIsOpen(false);
-                }}
+                className="reject-button h-11 gap-2 rounded-xl text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isLoading}
-                className="group w-[150px] py-2 rounded-md reject-button"
+                onClick={handleDelete}
+                type="button"
               >
                 {isLoading ? (
-                  <>
-                    <MoonLoader />
-                  </>
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-red-200 border-t-transparent" />
                 ) : (
-                  <>
-                    <Reject />
-                    <span className="mr-2">تایید</span>
-                  </>
+                  <Reject className="h-5 w-5 text-red-400" />
                 )}
+                تایید
               </button>
               <button
-                onClick={() => setIsOpen(false)} // بستن مودال
-                className="group border apply-button w-[150px]"
+                className="apply-button h-11 gap-2 rounded-xl text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isLoading}
+                onClick={() => setIsOpen(false)}
+                type="button"
               >
-                <Apply />
-                <span className="mr-2">لغو</span>
+                <Apply className="h-5 w-5 text-green-400" />
+                لغو
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
-};
+}
 
 export default DeleteModal;
-

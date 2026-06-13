@@ -18,16 +18,36 @@ import Platforms from "./pages/platforms";
 import PlatformForm from "./pages/platforms/PlatformForm";
 import Companies from "./pages/Companies";
 import CompanyCreate from "./pages/CompanyCreate";
+import Brands from "./pages/Brands";
+import BrandForm from "./pages/BrandForm";
 import Tags from "./pages/Tags";
 import TagCreate from "./pages/TagCreate";
 import Games from "./pages/games";
 import GameForm from "./pages/games/GameForm";
+import Products from "./pages/products";
+import ProductForm from "./pages/products/ProductForm";
+import {
+  InsuranceCompanies,
+  Insurances,
+  Prices,
+  ShippingMethods,
+  Warranties,
+  WarrantyCompanies,
+} from "./pages/catalogEntities";
+import {
+  InsuranceCompanyForm,
+  PriceForm,
+  ShippingMethodForm,
+  WarrantyCompanyForm,
+} from "./pages/catalogEntities/forms";
+import PolicyForm from "./pages/catalogEntities/PolicyForm";
 import Articles from "./pages/articles";
 import ArticleForm from "./pages/articles/ArticleForm";
 import Sliders from "./pages/sliders";
 import SliderForm from "./pages/sliders/SliderForm";
 import AdminProfile from "./pages/AdminProfile";
 import Approvals from "./pages/Approvals";
+import ApprovalMessages from "./pages/ApprovalMessages";
 import Users from "./pages/users";
 import UserForm from "./pages/users/UserForm";
 import SignIn from "./pages/SignIn";
@@ -71,6 +91,14 @@ function App() {
           element={
             <Auth>
               <Approvals />
+            </Auth>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <Auth>
+              <ApprovalMessages />
             </Auth>
           }
         />
@@ -228,6 +256,30 @@ function App() {
           }
         />
         <Route
+          path="/brands"
+          element={
+            <Auth>
+              <Brands />
+            </Auth>
+          }
+        />
+        <Route
+          path="/brands/create"
+          element={
+            <Auth>
+              <BrandForm />
+            </Auth>
+          }
+        />
+        <Route
+          path="/brands/edit/:id"
+          element={
+            <Auth>
+              <BrandForm mode="edit" />
+            </Auth>
+          }
+        />
+        <Route
           path="/tags"
           element={
             <Auth>
@@ -275,6 +327,48 @@ function App() {
             </Auth>
           }
         />
+        <Route
+          path="/products"
+          element={
+            <Auth>
+              <Products />
+            </Auth>
+          }
+        />
+        <Route
+          path="/products/create"
+          element={
+            <Auth>
+              <ProductForm />
+            </Auth>
+          }
+        />
+        <Route
+          path="/products/edit/:id"
+          element={
+            <Auth>
+              <ProductForm mode="edit" />
+            </Auth>
+          }
+        />
+        <Route path="/warranty-companies" element={<Auth><WarrantyCompanies /></Auth>} />
+        <Route path="/warranty-companies/create" element={<Auth><WarrantyCompanyForm /></Auth>} />
+        <Route path="/warranty-companies/edit/:id" element={<Auth><WarrantyCompanyForm mode="edit" /></Auth>} />
+        <Route path="/warranties" element={<Auth><Warranties /></Auth>} />
+        <Route path="/warranties/create" element={<Auth><PolicyForm kind="warranty" /></Auth>} />
+        <Route path="/warranties/edit/:id" element={<Auth><PolicyForm kind="warranty" mode="edit" /></Auth>} />
+        <Route path="/insurance-companies" element={<Auth><InsuranceCompanies /></Auth>} />
+        <Route path="/insurance-companies/create" element={<Auth><InsuranceCompanyForm /></Auth>} />
+        <Route path="/insurance-companies/edit/:id" element={<Auth><InsuranceCompanyForm mode="edit" /></Auth>} />
+        <Route path="/insurances" element={<Auth><Insurances /></Auth>} />
+        <Route path="/insurances/create" element={<Auth><PolicyForm kind="insurance" /></Auth>} />
+        <Route path="/insurances/edit/:id" element={<Auth><PolicyForm kind="insurance" mode="edit" /></Auth>} />
+        <Route path="/prices" element={<Auth><Prices /></Auth>} />
+        <Route path="/prices/create" element={<Auth><PriceForm /></Auth>} />
+        <Route path="/prices/edit/:id" element={<Auth><PriceForm mode="edit" /></Auth>} />
+        <Route path="/shipping-methods" element={<Auth><ShippingMethods /></Auth>} />
+        <Route path="/shipping-methods/create" element={<Auth><ShippingMethodForm /></Auth>} />
+        <Route path="/shipping-methods/edit/:id" element={<Auth><ShippingMethodForm mode="edit" /></Auth>} />
         <Route
           path="/articles"
           element={

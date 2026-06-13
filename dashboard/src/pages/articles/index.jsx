@@ -3,11 +3,11 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
+import DeleteModal from "@/components/shared/DeleteModal";
 import DisplayImages from "@/components/shared/DisplayImages";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Edit from "@/components/icons/Edit";
-import Trash from "@/components/icons/Trash";
 import { useDeleteArticleMutation, useGetArticlesQuery } from "@/services/articleApi";
 
 const statusLabels = {
@@ -31,8 +31,6 @@ function Articles() {
   const articlesMeta = articlesData?.pagination;
 
   const handleDelete = async (id) => {
-    if (!window.confirm("این مطلب حذف شود؟")) return;
-
     try {
       const response = await deleteArticle(id).unwrap();
       toast.success(response.description || "مطلب حذف شد");
@@ -117,15 +115,13 @@ function Articles() {
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
-                          <button
-                            aria-label="حذف مطلب"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            disabled={isDeleting}
-                            onClick={() => handleDelete(item._id)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="حذف مطلب"
+                            isLoading={isDeleting}
+                            itemTitle={item.title}
+                            message="این مطلب حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -156,5 +152,3 @@ function Articles() {
 }
 
 export default Articles;
-
-

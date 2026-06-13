@@ -53,6 +53,7 @@ const articleSchema = new mongoose.Schema(
       default: "",
       maxLength: [120, "Author must be at most 120 characters"],
     },
+    authorAvatar: mediaSchema,
     readingTime: {
       type: String,
       trim: true,

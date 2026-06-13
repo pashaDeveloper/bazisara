@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "./ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
+import DeleteModal from "@/components/shared/DeleteModal";
 import DisplayImages from "@/components/shared/DisplayImages";
 import IconPreview from "@/components/shared/IconPreview";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Edit from "@/components/icons/Edit";
-import Trash from "@/components/icons/Trash";
 import {
   useDeleteGenreMutation,
   useGetGenresQuery,
@@ -29,8 +29,6 @@ function Genres() {
   const genresMeta = genresData?.pagination;
 
   const handleDelete = async (id) => {
-    if (!window.confirm("این ژانر حذف شود؟")) return;
-
     try {
       const response = await deleteGenre(id).unwrap();
       toast.success(response.description || "ژانر حذف شد");
@@ -113,15 +111,13 @@ function Genres() {
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
-                          <button
-                            aria-label="حذف ژانر"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            disabled={isDeleting}
-                            onClick={() => handleDelete(item._id)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="حذف ژانر"
+                            isLoading={isDeleting}
+                            itemTitle={item.name}
+                            message="این ژانر حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -151,4 +147,3 @@ function Genres() {
 }
 
 export default Genres;
-

@@ -11,6 +11,7 @@ import StepIndicator from "../categories/components/StepIndicator";
 import EntityImageStep from "./EntityImageStep";
 import KeywordsStep from "./KeywordsStep";
 import SelectStep from "./SelectStep";
+import StarRatingStep from "./StarRatingStep";
 import TextareaStep from "./TextareaStep";
 import TextInputStep from "./TextInputStep";
 
@@ -52,12 +53,22 @@ function SteppedEntityForm({
   const [createItem, createState] = createMutation();
   const [updateItem, updateState] = updateMutation();
   const mutationState = isEdit ? updateState : createState;
-  const requiredNameIndex = fields.findIndex((field) => field.name === "name");
-  const lastStepIndex = fields.length - 1;
+  const stepGroups = useMemo(() => {
+    const groups = [];
+    for (let index = 0; index < fields.length; index += 2) {
+      groups.push(fields.slice(index, index + 2));
+    }
+    return groups;
+  }, [fields]);
+  const requiredNameStepIndex = Math.max(
+    0,
+    stepGroups.findIndex((group) => group.some((field) => field.name === "name"))
+  );
+  const lastStepIndex = stepGroups.length - 1;
   const isLastStep = currentStep === lastStepIndex;
-  const currentField = fields[currentStep];
+  const currentFields = stepGroups[currentStep] || [];
   const nameIsValid = Boolean(String(form.name || "").trim());
-  const canGoNext = currentField.name !== "name" || nameIsValid;
+  const canGoNext = !currentFields.some((field) => field.name === "name") || nameIsValid;
 
   useEffect(() => {
     if (!itemData?.data) return;
@@ -90,12 +101,12 @@ function SteppedEntityForm({
     }
   }, [fields, itemData]);
 
-  const completedSteps = fields.reduce((acc, field, index) => {
-    acc[index + 1] = index < currentStep && (field.name !== "name" || nameIsValid);
+  const completedSteps = stepGroups.reduce((acc, group, index) => {
+    acc[index + 1] = index < currentStep && (!group.some((field) => field.name === "name") || nameIsValid);
     return acc;
   }, {});
-  const invalidSteps = fields.reduce((acc, field, index) => {
-    acc[index + 1] = field.name === "name" && currentStep >= index && !nameIsValid;
+  const invalidSteps = stepGroups.reduce((acc, group, index) => {
+    acc[index + 1] = group.some((field) => field.name === "name") && currentStep >= index && !nameIsValid;
     return acc;
   }, {});
 
@@ -112,7 +123,7 @@ function SteppedEntityForm({
     }
 
     toast.error(`نام ${entityLabel} را وارد کنید`, { id: `${mode}-${entityLabel}` });
-    setCurrentStep(requiredNameIndex);
+    setCurrentStep(requiredNameStepIndex);
   };
 
   const goToNextStep = () => {
@@ -176,7 +187,7 @@ function SteppedEntityForm({
 
     if (!nameIsValid) {
       toast.error(`نام ${entityLabel} را وارد کنید`, { id: `${mode}-${entityLabel}` });
-      setCurrentStep(requiredNameIndex);
+      setCurrentStep(requiredNameStepIndex);
       return;
     }
 
@@ -247,6 +258,16 @@ function SteppedEntityForm({
         />
       );
     }
+    if (field.type === "starRating") {
+      return (
+        <StarRatingStep
+          label={field.label}
+          name={field.name}
+          onChange={handleChange}
+          value={form[field.name]}
+        />
+      );
+    }
     if (field.type === "keywords") {
       return (
         <KeywordsStep
@@ -306,9 +327,22 @@ function SteppedEntityForm({
                 currentStep={currentStep + 1}
                 invalidSteps={invalidSteps}
                 onStepClick={goToStep}
-                totalSteps={fields.length}
+                totalSteps={stepGroups.length}
               />
-              {renderStep(currentField)}
+              <div className="grid gap-4 md:grid-cols-2">
+                {currentFields.map((field) => (
+                  <div
+                    className={
+                      ["image", "textarea", "icon", "keywords", "socialLinks"].includes(field.type)
+                        ? "md:col-span-2"
+                        : undefined
+                    }
+                    key={field.name}
+                  >
+                    {renderStep(field)}
+                  </div>
+                ))}
+              </div>
               <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
                 {isLastStep ? (
                   <SendButton

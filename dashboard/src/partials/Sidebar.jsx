@@ -13,6 +13,7 @@ import Rank from "@/components/icons/Rank";
 import Setting from "@/components/icons/Setting";
 import Tag from "@/components/icons/Tag";
 import User from "@/components/icons/User";
+import Messages from "@/components/icons/Messages";
 import logo from "../favicon.svg";
 
 function Sidebar({ sidebarOpen, setSidebarOpen }) {
@@ -60,6 +61,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
   const sidebarItems = [
     { title: "پروفایل", icon: User, path: "/profile" },
+    { title: "پیام‌ها", icon: Messages, path: "/messages" },
     ...(canManageUsers ? [{ title: "کاربران", icon: User, path: "/users" }] : []),
     ...(isOwner ? [{ title: "تأییدیه‌ها", icon: User, path: "/approvals" }] : []),
     { title: "آیکون‌ها", icon: Gallery, path: "/icons" },
@@ -69,8 +71,16 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { title: "فیلترهای دسته‌بندی", icon: Keyword, path: "/category-filters" },
     { title: "ژانرها", icon: Rank, path: "/genres" },
     { title: "پلتفرم‌ها", icon: Rank, path: "/platforms" },
-    { title: "شرکت‌ها", icon: Company, path: "/companies" },
+    { title: "سازنده و ناشر", icon: Company, path: "/companies" },
+    { title: "برندها", icon: Company, path: "/brands" },
     { title: "بازی‌ها", icon: Products, path: "/games" },
+    { title: "محصولات", icon: Products, path: "/products" },
+    { title: "شرکت‌های گارانتی", icon: Company, path: "/warranty-companies" },
+    { title: "گارانتی‌ها", icon: Company, path: "/warranties" },
+    { title: "شرکت‌های بیمه", icon: Company, path: "/insurance-companies" },
+    { title: "بیمه‌ها", icon: Company, path: "/insurances" },
+    { title: "قیمت‌ها", icon: Products, path: "/prices" },
+    { title: "نحوه ارسال", icon: Products, path: "/shipping-methods" },
     { title: "مقالات", icon: Blog, path: "/articles" },
     { title: "اسلایدرها", icon: Gallery, path: "/sliders" },
   ];
@@ -157,4 +167,3 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
 }
 
 export default Sidebar;
-

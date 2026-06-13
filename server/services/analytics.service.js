@@ -240,6 +240,8 @@ exports.getSummary = async (_req, res) => {
     deviceBreakdown,
     browserBreakdown,
     dailyTrend,
+    articleDailyTrend,
+    articlePageViews,
   ] = await Promise.all([
     AnalyticsSession.countDocuments(),
     AnalyticsSession.countDocuments({ lastSeenAt: { $gte: new Date(now.getTime() - 5 * 60 * 1000) } }),
@@ -286,6 +288,33 @@ exports.getSummary = async (_req, res) => {
       },
       { $sort: { _id: 1 } },
     ]),
+    AnalyticsSession.aggregate([
+      { $unwind: "$pageViews" },
+      {
+        $match: {
+          "pageViews.entityType": "article",
+          "pageViews.startedAt": { $gte: weekAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$pageViews.startedAt",
+              timezone: "Asia/Tehran",
+            },
+          },
+          pageViews: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    AnalyticsSession.aggregate([
+      { $unwind: "$pageViews" },
+      { $match: { "pageViews.entityType": "article" } },
+      { $count: "count" },
+    ]).then((items) => items[0]?.count || 0),
   ]);
 
   const averageDurationMs = totalSessions
@@ -307,6 +336,7 @@ exports.getSummary = async (_req, res) => {
         totalComments,
         articleCount,
         gameCount,
+        articlePageViews,
         averageDurationMs,
       },
       topContent: {
@@ -317,6 +347,7 @@ exports.getSummary = async (_req, res) => {
       deviceBreakdown,
       browserBreakdown,
       dailyTrend,
+      articleDailyTrend,
     },
   });
 };

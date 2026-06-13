@@ -96,12 +96,86 @@ function transliteratePersian(value) {
     "۹": "9",
   };
 
+  const safeWordFallbacks = {
+    "\u0628\u0627\u0632\u06cc": "game",
+    "\u0628\u0627\u0632\u06cc\u0647\u0627": "games",
+    "\u0628\u0627\u0632\u06cc\u200c\u0647\u0627\u06cc": "games",
+    "\u062e\u0631\u06cc\u062f": "buy",
+    "\u0641\u0631\u0648\u0634": "sale",
+    "\u0642\u06cc\u0645\u062a": "price",
+    "\u0631\u0627\u0647\u0646\u0645\u0627": "guide",
+    "\u0631\u0627\u0647\u0646\u0645\u0627\u06cc": "guide",
+    "\u0646\u0642\u062f": "review",
+    "\u0628\u0631\u0631\u0633\u06cc": "review",
+    "\u0645\u0642\u0627\u06cc\u0633\u0647": "compare",
+    "\u0628\u0647\u062a\u0631\u06cc\u0646": "best",
+    "\u062c\u062f\u06cc\u062f": "new",
+    "\u0627\u062e\u0628\u0627\u0631": "news",
+    "\u0622\u0645\u0648\u0632\u0634": "tutorial",
+    "\u06a9\u0646\u0633\u0648\u0644": "console",
+    "\u06a9\u0627\u0645\u067e\u06cc\u0648\u062a\u0631": "pc",
+    "\u0645\u0648\u0628\u0627\u06cc\u0644": "mobile",
+  };
+  const safeCharMap = {
+    "\u0622": "a",
+    "\u0627": "a",
+    "\u0628": "b",
+    "\u067e": "p",
+    "\u062a": "t",
+    "\u062b": "s",
+    "\u062c": "j",
+    "\u0686": "ch",
+    "\u062d": "h",
+    "\u062e": "kh",
+    "\u062f": "d",
+    "\u0630": "z",
+    "\u0631": "r",
+    "\u0632": "z",
+    "\u0698": "zh",
+    "\u0633": "s",
+    "\u0634": "sh",
+    "\u0635": "s",
+    "\u0636": "z",
+    "\u0637": "t",
+    "\u0638": "z",
+    "\u0639": "a",
+    "\u063a": "gh",
+    "\u0641": "f",
+    "\u0642": "gh",
+    "\u06a9": "k",
+    "\u0643": "k",
+    "\u06af": "g",
+    "\u0644": "l",
+    "\u0645": "m",
+    "\u0646": "n",
+    "\u0648": "v",
+    "\u0647": "h",
+    "\u06cc": "y",
+    "\u064a": "y",
+    "\u0626": "y",
+    "\u0621": "",
+    "\u0623": "a",
+    "\u0625": "e",
+    "\u0624": "v",
+    "\u0629": "h",
+    "\u06f0": "0",
+    "\u06f1": "1",
+    "\u06f2": "2",
+    "\u06f3": "3",
+    "\u06f4": "4",
+    "\u06f5": "5",
+    "\u06f6": "6",
+    "\u06f7": "7",
+    "\u06f8": "8",
+    "\u06f9": "9",
+  };
+
   return String(value || "")
     .split(/(\s+)/)
-    .map((part) => persianWordFallbacks[part] || part)
+    .map((part) => safeWordFallbacks[part] || persianWordFallbacks[part] || part)
     .join("")
     .split("")
-    .map((char) => charMap[char] ?? char)
+    .map((char) => safeCharMap[char] ?? charMap[char] ?? char)
     .join("");
 }
 
@@ -196,6 +270,14 @@ function normalizeArticlePayload(body, uploadedFiles) {
     excerpt: body.excerpt !== undefined ? String(body.excerpt).trim() : undefined,
     content: body.content !== undefined ? String(body.content) : undefined,
     author: body.author !== undefined ? String(body.author).trim() : undefined,
+    authorAvatar:
+      body.authorAvatarUrl !== undefined
+        ? {
+            url: String(body.authorAvatarUrl || "").trim(),
+            public_id: String(body.authorAvatarPublicId || "").trim(),
+            storage: String(body.authorAvatarStorage || "").trim(),
+          }
+        : undefined,
     readingTime: body.readingTime !== undefined ? String(body.readingTime).trim() : undefined,
     category:
       body.category !== undefined && mongoose.Types.ObjectId.isValid(body.category)
@@ -233,7 +315,18 @@ async function articleSlugExists(slug, currentId = null) {
 
 function populateArticle(query) {
   return query
-    .populate("category", "name slug")
+    .populate({
+      path: "category",
+      select: "name slug parent",
+      populate: {
+        path: "parent",
+        select: "name slug parent",
+        populate: {
+          path: "parent",
+          select: "name slug parent",
+        },
+      },
+    })
     .populate("tags", "name slug")
     .populate("relatedGames", "title slug cover cardDesktopCover");
 }

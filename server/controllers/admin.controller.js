@@ -97,6 +97,26 @@ exports.approveApproval = async (req, res, next) => {
   }
 };
 
+exports.rejectApproval = async (req, res, next) => {
+  try {
+    await adminService.rejectApproval(req, res);
+  } catch (error) {
+    next(error);
+  } finally {
+    console.log(`Route: ${req.url} || Method: ${req.method}`);
+  }
+};
+
+exports.getApprovalMessages = async (req, res, next) => {
+  try {
+    await adminService.getApprovalMessages(req, res);
+  } catch (error) {
+    next(error);
+  } finally {
+    console.log(`Route: ${req.url} || Method: ${req.method}`);
+  }
+};
+
 /* update admin information */
 exports.updateAdmin = async (req, res, next) => {
   try {

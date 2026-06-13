@@ -3,11 +3,11 @@ import toast from "react-hot-toast";
 import Popup from "@/components/ui/Popup";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
+import DeleteModal from "@/components/shared/DeleteModal";
 import DynamicOptionsInput from "@/components/shared/DynamicOptionsInput";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Pencil from "@/components/icons/Pencil";
-import Trash from "@/components/icons/Trash";
 import {
   filterTypes,
   getTypeLabel,
@@ -222,13 +222,12 @@ function FilterDefinitions() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedFilter?._id) return;
+  const handleDelete = async (id) => {
+    if (!id) return;
 
     try {
-      const response = await deleteFilter(selectedFilter._id).unwrap();
+      const response = await deleteFilter(id).unwrap();
       toast.success(response.description || "تعریف فیلتر حذف شد");
-      closePopup();
     } catch (error) {
       toast.error(error?.data?.description || "حذف تعریف فیلتر انجام نشد");
     }
@@ -304,9 +303,13 @@ function FilterDefinitions() {
                           <button aria-label="ویرایش تعریف فیلتر" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white" onClick={() => openEdit(item)} type="button">
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button aria-label="حذف تعریف فیلتر" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200" onClick={() => { setSelectedFilter(item); setPopupMode("delete"); }} type="button">
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="حذف تعریف فیلتر"
+                            isLoading={deleteState.isLoading}
+                            itemTitle={item.label}
+                            message="این تعریف فیلتر حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -337,25 +340,8 @@ function FilterDefinitions() {
       >
         <FilterDefinitionForm form={form} onChange={handleChange} onOptionsChange={handleOptionsChange} />
       </Popup>
-
-      <Popup
-        isOpen={popupMode === "delete"}
-        onClose={closePopup}
-        title="حذف تعریف فیلتر"
-        footer={
-          <div className="flex items-center justify-end gap-3">
-            <button className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white" onClick={closePopup} type="button">انصراف</button>
-            <button className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50" disabled={deleteState.isLoading} onClick={handleDelete} type="button">
-              {deleteState.isLoading ? "در حال حذف..." : "حذف"}
-            </button>
-          </div>
-        }
-      >
-        <p className="text-sm text-zinc-300">آیا از حذف این تعریف فیلتر مطمئن هستید؟</p>
-      </Popup>
     </ControlPanel>
   );
 }
 
 export default FilterDefinitions;
-

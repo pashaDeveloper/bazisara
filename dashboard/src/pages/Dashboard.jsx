@@ -187,6 +187,7 @@ function Dashboard() {
   const topArticles = summary.topContent?.articles || [];
   const topGames = summary.topContent?.games || [];
   const dailyTrend = summary.dailyTrend || [];
+  const articleDailyTrend = summary.articleDailyTrend || [];
   const deviceBreakdown = summary.deviceBreakdown || [];
   const browserBreakdown = summary.browserBreakdown || [];
 
@@ -238,6 +239,22 @@ function Dashboard() {
     };
   }, [browserBreakdown]);
 
+  const articleViewsChartData = useMemo(
+    () => ({
+      labels: articleDailyTrend.length ? articleDailyTrend.map((item) => item._id) : ["بدون داده"],
+      datasets: [
+        {
+          label: "بازدید مجله",
+          data: articleDailyTrend.length ? articleDailyTrend.map((item) => item.pageViews || 0) : [0],
+          backgroundColor: "#f97316",
+          borderRadius: 8,
+          maxBarThickness: 48,
+        },
+      ],
+    }),
+    [articleDailyTrend]
+  );
+
   return (
     <ControlPanel>
       <section className="space-y-6">
@@ -266,10 +283,12 @@ function Dashboard() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard title="کل بازدیدها" value={totals.totalPageViews} unit="ثبت شده" />
+          <StatCard title="بازدید مجله" value={totals.articlePageViews} unit="article page view" accent="from-orange-950 to-zinc-950" />
           <StatCard title="بازدیدکننده یکتا" value={totals.totalVisitors} unit="visitor" />
           <StatCard title="لایک‌ها" value={totals.totalLikes} unit="article / game" />
-          <StatCard title="نظرات" value={totals.totalComments} unit="رویداد ثبت شده" />
         </div>
+
+        <AnalyticsChart title="آمار بازدید صفحات مجله" type="bar" data={articleViewsChartData} />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <ContentTable title="مطالب پربازدید" rows={topArticles} type="article" />

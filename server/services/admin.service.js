@@ -1,15 +1,17 @@
 const Admin = require("../models/admin.model");
 const Address = require("../models/address.model");
 const Game = require("../models/game.model");
+const Product = require("../models/product.model");
 const Article = require("../models/article.model");
 const Slider = require("../models/slider.model");
 const remove = require("../utils/remove.util");
 const token = require("../utils/token.util");
-const { getAdminProfileSnapshot } = require("../utils/adminProfile.util");
+const { getAdminProfileSnapshot, getLevelCompletion } = require("../utils/adminProfile.util");
 
 const OWNER_ROLES = ["owner", "superAdmin"];
 const adminProfileFields = [
   "name",
+  "fatherName",
   "email",
   "phone",
   "nationalCode",
@@ -36,8 +38,8 @@ function normalizeNumber(value) {
   return Number.isFinite(number) ? number : undefined;
 }
 
-function buildAvatar(req, existingAdmin) {
-  const uploaded = req.uploadedFiles?.avatar?.[0] || req.file;
+function buildMedia(req, field, existingMedia) {
+  const uploaded = req.uploadedFiles?.[field]?.[0] || (field === "avatar" ? req.file : null);
   if (uploaded) {
     return {
       url: uploaded.url || uploaded.path,
@@ -46,15 +48,24 @@ function buildAvatar(req, existingAdmin) {
     };
   }
 
-  if (req.body.avatarUrl !== undefined) {
+  const urlField = `${field}Url`;
+  if (req.body[urlField] !== undefined) {
     return {
-      url: req.body.avatarUrl || null,
-      public_id: existingAdmin?.avatar?.public_id || null,
-      storage: existingAdmin?.avatar?.storage || ""
+      url: req.body[urlField] || "",
+      public_id: existingMedia?.public_id || "",
+      storage: existingMedia?.storage || ""
     };
   }
 
-  return existingAdmin?.avatar;
+  return existingMedia;
+}
+
+function buildAvatar(req, existingAdmin) {
+  return buildMedia(req, "avatar", existingAdmin?.avatar);
+}
+
+function buildNationalCard(req, existingAdmin) {
+  return buildMedia(req, "nationalCard", existingAdmin?.nationalCard);
 }
 
 async function upsertAdminAddress(adminId, body) {
@@ -95,28 +106,95 @@ function buildApprovalItem(type, item) {
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
     slug: base.slug || "",
-    cover: base.cover || base.image || base.cardDesktopCover || null,
+    cover: base.cover || base.image || base.cardDesktopCover || (base.images?.main?.url?.[0] ? { url: base.images.main.url[0] } : null),
     category: base.category || null,
     author: base.author || "",
-    excerpt: base.excerpt || base.shortDescription || base.subtitle || "",
+    excerpt: base.excerpt || base.shortDescription || base.subtitle || base.summary || "",
+    content: base.content || base.description || base.expert_reviews?.description || "",
+    link: base.link || "",
+    approvalReview: base.approvalReview || null,
+  };
+}
+
+function buildProfileApprovalItem(admin) {
+  const base = typeof admin.toObject === "function" ? admin.toObject() : admin;
+  const snapshot = getAdminProfileSnapshot(base);
+  return {
+    type: "profile-level",
+    _id: base._id,
+    title: base.name || base.email || base.phone || "مدیر بدون نام",
+    status: "pending",
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+    email: base.email || "",
+    phone: base.phone || "",
+    avatar: base.avatar || null,
+    pendingLevel: snapshot.pendingLevel,
+    approvedLevel: snapshot.approvedLevel,
+    excerpt: `درخواست تایید سطح ${snapshot.pendingLevel}`,
+    profile: {
+      position: base.position || "",
+      department: base.department || "",
+      province: base.address?.province || "",
+      city: base.address?.city || "",
+      biography: base.biography || "",
+    },
+    approvalReview: {
+      status: base.profileApproval?.rejectionReason ? "rejected" : "",
+      reason: base.profileApproval?.rejectionReason || "",
+      reviewedAt: base.profileApproval?.rejectedAt || base.profileApproval?.approvedAt || null,
+      reviewedBy: base.profileApproval?.rejectedBy || base.profileApproval?.approvedBy || null,
+    },
+  };
+}
+
+function buildApprovalMessage(type, item) {
+  const approvalItem = type === "profile-level" ? buildProfileApprovalItem(item) : buildApprovalItem(type, item);
+  const reason =
+    type === "profile-level"
+      ? item.profileApproval?.rejectionReason || ""
+      : item.approvalReview?.reason || "";
+  const reviewedAt =
+    type === "profile-level"
+      ? item.profileApproval?.rejectedAt || null
+      : item.approvalReview?.reviewedAt || null;
+
+  return {
+    ...approvalItem,
+    reason,
+    reviewedAt,
   };
 }
 
 async function getPendingApprovals() {
-  const [games, articles, sliders] = await Promise.all([
+  const [games, products, articles, sliders, profileAdmins] = await Promise.all([
     Game.find({ isDeleted: false, status: "pending" })
       .sort({ updatedAt: -1 })
-      .select("title slug status createdAt updatedAt cover cardDesktopCover category shortDescription"),
+      .select("title slug status createdAt updatedAt cover cardDesktopCover category shortDescription description approvalReview"),
+    Product.find({ isDeleted: false, status: "pending" })
+      .sort({ updatedAt: -1 })
+      .select("title status createdAt updatedAt images summary product_type statusProduct expert_reviews approvalReview"),
     Article.find({ isDeleted: false, status: "pending" })
       .sort({ updatedAt: -1 })
-      .select("title slug status createdAt updatedAt cover excerpt author category"),
+      .select("title slug status createdAt updatedAt cover excerpt author category content approvalReview"),
     Slider.find({ isDeleted: false, status: "pending" })
       .sort({ updatedAt: -1 })
-      .select("title subtitle slug status createdAt updatedAt image category"),
+      .select("title subtitle slug status createdAt updatedAt image category link approvalReview"),
+    populateAdmin(
+      Admin.find({
+        isDeleted: false,
+        "profileApproval.pendingLevel": { $gt: 0 },
+        $expr: { $gt: ["$profileApproval.pendingLevel", "$profileApproval.approvedLevel"] },
+      })
+        .sort({ updatedAt: -1 })
+        .select("-password")
+    ),
   ]);
 
   return [
+    ...profileAdmins.map((item) => buildProfileApprovalItem(item)),
     ...games.map((item) => buildApprovalItem("game", item)),
+    ...products.map((item) => buildApprovalItem("product", item)),
     ...articles.map((item) => buildApprovalItem("article", item)),
     ...sliders.map((item) => buildApprovalItem("slider", item)),
   ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -408,6 +486,8 @@ exports.updateProfile = async (req, res) => {
   const adminPayload = pickFields(req.body, adminProfileFields);
   const avatar = buildAvatar(req, existingAdmin);
   if (avatar) adminPayload.avatar = avatar;
+  const nationalCard = buildNationalCard(req, existingAdmin);
+  if (nationalCard) adminPayload.nationalCard = nationalCard;
 
   const updatedAdmin = await Admin.findByIdAndUpdate(
     existingAdmin._id,
@@ -421,7 +501,23 @@ exports.updateProfile = async (req, res) => {
     await updatedAdmin.save({ validateBeforeSave: false });
   }
 
-  const populatedAdmin = await populateAdmin(Admin.findById(updatedAdmin._id).select("-password"));
+  let populatedAdmin = await populateAdmin(Admin.findById(updatedAdmin._id).select("-password"));
+  const plainAdmin = typeof populatedAdmin.toObject === "function" ? populatedAdmin.toObject() : populatedAdmin;
+  const approval = plainAdmin.profileApproval || {};
+  const approvedLevel = Number(approval.approvedLevel || 0);
+  const nextLevel = Math.min(approvedLevel + 1, 3);
+
+  if (nextLevel >= 1 && getLevelCompletion(plainAdmin, nextLevel).completed) {
+    populatedAdmin.profileApproval = {
+      approvedLevel,
+      pendingLevel: Math.max(Number(approval.pendingLevel || 0), nextLevel),
+      approvedLevels: approval.approvedLevels || {},
+      approvedAt: approval.approvedAt || null,
+      approvedBy: approval.approvedBy || null,
+    };
+    await populatedAdmin.save({ validateBeforeSave: false });
+    populatedAdmin = await populateAdmin(Admin.findById(updatedAdmin._id).select("-password"));
+  }
 
   res.status(200).json({
     acknowledgement: true,
@@ -444,8 +540,62 @@ exports.getApprovals = async (req, res) => {
 
 exports.approveApproval = async (req, res) => {
   const { type, id } = req.params;
+
+  if (type === "profile-level") {
+    const admin = await populateAdmin(Admin.findOne({ _id: id, isDeleted: false }).select("-password"));
+    if (!admin) {
+      return res.status(404).json({
+        acknowledgement: false,
+        message: "Not Found",
+        description: "مدیر در انتظار تایید پیدا نشد",
+      });
+    }
+
+    const pendingLevel = Number(admin.profileApproval?.pendingLevel || 0);
+    const approvedLevel = Number(admin.profileApproval?.approvedLevel || 0);
+    if (!pendingLevel || pendingLevel <= approvedLevel) {
+      return res.status(400).json({
+        acknowledgement: false,
+        message: "Bad Request",
+        description: "درخواستی برای تایید این سطح وجود ندارد",
+      });
+    }
+
+    if (!getLevelCompletion(admin, pendingLevel).completed) {
+      return res.status(400).json({
+        acknowledgement: false,
+        message: "Bad Request",
+        description: "اطلاعات این سطح هنوز کامل نیست",
+      });
+    }
+
+    admin.profileApproval = {
+      approvedLevel: pendingLevel,
+      pendingLevel: 0,
+      approvedLevels: {
+        ...(admin.profileApproval?.approvedLevels || {}),
+        [`level${pendingLevel}`]: true,
+      },
+      approvedAt: new Date(),
+      approvedBy: req.admin._id,
+      rejectionReason: "",
+      rejectedAt: null,
+      rejectedBy: null,
+    };
+    await admin.save({ validateBeforeSave: false });
+
+    const populatedAdmin = await populateAdmin(Admin.findById(admin._id).select("-password"));
+    return res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: `سطح ${pendingLevel} پروفایل تایید شد`,
+      data: buildProfileApprovalItem(populatedAdmin),
+    });
+  }
+
   const modelMap = {
     game: Game,
+    product: Product,
     article: Article,
     slider: Slider,
   };
@@ -469,6 +619,12 @@ exports.approveApproval = async (req, res) => {
   }
 
   item.status = "active";
+  item.approvalReview = {
+    status: "approved",
+    reason: "",
+    reviewedAt: new Date(),
+    reviewedBy: req.admin._id,
+  };
   await item.save();
 
   res.status(200).json({
@@ -476,6 +632,141 @@ exports.approveApproval = async (req, res) => {
     message: "OK",
     description: "محتوا با موفقیت تایید شد",
     data: buildApprovalItem(type, item),
+  });
+};
+
+exports.rejectApproval = async (req, res) => {
+  const { type, id } = req.params;
+  const reason = String(req.body?.reason || "").trim();
+
+  if (!reason) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "علت رد کردن الزامی است",
+    });
+  }
+
+  if (type === "profile-level") {
+    const admin = await populateAdmin(Admin.findOne({ _id: id, isDeleted: false }).select("-password"));
+    if (!admin) {
+      return res.status(404).json({
+        acknowledgement: false,
+        message: "Not Found",
+        description: "مدیر در انتظار تایید پیدا نشد",
+      });
+    }
+
+    const pendingLevel = Number(admin.profileApproval?.pendingLevel || 0);
+    const approvedLevel = Number(admin.profileApproval?.approvedLevel || 0);
+    if (!pendingLevel || pendingLevel <= approvedLevel) {
+      return res.status(400).json({
+        acknowledgement: false,
+        message: "Bad Request",
+        description: "درخواستی برای رد کردن این سطح وجود ندارد",
+      });
+    }
+
+    admin.profileApproval = {
+      approvedLevel,
+      pendingLevel: 0,
+      approvedLevels: admin.profileApproval?.approvedLevels || {},
+      approvedAt: admin.profileApproval?.approvedAt || null,
+      approvedBy: admin.profileApproval?.approvedBy || null,
+      rejectionReason: reason,
+      rejectedAt: new Date(),
+      rejectedBy: req.admin._id,
+    };
+    await admin.save({ validateBeforeSave: false });
+
+    const populatedAdmin = await populateAdmin(Admin.findById(admin._id).select("-password"));
+    return res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: "درخواست تایید رد شد و پیام برای اپراتور ثبت شد",
+      data: buildProfileApprovalItem(populatedAdmin),
+    });
+  }
+
+  const modelMap = {
+    game: Game,
+    product: Product,
+    article: Article,
+    slider: Slider,
+  };
+
+  const Model = modelMap[type];
+  if (!Model) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "نوع محتوا معتبر نیست",
+    });
+  }
+
+  const item = await Model.findOne({ _id: id, isDeleted: false, status: "pending" });
+  if (!item) {
+    return res.status(404).json({
+      acknowledgement: false,
+      message: "Not Found",
+      description: "محتوای در انتظار تایید پیدا نشد",
+    });
+  }
+
+  item.status = "inactive";
+  item.approvalReview = {
+    status: "rejected",
+    reason,
+    reviewedAt: new Date(),
+    reviewedBy: req.admin._id,
+  };
+  await item.save();
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "محتوا رد شد و پیام برای اپراتور ثبت شد",
+    data: buildApprovalItem(type, item),
+  });
+};
+
+exports.getApprovalMessages = async (req, res) => {
+  const [games, products, articles, sliders, profileAdmins] = await Promise.all([
+    Game.find({ isDeleted: false, status: "inactive", "approvalReview.status": "rejected" })
+      .sort({ "approvalReview.reviewedAt": -1 })
+      .select("title slug status createdAt updatedAt cover cardDesktopCover category shortDescription description approvalReview"),
+    Product.find({ isDeleted: false, status: "inactive", "approvalReview.status": "rejected" })
+      .sort({ "approvalReview.reviewedAt": -1 })
+      .select("title status createdAt updatedAt images summary product_type statusProduct expert_reviews approvalReview"),
+    Article.find({ isDeleted: false, status: "inactive", "approvalReview.status": "rejected" })
+      .sort({ "approvalReview.reviewedAt": -1 })
+      .select("title slug status createdAt updatedAt cover excerpt author category content approvalReview"),
+    Slider.find({ isDeleted: false, status: "inactive", "approvalReview.status": "rejected" })
+      .sort({ "approvalReview.reviewedAt": -1 })
+      .select("title subtitle slug status createdAt updatedAt image category link approvalReview"),
+    populateAdmin(
+      Admin.find({
+        isDeleted: false,
+        "profileApproval.rejectionReason": { $exists: true, $ne: "" },
+      })
+        .sort({ "profileApproval.rejectedAt": -1 })
+        .select("-password")
+    ),
+  ]);
+
+  const data = [
+    ...profileAdmins.map((item) => buildApprovalMessage("profile-level", item)),
+    ...games.map((item) => buildApprovalMessage("game", item)),
+    ...products.map((item) => buildApprovalMessage("product", item)),
+    ...articles.map((item) => buildApprovalMessage("article", item)),
+    ...sliders.map((item) => buildApprovalMessage("slider", item)),
+  ].sort((a, b) => new Date(b.reviewedAt || 0) - new Date(a.reviewedAt || 0));
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "پیام‌های بازبینی دریافت شد",
+    data,
   });
 };
 

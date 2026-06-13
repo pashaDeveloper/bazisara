@@ -26,7 +26,7 @@ export const authApi = bazisaraApi.injectEndpoints({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: ["Admin"],
+      invalidatesTags: ["Admin", "Approval"],
     }),
   }),
   overrideExisting: false,

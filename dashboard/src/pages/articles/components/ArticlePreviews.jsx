@@ -171,20 +171,42 @@ export function ArticleDetailPreview({ coverPreview, form, isSticky = true, rela
             <SkeletonBlock className="h-4 w-10/12 bg-zinc-200" />
           </div>
         ) : null}
-
-        {faqs.length ? (
-          <section className="mx-auto mt-10 max-w-2xl border-y border-zinc-200 py-6">
-            <h2 className="border-r-2 border-orange-500 pr-3 text-right text-sm font-bold text-zinc-950">سوالات متداول</h2>
-            <div className="mt-5 space-y-3">
-              {faqs.map((item, index) => (
-                <details className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-right" key={`${item.question}-${index}`}>
-                  <summary className="cursor-pointer list-none text-sm font-bold leading-7 text-zinc-950">{item.question || "سوال"}</summary>
-                  {item.answer ? <p className="mt-3 text-sm leading-8 text-zinc-700">{item.answer}</p> : null}
+        <section className={`mx-auto max-w-3xl px-8 py-14 ${isMobile ? "!px-4 !py-10" : ""}`} dir="rtl">
+          <div className="text-right">
+            <h3 className={`font-bold text-zinc-700 ${isMobile ? "text-base" : "text-lg sm:text-xl"}`}>سوالات متداول</h3>
+          </div>
+          <ul className="mt-6">
+            {faqs.length ? (
+              faqs.map((item, index) => (
+                <details className="group [&_summary::-webkit-details-marker]:hidden" key={`${item.question}-${index}`}>
+                  <summary className={`relative flex w-full cursor-pointer list-none items-center gap-3 border-t border-zinc-300 py-5 text-right font-semibold text-zinc-950 marker:hidden ${isMobile ? "text-sm" : "text-base md:text-lg"}`}>
+                    <svg className="h-4 w-4 shrink-0 fill-current text-zinc-950" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                      <rect y="7" width="16" height="2" rx="1" className="origin-center transition duration-200 ease-out" />
+                      <rect y="7" width="16" height="2" rx="1" className="origin-center rotate-90 transition duration-200 ease-out group-open:rotate-0" />
+                    </svg>
+                    <span className="flex-1">{item.question || "سوال"}</span>
+                  </summary>
+                  <div className="grid grid-rows-[0fr] overflow-hidden transition-all duration-300 ease-in-out group-open:grid-rows-[1fr]">
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="pb-5 leading-relaxed">
+                        <div className="space-y-2 leading-relaxed text-zinc-600">{item.answer}</div>
+                      </div>
+                    </div>
+                  </div>
                 </details>
-              ))}
-            </div>
-          </section>
-        ) : null}
+              ))
+            ) : (
+              Array.from({ length: 2 }, (_, index) => (
+                <li className="border-t border-zinc-300 py-5" key={index}>
+                  <div className="flex items-center gap-3">
+                    <SkeletonBlock className="h-5 flex-1 bg-zinc-200" />
+                    <SkeletonBlock className="h-4 w-4 bg-zinc-200" />
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
 
         <footer className="mx-auto mt-10 max-w-2xl border-y border-zinc-200 py-4">
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">

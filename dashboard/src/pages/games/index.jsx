@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
+import DeleteModal from "@/components/shared/DeleteModal";
 import DisplayImages from "@/components/shared/DisplayImages";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Edit from "@/components/icons/Edit";
 import Plus from "@/components/icons/Plus";
-import Trash from "@/components/icons/Trash";
 import { useDeleteGameMutation, useGetGamesQuery, useUpdateGameMutation } from "../../services/gameApi";
 
 const statusLabels = {
@@ -48,8 +48,6 @@ function Games() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("این بازی حذف شود؟")) return;
-
     try {
       const response = await deleteGame(id).unwrap();
       toast.success(response.description || "بازی حذف شد");
@@ -179,15 +177,13 @@ function Games() {
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
-                          <button
-                            aria-label="حذف بازی"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/70 text-red-300 transition hover:border-red-400 hover:text-red-200"
-                            disabled={isDeleting}
-                            onClick={() => handleDelete(item._id)}
-                            type="button"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
+                          <DeleteModal
+                            ariaLabel="حذف بازی"
+                            isLoading={isDeleting}
+                            itemTitle={item.title}
+                            message="این بازی حذف شود؟"
+                            onDelete={() => handleDelete(item._id)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -254,4 +250,3 @@ function Games() {
 }
 
 export default Games;
-

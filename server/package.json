@@ -15,10 +15,11 @@
     "seed:categories": "node scripts/seedCategories.js",
     "seed:genres": "node scripts/seedGenres.js",
     "seed:companies": "node scripts/seedCompanies.js",
+    "seed:brands": "node scripts/seedBrands.js",
     "seed:category-filters": "node scripts/seedCategoryFilters.js",
     "seed:tags": "node scripts/seedTags.js",
     "seed:samples": "node scripts/seedCatalogSamples.js",
-    "seed:catalog": "npm run seed:icons && npm run seed:filters && npm run seed:categories && npm run seed:genres && npm run seed:companies && npm run seed:category-filters && npm run seed:tags && npm run seed:samples",
+    "seed:catalog": "npm run seed:icons && npm run seed:filters && npm run seed:categories && npm run seed:genres && npm run seed:companies && npm run seed:brands && npm run seed:category-filters && npm run seed:tags && npm run seed:samples",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
