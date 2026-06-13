@@ -7,6 +7,11 @@ const baseSchema =  new mongoose.Schema(
       enum: ["active", "inactive", "pending"],
       default: "active",
     },
+    creator: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     approvalReview: {
       status: {
         type: String,

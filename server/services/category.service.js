@@ -90,6 +90,7 @@ exports.createCategory = async (req, res) => {
         }
       : undefined,
     parent: parent || null,
+    creator: req.admin?._id || null,
   });
 
   const populatedCategory = await category.populate("icon", "name svg color");

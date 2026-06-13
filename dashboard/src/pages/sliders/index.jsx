@@ -16,12 +16,6 @@ import {
   useUpdateSliderStatusMutation,
 } from "@/services/sliderApi";
 
-const statusLabels = {
-  active: "فعال",
-  inactive: "غیرفعال",
-  pending: "در انتظار تایید",
-};
-
 function Sliders() {
   const [search, setSearch] = useState("");
   const [draggedId, setDraggedId] = useState(null);
@@ -181,7 +175,6 @@ function Sliders() {
                             className="!w-auto justify-center gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
                             disabled={isUpdatingStatus}
                             id={`slider-status-${item._id}`}
-                            label={statusLabels[item.status] || item.status || ""}
                             name="status"
                             onChange={() => handleStatusToggle(item)}
                           />

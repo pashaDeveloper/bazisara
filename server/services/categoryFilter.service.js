@@ -119,6 +119,7 @@ exports.createCategoryFilter = async (req, res) => {
   await ensureCategoryExists(req.body.category);
   const definition = await ensureFilterExists(req.body.filter);
   const payload = buildPayload(req.body, definition);
+  payload.creator = req.admin?._id || null;
 
   const filter = await CategoryFilter.create(payload);
   await filter.populate("category", "name parent");

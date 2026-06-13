@@ -86,6 +86,7 @@ exports.createCompany = async (req, res) => {
 
   await ensureIconExists(payload.icon);
 
+  payload.creator = req.admin?._id || null;
   const company = await Company.create(payload);
   const populatedCompany = await company.populate("icon", "name svg color");
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -6,14 +6,9 @@ import AddButton from "@/components/shared/button/AddButton";
 import DeleteModal from "@/components/shared/DeleteModal";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
+import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import Edit from "@/components/icons/Edit";
-import { useDeleteProductMutation, useGetProductsQuery } from "@/services/productApi";
-
-const statusLabels = {
-  active: "فعال",
-  inactive: "غیرفعال",
-  pending: "در انتظار تایید",
-};
+import { useDeleteProductMutation, useGetProductsQuery, useUpdateProductMutation } from "@/services/productApi";
 
 function Products() {
   const [search, setSearch] = useState("");
@@ -25,9 +20,15 @@ function Products() {
     search: debouncedSearch,
   });
   const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
+  const [updateProduct, { isLoading: isUpdatingStatus }] = useUpdateProductMutation();
+  const [localProducts, setLocalProducts] = useState([]);
 
   const products = data?.data || [];
   const meta = data?.pagination;
+
+  useEffect(() => {
+    setLocalProducts(products);
+  }, [products]);
 
   const handleDelete = async (id) => {
     try {
@@ -35,6 +36,26 @@ function Products() {
       toast.success(response.description || "محصول حذف شد");
     } catch (error) {
       toast.error(error?.data?.description || "حذف محصول انجام نشد");
+    }
+  };
+
+  const handleStatusToggle = async (item) => {
+    if (item.status === "pending") {
+      toast.error("مورد در انتظار تایید را از بخش تاییدیه‌ها بررسی کنید");
+      return;
+    }
+
+    const status = item.status === "active" ? "inactive" : "active";
+    const formData = new FormData();
+    formData.append("status", status);
+
+    try {
+      setLocalProducts((prev) => prev.map((product) => (product._id === item._id ? { ...product, status } : product)));
+      const response = await updateProduct({ id: item._id, formData }).unwrap();
+      toast.success(response.description || "وضعیت محصول به‌روزرسانی شد");
+    } catch (error) {
+      setLocalProducts(products);
+      toast.error(error?.data?.description || "تغییر وضعیت محصول انجام نشد");
     }
   };
 
@@ -66,8 +87,8 @@ function Products() {
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {isLoading ? (
               <div className="col-span-full rounded-xl border border-zinc-800 bg-black p-6 text-center text-sm text-zinc-500">در حال دریافت...</div>
-            ) : products.length ? (
-              products.map((item) => (
+            ) : localProducts.length ? (
+              localProducts.map((item) => (
                 <article className="rounded-xl border border-zinc-800 bg-black p-3 text-right" key={item._id}>
                   <div className="aspect-square overflow-hidden rounded-xl bg-white">
                     {item.image?.url ? (
@@ -80,7 +101,14 @@ function Products() {
                   <p className="line-clamp-1 text-xs text-zinc-500">{item.subtitle || item.platform}</p>
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <span className="text-sm font-black text-emerald-400">{Number(item.price || 0).toLocaleString("fa-IR")} تومان</span>
-                    <span className="rounded-full bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300">{statusLabels[item.status] || item.status}</span>
+                    <StatusSwitch
+                      checked={item.status === "active"}
+                      className="!w-auto justify-center gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
+                      disabled={isUpdatingStatus || item.status === "pending"}
+                      id={`product-status-${item._id}`}
+                      name="status"
+                      onChange={() => handleStatusToggle(item)}
+                    />
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-2">
                     <Link className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white" to={`/products/edit/${item._id}`}>

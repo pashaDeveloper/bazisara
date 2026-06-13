@@ -7,15 +7,10 @@ import DeleteModal from "@/components/shared/DeleteModal";
 import DisplayImages from "@/components/shared/DisplayImages";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
+import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import Edit from "@/components/icons/Edit";
 import Plus from "@/components/icons/Plus";
 import { useDeleteGameMutation, useGetGamesQuery, useUpdateGameMutation } from "../../services/gameApi";
-
-const statusLabels = {
-  active: "فعال",
-  inactive: "غیرفعال",
-  pending: "در انتظار تایید",
-};
 
 function Games() {
   const [search, setSearch] = useState("");
@@ -29,9 +24,14 @@ function Games() {
   const [deleteGame, { isLoading: isDeleting }] = useDeleteGameMutation();
   const [updateGame, { isLoading: isUpdating }] = useUpdateGameMutation();
   const [contextMenu, setContextMenu] = useState(null);
+  const [localGames, setLocalGames] = useState([]);
 
   const games = gamesData?.data || [];
   const gamesMeta = gamesData?.pagination;
+
+  useEffect(() => {
+    setLocalGames(games);
+  }, [games]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -53,6 +53,26 @@ function Games() {
       toast.success(response.description || "بازی حذف شد");
     } catch (error) {
       toast.error(error?.data?.description || "حذف بازی انجام نشد");
+    }
+  };
+
+  const handleStatusToggle = async (item) => {
+    if (item.status === "pending") {
+      toast.error("مورد در انتظار تایید را از بخش تاییدیه‌ها بررسی کنید");
+      return;
+    }
+
+    const status = item.status === "active" ? "inactive" : "active";
+    const formData = new FormData();
+    formData.append("status", status);
+
+    try {
+      setLocalGames((prev) => prev.map((game) => (game._id === item._id ? { ...game, status } : game)));
+      const response = await updateGame({ id: item._id, formData }).unwrap();
+      toast.success(response.description || "وضعیت بازی به‌روزرسانی شد");
+    } catch (error) {
+      setLocalGames(games);
+      toast.error(error?.data?.description || "تغییر وضعیت بازی انجام نشد");
     }
   };
 
@@ -128,8 +148,8 @@ function Games() {
                       در حال دریافت...
                     </td>
                   </tr>
-                ) : games.length ? (
-                  games.map((item) => (
+                ) : localGames.length ? (
+                  localGames.map((item) => (
                     <tr
                       key={item._id}
                       className="cursor-context-menu border-b border-zinc-900 text-zinc-200"
@@ -150,9 +170,6 @@ function Games() {
                           <div className="min-w-0">
                             <span className="block truncate">{item.title}</span>
                             <span className="mt-1 block truncate text-xs text-zinc-500">{item.slug}</span>
-                            <span className="mt-2 inline-flex rounded-full bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300">
-                              {statusLabels[item.status] || item.status || "-"}
-                            </span>
                           </div>
                         </div>
                       </td>
@@ -166,7 +183,17 @@ function Games() {
                         {item.releaseDate ? new Date(item.releaseDate).toLocaleDateString("fa-IR") : "-"}
                       </td>
                       <td className="hidden py-4 text-zinc-400 xl:table-cell">
-                        {item.metacriticScore ?? "-"}
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{item.metacriticScore ?? "-"}</span>
+                          <StatusSwitch
+                            checked={item.status === "active"}
+                            className="!w-auto justify-center gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
+                            disabled={isUpdating || item.status === "pending"}
+                            id={`game-status-${item._id}`}
+                            name="status"
+                            onChange={() => handleStatusToggle(item)}
+                          />
+                        </div>
                       </td>
                       <td className="py-4">
                         <div className="flex items-center justify-center gap-2">

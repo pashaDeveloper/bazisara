@@ -60,6 +60,7 @@ function buildPayload(body) {
 
 exports.createFilterDefinition = async (req, res) => {
   const payload = buildPayload(req.body);
+  payload.creator = req.admin?._id || null;
   const filter = await FilterDefinition.create(payload);
 
   res.status(201).json({

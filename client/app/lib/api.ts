@@ -80,7 +80,12 @@ export type Article = {
   excerpt?: string;
   content?: string;
   author?: string;
-  authorAvatar?: Media;
+  creator?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    avatar?: Media;
+  } | null;
   readingTime?: string;
   category?: NamedEntity | null;
   tags?: NamedEntity[];

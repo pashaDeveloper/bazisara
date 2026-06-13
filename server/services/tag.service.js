@@ -105,6 +105,7 @@ exports.createTag = async (req, res) => {
     });
   }
 
+  payload.creator = req.admin?._id || null;
   const tag = await Tag.create(payload);
 
   res.status(201).json({

@@ -20,11 +20,6 @@ const roleLabels = {
   buyer: "خریدار",
 };
 
-const statusLabels = {
-  active: "فعال",
-  inactive: "غیرفعال",
-};
-
 function Users() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -180,7 +175,6 @@ function Users() {
                             className="!w-auto justify-start gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
                             disabled={isUpdating || item.role === "owner"}
                             id={`admin-status-${item._id}`}
-                            label={statusLabels[item.status] || item.status || ""}
                             name="status"
                             onChange={() => handleStatusToggle(item)}
                           />
@@ -229,4 +223,3 @@ function Users() {
 }
 
 export default Users;
-

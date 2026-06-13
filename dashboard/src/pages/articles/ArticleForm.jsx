@@ -337,7 +337,6 @@ function ArticleForm({ mode = "create" }) {
   const buildFormData = () => {
     const formData = new FormData();
     const activeAuthor = activeAdmin.name || activeAdmin.email || form.author || "";
-    const activeAuthorAvatar = activeAdmin.avatar || {};
 
     Object.entries({ ...form, author: activeAuthor }).forEach(([key, value]) => {
       if (key === "cover") {
@@ -350,11 +349,6 @@ function ArticleForm({ mode = "create" }) {
       }
       formData.append(key, String(value ?? ""));
     });
-    if (activeAuthorAvatar.url) {
-      formData.append("authorAvatarUrl", activeAuthorAvatar.url);
-      formData.append("authorAvatarPublicId", activeAuthorAvatar.public_id || "");
-      formData.append("authorAvatarStorage", activeAuthorAvatar.storage || "");
-    }
 
     return formData;
   };

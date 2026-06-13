@@ -47,6 +47,7 @@ exports.createGenre = async (req, res) => {
           storage: req.uploadedFiles.image[0].storage || "",
         }
       : undefined,
+    creator: req.admin?._id || null,
   });
   const populatedGenre = await genre.populate("icon", "name svg color");
 

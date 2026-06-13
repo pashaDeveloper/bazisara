@@ -398,6 +398,14 @@ exports.updateProduct = async (req, res) => {
     return res.status(404).json({ acknowledgement: false, message: "Not Found", description: "محصول پیدا نشد" });
   }
 
+  const bodyKeys = Object.keys(req.body || {});
+  if (bodyKeys.length === 1 && bodyKeys[0] === "status") {
+    product.status = req.body.status;
+    await product.save();
+    const populated = await populateProduct(Product.findById(product._id));
+    return res.status(200).json({ acknowledgement: true, message: "OK", description: "وضعیت محصول به‌روزرسانی شد", data: decorateProduct(populated) });
+  }
+
   const payload = await normalizeProductPayload(req, product);
   Object.assign(product, payload);
   await product.save();

@@ -63,7 +63,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   if (!article) notFound();
 
   const image = mediaUrl(article.cover);
-  const authorImage = mediaUrl(article.authorAvatar);
+  const authorName = article.creator?.name || article.author || "تحریریه بازی بازار";
+  const authorImage = mediaUrl(article.creator?.avatar);
   const date = formatPersianDate(article.publishedAt || article.createdAt);
   const categoryPath = getCategoryPath(article.category);
   const tags = article.tags?.map((tag) => tag.name).filter(Boolean) || [];
@@ -94,14 +95,14 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-right text-[12px] font-bold text-zinc-600">
                   <div className="flex items-center gap-2">
                     {authorImage ? (
-                      <img alt={article.author || "نویسنده"} className="h-10 w-10 rounded-full object-cover" src={authorImage} />
+                      <img alt={authorName} className="h-10 w-10 rounded-full object-cover" src={authorImage} />
                     ) : (
                       <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-900 text-center text-base font-black leading-10 text-white">
-                        {(article.author || "بازی بازار").slice(0, 1)}
+                        {authorName.slice(0, 1)}
                       </div>
                     )}
                     <div>
-                      <p className="mt-0.5 text-sm font-black text-zinc-950">{article.author || "تحریریه بازی بازار"}</p>
+                      <p className="mt-0.5 text-sm font-black text-zinc-950">{authorName}</p>
                     </div>
                   </div>
                   <span className="hidden h-5 w-px bg-zinc-300 sm:block" />
@@ -207,7 +208,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               ))}
             </div>
             <div className="mt-4 flex items-center justify-between text-xs text-zinc-950">
-              {article.author ? <span>{article.author}</span> : <SkeletonBlock className="h-4 w-24 bg-zinc-200" />}
+              {authorName ? <span>{authorName}</span> : <SkeletonBlock className="h-4 w-24 bg-zinc-200" />}
               <button className="rounded-full border border-[#3a3f3b] px-4 py-2 text-[11px]" type="button">
                 دنبال کردن
               </button>

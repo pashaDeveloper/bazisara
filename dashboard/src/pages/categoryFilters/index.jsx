@@ -6,6 +6,7 @@ import AddButton from "@/components/shared/button/AddButton";
 import DeleteModal from "@/components/shared/DeleteModal";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
+import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import Pencil from "@/components/icons/Pencil";
 import {
   useDeleteCategoryFilterMutation,
@@ -199,15 +200,13 @@ function CategoryFilters() {
                         </span>
                       </td>
                       <td className="hidden py-4 sm:table-cell">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs ${
-                            item.status === "active"
-                              ? "bg-green-500/10 text-green-300"
-                              : "bg-zinc-800 text-zinc-400"
-                          }`}
-                        >
-                          {item.status === "active" ? "فعال" : "غیرفعال"}
-                        </span>
+                        <StatusSwitch
+                          checked={item.status === "active"}
+                          className="!w-auto justify-start gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
+                          disabled
+                          id={`category-filter-status-${item._id}`}
+                          name="status"
+                        />
                       </td>
                       <td className="py-4">
                         <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">

@@ -336,7 +336,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   }
 
   applySeoFromContent(payload, currentGame);
-  payload.status = "pending";
+  if (!currentGame) payload.status = "pending";
 
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
@@ -368,6 +368,7 @@ async function validatePayload(payload) {
 
 exports.createGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles);
+  payload.creator = req.admin?._id || null;
   console.log("[games:create] body:", req.body);
   console.log("[games:create] files:", Object.keys(req.uploadedFiles || {}));
   console.log("[games:create] payload:", payload);

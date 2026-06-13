@@ -81,6 +81,7 @@ exports.createPlatform = async (req, res) => {
     parent,
     description: String(req.body?.description || "").trim(),
     productionDate: normalizeDate(req.body?.productionDate),
+    creator: req.admin?._id || null,
   });
 
   res.status(201).json({

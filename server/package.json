@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "build": "node --check index.js && node --check app.js",
     "seed:icons": "node scripts/seedIcons.js",
     "seed:filters": "node scripts/seedFilterDefinitions.js",
     "seed:categories": "node scripts/seedCategories.js",

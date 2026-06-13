@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -7,14 +7,9 @@ import DeleteModal from "@/components/shared/DeleteModal";
 import DisplayImages from "@/components/shared/DisplayImages";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
+import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import Edit from "@/components/icons/Edit";
-import { useDeleteArticleMutation, useGetArticlesQuery } from "@/services/articleApi";
-
-const statusLabels = {
-  active: "فعال",
-  inactive: "غیرفعال",
-  pending: "در انتظار تایید",
-};
+import { useDeleteArticleMutation, useGetArticlesQuery, useUpdateArticleMutation } from "@/services/articleApi";
 
 function Articles() {
   const [search, setSearch] = useState("");
@@ -26,9 +21,15 @@ function Articles() {
     search: debouncedSearch,
   });
   const [deleteArticle, { isLoading: isDeleting }] = useDeleteArticleMutation();
+  const [updateArticle, { isLoading: isUpdatingStatus }] = useUpdateArticleMutation();
+  const [localArticles, setLocalArticles] = useState([]);
 
   const articles = articlesData?.data || [];
   const articlesMeta = articlesData?.pagination;
+
+  useEffect(() => {
+    setLocalArticles(articles);
+  }, [articles]);
 
   const handleDelete = async (id) => {
     try {
@@ -36,6 +37,26 @@ function Articles() {
       toast.success(response.description || "مطلب حذف شد");
     } catch (error) {
       toast.error(error?.data?.description || "حذف مطلب انجام نشد");
+    }
+  };
+
+  const handleStatusToggle = async (item) => {
+    if (item.status === "pending") {
+      toast.error("مورد در انتظار تایید را از بخش تاییدیه‌ها بررسی کنید");
+      return;
+    }
+
+    const status = item.status === "active" ? "inactive" : "active";
+    const formData = new FormData();
+    formData.append("status", status);
+
+    try {
+      setLocalArticles((prev) => prev.map((article) => (article._id === item._id ? { ...article, status } : article)));
+      const response = await updateArticle({ id: item._id, formData }).unwrap();
+      toast.success(response.description || "وضعیت مطلب به‌روزرسانی شد");
+    } catch (error) {
+      setLocalArticles(articles);
+      toast.error(error?.data?.description || "تغییر وضعیت مطلب انجام نشد");
     }
   };
 
@@ -82,8 +103,8 @@ function Articles() {
                       در حال دریافت...
                     </td>
                   </tr>
-                ) : articles.length ? (
-                  articles.map((item) => (
+                ) : localArticles.length ? (
+                  localArticles.map((item) => (
                     <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
                       <td className="py-4 pl-3">
                         <div className="flex min-w-0 items-center gap-3">
@@ -105,7 +126,18 @@ function Articles() {
                       <td className="hidden py-4 text-zinc-400 lg:table-cell">
                         {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString("fa-IR") : "-"}
                       </td>
-                      <td className="hidden py-4 text-zinc-400 xl:table-cell">{statusLabels[item.status] || item.status || "-"}</td>
+                      <td className="hidden py-4 text-zinc-400 xl:table-cell">
+                        <div className="flex justify-center">
+                          <StatusSwitch
+                            checked={item.status === "active"}
+                            className="!w-auto justify-center gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
+                            disabled={isUpdatingStatus || item.status === "pending"}
+                            id={`article-status-${item._id}`}
+                            name="status"
+                            onChange={() => handleStatusToggle(item)}
+                          />
+                        </div>
+                      </td>
                       <td className="py-4">
                         <div className="flex items-center justify-center gap-2">
                           <Link

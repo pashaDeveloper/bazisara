@@ -270,14 +270,6 @@ function normalizeArticlePayload(body, uploadedFiles) {
     excerpt: body.excerpt !== undefined ? String(body.excerpt).trim() : undefined,
     content: body.content !== undefined ? String(body.content) : undefined,
     author: body.author !== undefined ? String(body.author).trim() : undefined,
-    authorAvatar:
-      body.authorAvatarUrl !== undefined
-        ? {
-            url: String(body.authorAvatarUrl || "").trim(),
-            public_id: String(body.authorAvatarPublicId || "").trim(),
-            storage: String(body.authorAvatarStorage || "").trim(),
-          }
-        : undefined,
     readingTime: body.readingTime !== undefined ? String(body.readingTime).trim() : undefined,
     category:
       body.category !== undefined && mongoose.Types.ObjectId.isValid(body.category)
@@ -298,7 +290,7 @@ function normalizeArticlePayload(body, uploadedFiles) {
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
-  payload.status = "pending";
+  if (!body._keepStatus) payload.status = "pending";
 
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
 }
@@ -327,6 +319,7 @@ function populateArticle(query) {
         },
       },
     })
+    .populate("creator", "name email avatar")
     .populate("tags", "name slug")
     .populate("relatedGames", "title slug cover cardDesktopCover");
 }
@@ -362,6 +355,7 @@ exports.generateArticleSlug = async (req, res) => {
 
 exports.createArticle = async (req, res) => {
   const payload = normalizeArticlePayload(req.body, req.uploadedFiles);
+  payload.creator = req.admin?._id || null;
 
   if (!payload.title) {
     return res.status(400).json({
@@ -493,7 +487,7 @@ exports.updateArticle = async (req, res) => {
     });
   }
 
-  const payload = normalizeArticlePayload(req.body, req.uploadedFiles);
+  const payload = normalizeArticlePayload({ ...req.body, _keepStatus: true }, req.uploadedFiles);
 
   if (payload.slug && (await articleSlugExists(payload.slug, id))) {
     return res.status(409).json({

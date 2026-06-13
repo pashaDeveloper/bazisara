@@ -79,6 +79,7 @@ exports.createSlider = async (req, res) => {
     });
   }
 
+  payload.creator = req.admin?._id || null;
   const slider = await Slider.create(payload);
   const populatedSlider = await populateSlider(Slider.findById(slider._id));
 
