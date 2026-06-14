@@ -4,6 +4,9 @@ import { SkeletonBlock } from "../../../components/cards";
 import type { Article, Game, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, getApiItem, mediaUrl } from "../../../lib/api";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
 };

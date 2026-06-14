@@ -6,6 +6,9 @@ import { HomeCollections } from "./components/home-collections";
 import type { Article, Game, Slider } from "./lib/api";
 import { getApiList } from "./lib/api";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const categoryTiles = [
   { title: "کنسول بازی", image: "/products/png/ps5-slim-disc.png" },
   { title: "لوازم جانبی", image: "/products/png/dualsense.png" },

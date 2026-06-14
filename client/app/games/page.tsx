@@ -2,6 +2,9 @@ import { CatalogBrowser } from "../components/catalog-browser";
 import type { Game } from "../lib/api";
 import { getApiList } from "../lib/api";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "بازی‌ها | بازی سرا",
 };

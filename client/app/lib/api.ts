@@ -134,6 +134,12 @@ export async function getApiList<T>(path: string, limit = 24) {
   try {
     const response = await fetch(`${API_BASE}${path}?limit=${limit}`, {
       cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+      next: {
+        revalidate: 0,
+      },
     });
 
     if (!response.ok) return [];
@@ -149,6 +155,12 @@ export async function getApiItem<T>(path: string, id: string) {
   try {
     const response = await fetch(`${API_BASE}${path}/${id}`, {
       cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+      next: {
+        revalidate: 0,
+      },
     });
 
     if (!response.ok) return null;
