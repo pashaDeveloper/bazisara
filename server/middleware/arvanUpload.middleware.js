@@ -25,6 +25,8 @@ const s3Client = new S3Client({
   },
 });
 
+const getObjectAcl = () => process.env.ARVAN_S3_ACL || "public-read";
+
 const getPublicUrl = (key) => {
   const baseUrl = process.env.ARVAN_PUBLIC_BASE_URL;
   return `${baseUrl.replace(/\/$/, "")}/${key.split("/").map(encodeURIComponent).join("/")}`;
@@ -82,6 +84,7 @@ const uploadArvan = (customFolder = null) => {
                 Key: key,
                 Body: fileBuffer,
                 ContentType: contentType,
+                ACL: getObjectAcl(),
               })
             );
 
