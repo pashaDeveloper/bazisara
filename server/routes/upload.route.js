@@ -21,7 +21,7 @@ const arvanS3Client = new S3Client({
 });
 
 const createUploadHandler = (req, res) => {
-  const file = req.uploadedFiles?.file?.[0];
+  const file = req.uploadedFiles?.file?.[0] || req.uploadedFiles?.upload?.[0];
 
   if (!file) {
     return res.status(400).json({
@@ -35,6 +35,8 @@ const createUploadHandler = (req, res) => {
     acknowledgement: true,
     message: "Created",
     description: "File uploaded successfully",
+    url: file.url,
+    default: file.url,
     data: file,
   });
 };
@@ -104,7 +106,10 @@ router.post(
 router.post(
   "/arvan/create",
   ...uploadAccess,
-  uploadArvan("page-builder").single("file"),
+  uploadArvan("page-builder").fields([
+    { name: "file", maxCount: 1 },
+    { name: "upload", maxCount: 1 },
+  ]),
   createUploadHandler
 );
 

@@ -50,7 +50,7 @@ export function GameCard({ game }: { game: Game }) {
 }
 
 export function ArticleCard({ article }: { article: Article }) {
-  const image = mediaUrl(article.cover);
+  const image = mediaUrl(article.cardCover) || mediaUrl(article.cover);
 
   return (
     <Link

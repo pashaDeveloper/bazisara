@@ -68,6 +68,8 @@ const articleSchema = new mongoose.Schema(
     relatedGames: [{ type: mongoose.Schema.Types.ObjectId, ref: "Game" }],
     faqs: [faqSchema],
     cover: mediaSchema,
+    cardCover: mediaSchema,
+    contentCover: mediaSchema,
     seoTitle: {
       type: String,
       trim: true,

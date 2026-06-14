@@ -43,6 +43,8 @@ const initialForm = {
   isFeatured: false,
   status: "active",
   cover: null,
+  cardCover: null,
+  contentCover: null,
 };
 
 const steps = [
@@ -130,7 +132,7 @@ function FaqRowsEditor({ items = [], onChange }) {
     <div className="space-y-3 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-800 dark:bg-black">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">سوالات متداول مطلب</span>
+          <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">سوالات متداول مجله</span>
           <p className="mt-1 text-xs text-zinc-500">هر سطر یک سوال و پاسخ دارد؛ در آخرین سطر دکمه اضافه و در سطرهای دیگر دکمه حذف می‌آید.</p>
         </div>
       </div>
@@ -141,7 +143,7 @@ function FaqRowsEditor({ items = [], onChange }) {
             <input
               className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-700 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
               onChange={(event) => handleItemChange(index, "question", event.target.value)}
-              placeholder="مثلا این مطلب برای چه کسانی مناسب است؟"
+              placeholder="مثلا این مجله برای چه کسانی مناسب است؟"
               type="text"
               value={item?.question || ""}
             />
@@ -185,6 +187,8 @@ function ArticleForm({ mode = "create" }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
   const [coverPreview, setCoverPreview] = useState("");
+  const [cardCoverPreview, setCardCoverPreview] = useState("");
+  const [contentCoverPreview, setContentCoverPreview] = useState("");
   const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEdit);
   const slugManuallyEditedRef = useRef(isEdit);
@@ -236,8 +240,12 @@ function ArticleForm({ mode = "create" }) {
       isFeatured: Boolean(article.isFeatured),
       status: article.status || "active",
       cover: null,
+      cardCover: null,
+      contentCover: null,
     });
     setCoverPreview(article.cover?.url || "");
+    setCardCoverPreview(article.cardCover?.url || article.cover?.url || "");
+    setContentCoverPreview(article.contentCover?.url || article.cover?.url || "");
     setSlugManuallyEdited(true);
     slugManuallyEditedRef.current = true;
   }, [articleData]);
@@ -311,13 +319,13 @@ function ArticleForm({ mode = "create" }) {
     const targetIndex = step - 1;
 
     if (targetIndex > 0 && !titleIsValid) {
-      toast.error("عنوان مطلب را وارد کنید", { id: "article-step" });
+      toast.error("عنوان مجله را وارد کنید", { id: "article-step" });
       setCurrentStep(0);
       return;
     }
 
     if (targetIndex > 2 && !contentIsValid) {
-      toast.error("محتوای مطلب را تکمیل کنید", { id: "article-step" });
+      toast.error("محتوای مجله را تکمیل کنید", { id: "article-step" });
       setCurrentStep(1);
       return;
     }
@@ -327,7 +335,7 @@ function ArticleForm({ mode = "create" }) {
 
   const goToNextStep = () => {
     if (!canGoNext) {
-      toast.error(currentStepKey === "basic" ? "عنوان مطلب را وارد کنید" : "محتوای مطلب را تکمیل کنید", { id: "article-step" });
+      toast.error(currentStepKey === "basic" ? "عنوان مجله را وارد کنید" : "محتوای مجله را تکمیل کنید", { id: "article-step" });
       return;
     }
 
@@ -339,7 +347,7 @@ function ArticleForm({ mode = "create" }) {
     const activeAuthor = activeAdmin.name || activeAdmin.email || form.author || "";
 
     Object.entries({ ...form, author: activeAuthor }).forEach(([key, value]) => {
-      if (key === "cover") {
+      if (key === "cover" || key === "cardCover" || key === "contentCover") {
         if (value instanceof File) formData.append(key, value);
         return;
       }
@@ -362,20 +370,20 @@ function ArticleForm({ mode = "create" }) {
     }
 
     if (!titleIsValid || !contentIsValid) {
-      toast.error(!titleIsValid ? "عنوان مطلب را وارد کنید" : "محتوای مطلب را تکمیل کنید", { id: "save-article" });
+      toast.error(!titleIsValid ? "عنوان مجله را وارد کنید" : "محتوای مجله را تکمیل کنید", { id: "save-article" });
       setCurrentStep(!titleIsValid ? 0 : 1);
       return;
     }
 
     try {
-      toast.loading(isEdit ? "در حال به‌روزرسانی مطلب..." : "در حال ثبت مطلب...", { id: "save-article" });
+      toast.loading(isEdit ? "در حال به‌روزرسانی مجله..." : "در حال ثبت مجله...", { id: "save-article" });
       const formData = buildFormData();
       const response = isEdit ? await updateArticle({ id, formData }).unwrap() : await createArticle(formData).unwrap();
 
-      toast.success(response.description || "مطلب ذخیره شد", { id: "save-article" });
+      toast.success(response.description || "مجله ذخیره شد", { id: "save-article" });
       navigate("/articles");
     } catch (error) {
-      toast.error(error?.data?.description || "ذخیره مطلب انجام نشد", { id: "save-article" });
+      toast.error(error?.data?.description || "ذخیره مجله انجام نشد", { id: "save-article" });
     }
   };
 
@@ -384,7 +392,7 @@ function ArticleForm({ mode = "create" }) {
       case "basic":
         return (
           <div className="space-y-4">
-            <Field label="عنوان مطلب" name="title" onChange={handleChange} placeholder="مثلا راهنمای خرید بازی " value={form.title} />
+            <Field label="عنوان مجله" name="title" onChange={handleChange} placeholder="مثلا راهنمای خرید بازی " value={form.title} />
             <label className="space-y-2">
               <span className="flex items-center justify-between gap-3">
                 <span className="text-sm text-zinc-600 dark:text-zinc-300">اسلاگ</span>
@@ -407,11 +415,18 @@ function ArticleForm({ mode = "create" }) {
               </span>
             </label>
             <ThumbnailUpload
-              name="cover"
-              preview={coverPreview}
-              setThumbnail={(file) => setForm((prev) => ({ ...prev, cover: file }))}
-              setThumbnailPreview={setCoverPreview}
-              title="انتخاب کاور مطلب"
+              name="cardCover"
+              preview={cardCoverPreview}
+              setThumbnail={(file) => setForm((prev) => ({ ...prev, cardCover: file }))}
+              setThumbnailPreview={setCardCoverPreview}
+              title="انتخاب تصویر کارت"
+            />
+            <ThumbnailUpload
+              name="contentCover"
+              preview={contentCoverPreview}
+              setThumbnail={(file) => setForm((prev) => ({ ...prev, contentCover: file }))}
+              setThumbnailPreview={setContentCoverPreview}
+              title="انتخاب تصویر محتوای مجله"
             />
           </div>
         );
@@ -420,7 +435,7 @@ function ArticleForm({ mode = "create" }) {
           <div className="space-y-4">
             <Textarea label="خلاصه کوتاه" name="excerpt" onChange={handleChange} placeholder="خلاصه‌" value={form.excerpt} />
             <div className="space-y-3 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-800 dark:bg-black">
-              <span className="text-sm text-zinc-600 dark:text-zinc-300">محتوای مطلب</span>
+              <span className="text-sm text-zinc-600 dark:text-zinc-300">محتوای مجله</span>
               <PageBuilder key={isEdit ? id : "create-article-content"} initialValue={form.content} onChange={(value) => setForm((prev) => ({ ...prev, content: value }))} />
             </div>
           </div>
@@ -446,7 +461,7 @@ function ArticleForm({ mode = "create" }) {
             <StatusSwitch
               checked={form.isFeatured}
               id="article-is-featured"
-              label="مطلب ویژه"
+              label="مجله ویژه"
               name="isFeatured"
               onChange={handleChange}
               tone="dark"
@@ -470,8 +485,8 @@ function ArticleForm({ mode = "create" }) {
       <section className="mx-auto max-w-[1600px] space-y-6">
         <div className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div>
-            <p className="text-xs text-zinc-400">مدیریت مطلب‌نویس</p>
-            <h1 className="mt-1 text-2xl font-bold text-white">{isEdit ? "ویرایش مطلب" : "افزودن مطلب"}</h1>
+            <p className="text-xs text-zinc-400">مدیریت مجله‌نویس</p>
+            <h1 className="mt-1 text-2xl font-bold text-white">{isEdit ? "ویرایش مجله" : "افزودن مجله"}</h1>
           </div>
           <Link className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white" to="/articles">
             بازگشت به لیست
@@ -489,7 +504,7 @@ function ArticleForm({ mode = "create" }) {
               <div className="grid gap-5 xl:grid-cols-[minmax(460px,660px)_minmax(240px,280px)_minmax(520px,1fr)]" dir="ltr">
                 <div className="space-y-5 rounded-xl border border-zinc-800 bg-black p-4" dir="rtl">
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-500">فرم تکمیل مطلب</span>
+                    <span className="text-xs font-bold text-zinc-500">فرم تکمیل مجله</span>
                     <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] text-zinc-500">
                       {currentStep + 1} / {steps.length}
                     </span>
@@ -497,7 +512,7 @@ function ArticleForm({ mode = "create" }) {
                   {renderStep()}
                   <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
                     {isLastStep ? (
-                      <SendButton isLoading={isSaving} label={isEdit ? "ذخیره مطلب" : "ثبت مطلب"} loadingLabel="در حال ذخیره..." />
+                      <SendButton isLoading={isSaving} label={isEdit ? "ذخیره مجله" : "ثبت مجله"} loadingLabel="در حال ذخیره..." />
                     ) : (
                       <NavigationButton direction="next" disabled={!canGoNext || isSaving} onClick={goToNextStep} />
                     )}
@@ -505,7 +520,7 @@ function ArticleForm({ mode = "create" }) {
                   </div>
                 </div>
 
-                <ArticleCardPreview coverPreview={coverPreview} form={form} tags={selectedTagLabels} />
+                <ArticleCardPreview coverPreview={cardCoverPreview || coverPreview} form={form} tags={selectedTagLabels} />
                 <div className="sticky top-24 flex flex-col items-center space-y-3 self-start" dir="rtl">
                   <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black px-3 py-2">
                     <button
@@ -518,7 +533,7 @@ function ArticleForm({ mode = "create" }) {
                     </button>
                   </div>
                   <ArticleDetailPreview
-                    coverPreview={coverPreview}
+                    coverPreview={contentCoverPreview || coverPreview || cardCoverPreview}
                     form={form}
                     relatedGames={selectedRelatedGames}
                     tags={selectedTagLabels}
@@ -542,7 +557,7 @@ function ArticleForm({ mode = "create" }) {
             </button>
             <div className="mx-auto w-full max-w-7xl px-4 pb-8">
               <ArticleDetailPreview
-                coverPreview={coverPreview}
+                coverPreview={contentCoverPreview || coverPreview || cardCoverPreview}
                 form={form}
                 isSticky={false}
                 relatedGames={selectedRelatedGames}

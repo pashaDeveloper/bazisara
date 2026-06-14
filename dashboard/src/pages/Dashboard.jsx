@@ -291,7 +291,7 @@ function Dashboard() {
         <AnalyticsChart title="آمار بازدید صفحات مجله" type="bar" data={articleViewsChartData} />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <ContentTable title="مطالب پربازدید" rows={topArticles} type="article" />
+          <ContentTable title="مجله‌های پربازدید" rows={topArticles} type="article" />
           <ContentTable title="بازی‌های پربازدید" rows={topGames} type="game" />
         </div>
 

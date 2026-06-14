@@ -12,7 +12,11 @@ const {
 
 const router = express.Router();
 const articleAccess = [verify, authorize("owner", "superAdmin", "admin", "operator"), requireAdminProfileLevel(3)];
-const articleUploadFields = [{ name: "cover", maxCount: 1 }];
+const articleUploadFields = [
+  { name: "cover", maxCount: 1 },
+  { name: "cardCover", maxCount: 1 },
+  { name: "contentCover", maxCount: 1 },
+];
 
 router.get("/all", optionalVerifyAdmin, articleController.getArticles);
 router.get("/:id", optionalVerifyAdmin, articleController.getArticle);

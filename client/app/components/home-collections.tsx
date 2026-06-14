@@ -201,7 +201,7 @@ export function HomeCollections({
         items={articles}
         label="مجلات بیشتر"
         title="مجله فروشگاه"
-        getImage={(article) => mediaUrl(article.cover)}
+        getImage={(article) => mediaUrl(article.cardCover) || mediaUrl(article.cover)}
       />
     </>
   );

@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 
-const PodcastBlock = ({ content, onChange, onUpload }) => {
+const normalizeUploadedMedia = (media, fallbackType = "audio") => {
+  if (typeof media === "string") {
+    return { url: media, resource_type: fallbackType };
+  }
+
+  return {
+    ...media,
+    resource_type: media?.resource_type || fallbackType,
+  };
+};
+
+const PodcastBlock = ({ content, onChange, onUpload, onDelete }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileUpload = async (e) => {
@@ -15,14 +26,32 @@ const PodcastBlock = ({ content, onChange, onUpload }) => {
 
     setIsUploading(true);
     try {
-      const audioUrl = await onUpload(file);
-      onChange({ ...content, url: audioUrl, isUploaded: true });
+      const uploadedAudio = normalizeUploadedMedia(await onUpload(file), "audio");
+      onChange({
+        ...content,
+        url: uploadedAudio.url,
+        media: uploadedAudio,
+        isUploaded: true,
+      });
     } catch (error) {
       console.error('Audio upload failed:', error);
       alert('آپلود پادکست با خطا مواجه شد');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const removePodcast = async () => {
+    if (content.media?.public_id) {
+      await onDelete?.(content.media);
+    }
+
+    onChange({
+      ...content,
+      url: "",
+      media: null,
+      isUploaded: false,
+    });
   };
 
   return (
@@ -49,10 +78,19 @@ const PodcastBlock = ({ content, onChange, onUpload }) => {
         <input
           type="text"
           value={content.url || ""}
-          onChange={(e) => onChange({ ...content, url: e.target.value })}
+          onChange={(e) => onChange({ ...content, url: e.target.value, media: null, isUploaded: false })}
           className="w-full p-2 border rounded"
           placeholder="https://example.com/podcast.mp3"
         />
+        {content.isUploaded && content.url && (
+          <button
+            type="button"
+            onClick={removePodcast}
+            className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            حذف پادکست از آروان
+          </button>
+        )}
       </div>
       
       <div>

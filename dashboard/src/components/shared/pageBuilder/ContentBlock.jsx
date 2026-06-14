@@ -73,6 +73,7 @@ const ContentBlock = ({
             content={block.content} 
             onChange={(content) => onUpdate(block.id, content)} 
             onUpload={onUploadImage}
+            onDelete={onDeleteImage}
           />
         );
       case "podcast":
@@ -81,6 +82,7 @@ const ContentBlock = ({
             content={block.content} 
             onChange={(content) => onUpdate(block.id, content)} 
             onUpload={onUploadImage}
+            onDelete={onDeleteImage}
           />
         );
       case "link":

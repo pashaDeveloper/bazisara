@@ -81,7 +81,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { title: "بیمه‌ها", icon: Company, path: "/insurances" },
     { title: "قیمت‌ها", icon: Products, path: "/prices" },
     { title: "نحوه ارسال", icon: Products, path: "/shipping-methods" },
-    { title: "مقالات", icon: Blog, path: "/articles" },
+    { title: "مجله", icon: Blog, path: "/articles" },
     { title: "اسلایدرها", icon: Gallery, path: "/sliders" },
   ];
 

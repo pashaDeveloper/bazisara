@@ -6,7 +6,7 @@ const typeLabels = {
   "profile-level": "سطح پروفایل",
   game: "بازی",
   product: "محصول",
-  article: "مطلب",
+  article: "مجله",
   slider: "اسلایدر",
 };
 

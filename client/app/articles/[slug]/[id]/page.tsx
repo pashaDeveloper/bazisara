@@ -65,7 +65,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
   if (!article) notFound();
 
-  const image = mediaUrl(article.cover);
+  const image = mediaUrl(article.contentCover) || mediaUrl(article.cover) || mediaUrl(article.cardCover);
   const authorName = article.creator?.name || article.author || "تحریریه بازی بازار";
   const authorImage = mediaUrl(article.creator?.avatar);
   const date = formatPersianDate(article.publishedAt || article.createdAt);

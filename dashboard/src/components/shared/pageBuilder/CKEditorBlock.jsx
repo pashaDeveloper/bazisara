@@ -3,6 +3,8 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import Editor from '../../../ckeditor/ckeditor';
 
 const CKEditorBlock = ({ content, onChange }) => {
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+
   return (
     <div className="ckeditor-block">
       <CKEditor
@@ -18,10 +20,8 @@ const CKEditorBlock = ({ content, onChange }) => {
             'undo', 'redo'
           ],
           simpleUpload: {
-            uploadUrl: import.meta.env.VITE_BASE_URL + '/upload/add-upload',
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`
-            }
+            uploadUrl: import.meta.env.VITE_BASE_URL + '/uploads/arvan/create',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
           }
         }}
         onChange={(event, editor) => {

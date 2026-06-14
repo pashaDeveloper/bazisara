@@ -4,14 +4,14 @@ export const uploadApi = bazisaraApi.injectEndpoints({
   endpoints: (builder) => ({
     upload: builder.mutation({
       query: (formData) => ({
-        url: "/uploads/create",
+        url: "/uploads/arvan/create",
         method: "POST",
         body: formData,
       }),
     }),
     deleteUpload: builder.mutation({
       query: (body) => ({
-        url: "/uploads/delete",
+        url: "/uploads/arvan/delete",
         method: "DELETE",
         body,
       }),

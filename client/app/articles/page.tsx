@@ -18,7 +18,7 @@ export default async function ArticlesPage() {
         items={articles}
         kind="article"
         label="مجله بازی بازار"
-        subtitle="مطالب بر اساس دسته‌بندی، جستجو و مطالب ویژه فیلتر می‌شوند."
+        subtitle="مجله‌ها بر اساس دسته‌بندی، جستجو و مجله‌های ویژه فیلتر می‌شوند."
         title="آخرین نوشته‌های مجله"
       />
     </div>

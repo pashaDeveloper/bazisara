@@ -1,6 +1,17 @@
 import React, { useState, useRef } from "react";
 
-const VideoBlock = ({ content, onChange, onUpload }) => {
+const normalizeUploadedMedia = (media, fallbackType = "image") => {
+  if (typeof media === "string") {
+    return { url: media, resource_type: fallbackType };
+  }
+
+  return {
+    ...media,
+    resource_type: media?.resource_type || fallbackType,
+  };
+};
+
+const VideoBlock = ({ content, onChange, onUpload, onDelete }) => {
   const [isUploading, setIsUploading] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -17,8 +28,13 @@ const VideoBlock = ({ content, onChange, onUpload }) => {
 
     setIsUploading(true);
     try {
-      const videoUrl = await onUpload(file);
-      onChange({ ...content, url: videoUrl, isUploaded: true });
+      const uploadedVideo = normalizeUploadedMedia(await onUpload(file), "video");
+      onChange({
+        ...content,
+        url: uploadedVideo.url,
+        media: uploadedVideo,
+        isUploaded: true,
+      });
     } catch (error) {
       console.error('Video upload failed:', error);
       alert('آپلود ویدئو با خطا مواجه شد');
@@ -39,8 +55,14 @@ const VideoBlock = ({ content, onChange, onUpload }) => {
 
     setIsUploading(true);
     try {
-      const thumbnailUrl = await onUpload(file);
-      onChange({ ...content, thumbnail: thumbnailUrl, isThumbnailUploaded: true });
+      const uploadedThumbnail = normalizeUploadedMedia(await onUpload(file), "image");
+      onChange({
+        ...content,
+        thumbnail: uploadedThumbnail.url,
+        thumbnailMedia: uploadedThumbnail,
+        thumbnailPublicId: uploadedThumbnail.public_id,
+        isThumbnailUploaded: true,
+      });
     } catch (error) {
       console.error('Thumbnail upload failed:', error);
       alert('آپلود تصویر بندانگشتی با خطا مواجه شد');
@@ -49,8 +71,33 @@ const VideoBlock = ({ content, onChange, onUpload }) => {
     }
   };
 
-  const removeThumbnail = () => {
-    onChange({ ...content, thumbnail: "", isThumbnailUploaded: false });
+  const removeVideo = async () => {
+    if (content.media?.public_id) {
+      await onDelete?.(content.media);
+    }
+
+    onChange({
+      ...content,
+      url: "",
+      media: null,
+      isUploaded: false,
+    });
+  };
+
+  const removeThumbnail = async () => {
+    if (content.thumbnailMedia?.public_id) {
+      await onDelete?.(content.thumbnailMedia);
+    } else if (content.thumbnailPublicId) {
+      await onDelete?.({ public_id: content.thumbnailPublicId, resource_type: "image" });
+    }
+
+    onChange({
+      ...content,
+      thumbnail: "",
+      thumbnailMedia: null,
+      thumbnailPublicId: "",
+      isThumbnailUploaded: false,
+    });
   };
 
   // Capture thumbnail from video at current playback position
@@ -83,8 +130,14 @@ const VideoBlock = ({ content, onChange, onUpload }) => {
       
       setIsUploading(true);
       try {
-        const thumbnailUrl = await onUpload(file);
-        onChange({ ...content, thumbnail: thumbnailUrl, isThumbnailUploaded: true });
+        const uploadedThumbnail = normalizeUploadedMedia(await onUpload(file), "image");
+        onChange({
+          ...content,
+          thumbnail: uploadedThumbnail.url,
+          thumbnailMedia: uploadedThumbnail,
+          thumbnailPublicId: uploadedThumbnail.public_id,
+          isThumbnailUploaded: true,
+        });
       } catch (error) {
         console.error('Thumbnail capture failed:', error);
         alert('ضبط تصویر بندانگشتی با خطا مواجه شد');
@@ -118,10 +171,19 @@ const VideoBlock = ({ content, onChange, onUpload }) => {
         <input
           type="text"
           value={content.url || ""}
-          onChange={(e) => onChange({ ...content, url: e.target.value })}
+          onChange={(e) => onChange({ ...content, url: e.target.value, media: null, isUploaded: false })}
           className="w-full p-2 border rounded"
           placeholder="https://www.youtube.com/embed/... یا آدرس فایل ویدئو"
         />
+        {content.isUploaded && content.url && (
+          <button
+            type="button"
+            onClick={removeVideo}
+            className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            حذف ویدئو از آروان
+          </button>
+        )}
         <p className="text-xs text-gray-500 mt-1">
           برای YouTube: https://www.youtube.com/embed/VIDEO_ID
         </p>
@@ -129,7 +191,7 @@ const VideoBlock = ({ content, onChange, onUpload }) => {
       
       <div className="mt-4 p-3 bg-yellow-50 rounded text-sm text-gray-700">
         <p className="font-bold mb-1">راهنمایی:</p>
-        <p>اگر از افزودن مطلب منصرف شدید، حتماً تصاویر و رسانه‌ها را حذف کنید تا از ذخیره‌سازی غیرضروری جلوگیری شود.</p>
+        <p>اگر از افزودن مجله منصرف شدید، حتماً تصاویر و رسانه‌ها را حذف کنید تا از ذخیره‌سازی غیرضروری جلوگیری شود.</p>
       </div>
       
       {/* Video preview for thumbnail capture */}

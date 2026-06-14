@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import ContentBlock from "@/components/shared/pageBuilder/ContentBlock";
 import BlockToolbar from "@/components/shared/pageBuilder/BlockToolbar";
-import { useUploadMutation } from "@/services/upload/uploadApi";
+import { useDeleteUploadMutation, useUploadMutation } from "@/services/upload/uploadApi";
 
 const PageBuilder = ({ initialValue = "", onChange }) => {
   // Parse initial HTML content into blocks
@@ -25,6 +25,7 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
   const [showEditor, setShowEditor] = useState(false);
 
   const [upload] = useUploadMutation();
+  const [deleteUpload] = useDeleteUploadMutation();
 
   // Add a new block
   const addBlock = (type, index = blocks.length) => {
@@ -62,34 +63,36 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
   const removeBlock = (id) => {
     const blockToRemove = blocks.find(block => block.id === id);
     
-    // If this is an uploaded video or podcast, we should delete it from Cloudinary
+    // If this is an uploaded video or podcast, delete it from Arvan.
     if (blockToRemove && (blockToRemove.type === "video" || blockToRemove.type === "podcast")) {
-      if (blockToRemove.content.isUploaded && blockToRemove.content.url) {
-        deleteMedia(blockToRemove.content.url);
+      if (blockToRemove.content.isUploaded) {
+        deleteMedia(blockToRemove.content.media || blockToRemove.content);
       }
-      // Delete thumbnail if it exists and was uploaded
       if (blockToRemove.type === "video" && blockToRemove.content.isThumbnailUploaded && blockToRemove.content.thumbnail) {
-        deleteMedia(blockToRemove.content.thumbnail);
+        deleteMedia(blockToRemove.content.thumbnailMedia || {
+          public_id: blockToRemove.content.thumbnailPublicId,
+          resource_type: "image",
+        });
       }
     }
     
-    // If this is an image block, delete all images from Cloudinary
+    // If this is an image block, delete all uploaded images from Arvan.
     if (blockToRemove && blockToRemove.type === "image") {
       if (blockToRemove.content.images && Array.isArray(blockToRemove.content.images)) {
         blockToRemove.content.images.forEach(image => {
-          if (image.isUploaded && image.url) {
-            deleteMedia(image.url);
+          if (image.public_id) {
+            deleteMedia(image);
           }
         });
       }
     }
     
-    // If this is a link block, delete all images from Cloudinary
+    // If this is a link block, delete all uploaded images from Arvan.
     if (blockToRemove && blockToRemove.type === "link") {
       if (blockToRemove.content.links && Array.isArray(blockToRemove.content.links)) {
         blockToRemove.content.links.forEach(link => {
-          if (link.image && link.image.isUploaded && link.image.url) {
-            deleteMedia(link.image.url);
+          if (link.image?.public_id) {
+            deleteMedia(link.image);
           }
         });
       }
@@ -129,18 +132,26 @@ const PageBuilder = ({ initialValue = "", onChange }) => {
       formData.append("file", file);
       
       const result = await upload(formData).unwrap();
-      return result.data.url; // Assuming the API returns the URL in result.data.url
+      return result.data;
     } catch (error) {
       console.error("Media upload failed:", error);
       throw error;
     }
   };
 
-  // Delete media from Cloudinary
-  const deleteMedia = async (mediaUrl) => {
-    // In a real implementation, you would call an API to delete the media
-    // For now, we'll just log it
-    console.log("Deleting media:", mediaUrl);
+  // Delete media from Arvan. Old string-only content cannot be deleted safely.
+  const deleteMedia = async (media) => {
+    const publicId = typeof media === "string" ? "" : media?.public_id;
+    if (!publicId) return;
+
+    try {
+      await deleteUpload({
+        public_id: publicId,
+        resource_type: media?.resource_type || "image",
+      }).unwrap();
+    } catch (error) {
+      console.error("Media delete failed:", error);
+    }
   };
 
   const renderIconMarkup = (icon, className = "inline-block w-5 h-5") => {

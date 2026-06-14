@@ -290,6 +290,10 @@ function normalizeArticlePayload(body, uploadedFiles) {
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
+  const cardCover = buildMedia(uploadedFiles?.cardCover?.[0]);
+  if (cardCover) payload.cardCover = cardCover;
+  const contentCover = buildMedia(uploadedFiles?.contentCover?.[0]);
+  if (contentCover) payload.contentCover = contentCover;
   if (!body._keepStatus) payload.status = payload.status || "active";
 
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
@@ -331,7 +335,7 @@ exports.generateArticleSlug = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "عنوان مطلب برای ساخت اسلاگ الزامی است",
+      description: "عنوان مجله برای ساخت اسلاگ الزامی است",
     });
   }
 
@@ -361,7 +365,7 @@ exports.createArticle = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "عنوان مطلب الزامی است",
+      description: "عنوان مجله الزامی است",
     });
   }
 
@@ -369,7 +373,7 @@ exports.createArticle = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "اسلاگ مطلب الزامی است",
+      description: "اسلاگ مجله الزامی است",
     });
   }
 
@@ -377,7 +381,7 @@ exports.createArticle = async (req, res) => {
     return res.status(409).json({
       acknowledgement: false,
       message: "Conflict",
-      description: "این اسلاگ قبلا برای مطلب دیگری ثبت شده است",
+      description: "این اسلاگ قبلا برای مجله دیگری ثبت شده است",
     });
   }
 
@@ -387,7 +391,7 @@ exports.createArticle = async (req, res) => {
   res.status(201).json({
     acknowledgement: true,
     message: "Created",
-    description: "مطلب با موفقیت ایجاد شد",
+    description: "مجله با موفقیت ایجاد شد",
     data: populatedArticle,
   });
 };
@@ -399,7 +403,7 @@ exports.getArticles = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "شناسه دسته‌بندی مطلب معتبر نیست",
+      description: "شناسه دسته‌بندی مجله معتبر نیست",
     });
   }
   const query = {
@@ -426,7 +430,7 @@ exports.getArticles = async (req, res) => {
   res.status(200).json({
     acknowledgement: true,
     message: "OK",
-    description: "لیست مطالب دریافت شد",
+    description: "لیست مجله دریافت شد",
     data: articles,
     pagination: buildPaginationMeta({ limit, page, totalItems }),
   });
@@ -439,7 +443,7 @@ exports.getArticle = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "شناسه مطلب معتبر نیست",
+      description: "شناسه مجله معتبر نیست",
     });
   }
 
@@ -455,14 +459,14 @@ exports.getArticle = async (req, res) => {
     return res.status(404).json({
       acknowledgement: false,
       message: "Not Found",
-      description: "مطلب یافت نشد",
+      description: "مجله یافت نشد",
     });
   }
 
   res.status(200).json({
     acknowledgement: true,
     message: "OK",
-    description: "جزئیات مطلب دریافت شد",
+    description: "جزئیات مجله دریافت شد",
     data: article,
   });
 };
@@ -474,7 +478,7 @@ exports.updateArticle = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "شناسه مطلب معتبر نیست",
+      description: "شناسه مجله معتبر نیست",
     });
   }
 
@@ -483,7 +487,7 @@ exports.updateArticle = async (req, res) => {
     return res.status(404).json({
       acknowledgement: false,
       message: "Not Found",
-      description: "مطلب یافت نشد",
+      description: "مجله یافت نشد",
     });
   }
 
@@ -493,7 +497,7 @@ exports.updateArticle = async (req, res) => {
     return res.status(409).json({
       acknowledgement: false,
       message: "Conflict",
-      description: "این اسلاگ قبلا برای مطلب دیگری ثبت شده است",
+      description: "این اسلاگ قبلا برای مجله دیگری ثبت شده است",
     });
   }
 
@@ -504,7 +508,7 @@ exports.updateArticle = async (req, res) => {
   res.status(200).json({
     acknowledgement: true,
     message: "OK",
-    description: "مطلب با موفقیت به‌روزرسانی شد",
+    description: "مجله با موفقیت به‌روزرسانی شد",
     data: populatedArticle,
   });
 };
@@ -516,7 +520,7 @@ exports.deleteArticle = async (req, res) => {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "شناسه مطلب معتبر نیست",
+      description: "شناسه مجله معتبر نیست",
     });
   }
 
@@ -530,13 +534,13 @@ exports.deleteArticle = async (req, res) => {
     return res.status(404).json({
       acknowledgement: false,
       message: "Not Found",
-      description: "مطلب یافت نشد",
+      description: "مجله یافت نشد",
     });
   }
 
   res.status(200).json({
     acknowledgement: true,
     message: "OK",
-    description: "مطلب با موفقیت حذف شد",
+    description: "مجله با موفقیت حذف شد",
   });
 };

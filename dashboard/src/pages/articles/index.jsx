@@ -34,9 +34,9 @@ function Articles() {
   const handleDelete = async (id) => {
     try {
       const response = await deleteArticle(id).unwrap();
-      toast.success(response.description || "مطلب حذف شد");
+      toast.success(response.description || "مجله حذف شد");
     } catch (error) {
-      toast.error(error?.data?.description || "حذف مطلب انجام نشد");
+      toast.error(error?.data?.description || "حذف مجله انجام نشد");
     }
   };
 
@@ -53,10 +53,10 @@ function Articles() {
     try {
       setLocalArticles((prev) => prev.map((article) => (article._id === item._id ? { ...article, status } : article)));
       const response = await updateArticle({ id: item._id, formData }).unwrap();
-      toast.success(response.description || "وضعیت مطلب به‌روزرسانی شد");
+      toast.success(response.description || "وضعیت مجله به‌روزرسانی شد");
     } catch (error) {
       setLocalArticles(articles);
-      toast.error(error?.data?.description || "تغییر وضعیت مطلب انجام نشد");
+      toast.error(error?.data?.description || "تغییر وضعیت مجله انجام نشد");
     }
   };
 
@@ -66,10 +66,10 @@ function Articles() {
         <div className="rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs text-zinc-400">مدیریت مطلب‌نویس</p>
-              <h1 className="mt-1 text-2xl font-bold text-white">مطلب‌نویس</h1>
+              <p className="text-xs text-zinc-400">مدیریت مجله‌نویس</p>
+              <h1 className="mt-1 text-2xl font-bold text-white">مجله‌نویس</h1>
               <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                مقاله‌ها شامل تیتر، کاور، دسته‌بندی، تگ، بازی‌های مرتبط، محتوای صفحه‌ساز و تنظیمات سئو هستند.
+                مجله‌ها شامل تیتر، کاور، دسته‌بندی، تگ، بازی‌های مرتبط، محتوای صفحه‌ساز و تنظیمات سئو هستند.
               </p>
             </div>
             <AddButton link="/articles/create" />
@@ -79,7 +79,7 @@ function Articles() {
         <div className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-sm font-bold text-white">لیست مطالب</h2>
+              <h2 className="text-sm font-bold text-white">لیست مجله‌ها</h2>
               <span className="mt-1 block text-xs text-zinc-500">{articlesMeta?.totalItems || articles.length} مورد</span>
             </div>
             <SearchBox onChange={setSearch} placeholder="جستجوی عنوان، اسلاگ، نویسنده یا متن..." value={search} />
@@ -89,7 +89,7 @@ function Articles() {
             <table className="w-full table-fixed text-right text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500">
-                  <th className="w-[38%] pb-3 font-medium">مطلب</th>
+                  <th className="w-[38%] pb-3 font-medium">مجله</th>
                   <th className="hidden pb-3 font-medium md:table-cell">دسته / تگ‌ها</th>
                   <th className="hidden w-36 pb-3 font-medium lg:table-cell">انتشار</th>
                   <th className="hidden w-28 pb-3 font-medium xl:table-cell">وضعیت</th>
@@ -108,8 +108,8 @@ function Articles() {
                     <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
                       <td className="py-4 pl-3">
                         <div className="flex min-w-0 items-center gap-3">
-                          {item.cover?.url ? (
-                            <DisplayImages galleryPreview={[{ url: item.cover.url, type: "image" }]} imageSize={56} className="mt-0" />
+                          {(item.cardCover?.url || item.cover?.url) ? (
+                            <DisplayImages galleryPreview={[{ url: item.cardCover?.url || item.cover.url, type: "image" }]} imageSize={56} className="mt-0" />
                           ) : null}
                           <div className="min-w-0">
                             <span className="block truncate">{item.title}</span>
@@ -141,17 +141,17 @@ function Articles() {
                       <td className="py-4">
                         <div className="flex items-center justify-center gap-2">
                           <Link
-                            aria-label="ویرایش مطلب"
+                            aria-label="ویرایش مجله"
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
                             to={`/articles/edit/${item._id}`}
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
                           <DeleteModal
-                            ariaLabel="حذف مطلب"
+                            ariaLabel="حذف مجله"
                             isLoading={isDeleting}
                             itemTitle={item.title}
-                            message="این مطلب حذف شود؟"
+                            message="این مجله حذف شود؟"
                             onDelete={() => handleDelete(item._id)}
                           />
                         </div>
@@ -161,7 +161,7 @@ function Articles() {
                 ) : (
                   <tr>
                     <td className="py-6 text-center text-zinc-500" colSpan="5">
-                      هنوز مطلبی ثبت نشده است.
+                      هنوز مجله‌ای ثبت نشده است.
                     </td>
                   </tr>
                 )}

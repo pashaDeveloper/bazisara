@@ -95,6 +95,8 @@ export type Article = {
     answer?: string;
   }>;
   cover?: Media;
+  cardCover?: Media;
+  contentCover?: Media;
   publishedAt?: string | null;
   isFeatured?: boolean;
   views?: number;
