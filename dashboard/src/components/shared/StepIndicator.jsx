@@ -25,7 +25,7 @@ function StepIndicator({
             <div className="flex flex-1 items-center">
               <button
                 aria-current={isCurrent ? "step" : undefined}
-                aria-label={`????? ${step}`}
+                aria-label={`مرحله ${step}`}
                 className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black ${
                   isInvalid
                     ? "border-orange-400 bg-orange-500 hover:bg-orange-600 focus:ring-orange-400"

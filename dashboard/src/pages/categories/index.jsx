@@ -54,9 +54,9 @@ function Categories() {
   const handleDelete = async (id) => {
     try {
       const response = await deleteCategory(id).unwrap();
-      toast.success(response.description || "????????? ??? ??");
+      toast.success(response.description || "دسته‌بندی حذف شد");
     } catch (error) {
-      toast.error(error?.data?.description || "??? ????????? ????? ???");
+      toast.error(error?.data?.description || "حذف دسته‌بندی ناموفق بود");
     }
   };
 
@@ -66,10 +66,10 @@ function Categories() {
         <div className="rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs text-zinc-400">?????? ?????? ????</p>
-              <h1 className="mt-1 text-2xl font-bold text-white">????????????</h1>
+              <p className="text-xs text-zinc-400">مدیریت دسته‌بندی‌ها</p>
+              <h1 className="mt-1 text-2xl font-bold text-white">دسته‌بندی‌ها</h1>
               <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                ???????????? ??????? ????? ????? ??????? ? ???? ????? ????????? ????? ? ????? SVG ????? ?????.
+                دسته‌بندی‌های محصولات را مدیریت کنید، ساختار درختی بسازید و آیکون SVG اختصاصی قرار دهید.
               </p>
             </div>
             <AddButton link="/categories/add" />
@@ -80,15 +80,15 @@ function Categories() {
           <div className="space-y-6 xl:col-span-5">
             <div className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-white">???? ?????????</h2>
-                <span className="text-xs text-zinc-500">{tree.length} ????</span>
+                <h2 className="text-sm font-bold text-white">درخت دسته‌بندی‌ها</h2>
+                <span className="text-xs text-zinc-500">{tree.length} مورد</span>
               </div>
               <div className="mt-4 space-y-3">
                 {tree.length ? (
                   renderTreePreview(tree)
                 ) : (
                   <div className="rounded-xl border border-zinc-800 bg-black px-4 py-6 text-sm text-zinc-500">
-                    ???? ????????? ??? ???? ???.
+                    هنوز دسته‌بندی‌ای ثبت نشده است.
                   </div>
                 )}
               </div>
@@ -98,27 +98,27 @@ function Categories() {
           <div className="rounded-2xl border border-zinc-700 bg-zinc-950 p-5 xl:col-span-7">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-sm font-bold text-white">???? ????????????</h2>
-                <span className="mt-1 block text-xs text-zinc-500">{categoriesMeta?.totalItems || categories.length} ????</span>
+                <h2 className="text-sm font-bold text-white">لیست دسته‌بندی‌ها</h2>
+                <span className="mt-1 block text-xs text-zinc-500">{categoriesMeta?.totalItems || categories.length} مورد</span>
               </div>
-              <SearchBox onChange={setSearch} placeholder="?????? ??? ?? ????? ?????????..." value={search} />
+              <SearchBox onChange={setSearch} placeholder="جستجو نام یا توضیح دسته‌بندی..." value={search} />
             </div>
             <div className="mt-4 overflow-hidden">
               <table className="w-full table-fixed text-right text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800 text-zinc-500">
-                    <th className="w-[42%] pb-3 font-medium sm:w-[34%]">???</th>
-                    <th className="w-[24%] pb-3 font-medium">?????</th>
-                    <th className="hidden pb-3 font-medium md:table-cell">????</th>
-                    <th className="hidden w-24 pb-3 font-medium sm:table-cell">?????</th>
-                    <th className="w-16 pb-3 text-center font-medium">??????</th>
+                    <th className="w-[42%] pb-3 font-medium sm:w-[34%]">نام</th>
+                    <th className="w-[24%] pb-3 font-medium">آیکون</th>
+                    <th className="hidden pb-3 font-medium md:table-cell">والد</th>
+                    <th className="hidden w-24 pb-3 font-medium sm:table-cell">تصویر</th>
+                    <th className="w-16 pb-3 text-center font-medium">عملیات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
                       <td className="py-6 text-center text-zinc-500" colSpan="5">
-                        ?? ??? ??????...
+                        در حال دریافت...
                       </td>
                     </tr>
                   ) : categories.length ? (
@@ -130,7 +130,7 @@ function Categories() {
                         <td className="py-4">
                           <IconPreview icon={item.icon} label={item.name} />
                         </td>
-                        <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name || "????"}</td>
+                        <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name || "ندارد"}</td>
                         <td className="hidden py-4 sm:table-cell">
                           {item.image?.url ? (
                             <DisplayImages
@@ -139,20 +139,20 @@ function Categories() {
                               className="mt-0"
                             />
                           ) : (
-                            <span className="text-zinc-500">?????</span>
+                            <span className="text-zinc-500">ندارد</span>
                           )}
                         </td>
                         <td className="py-4">
                           <div className="flex items-center justify-center gap-2">
                             <Link
-                              aria-label="?????? ?????????"
+                              aria-label="ویرایش دسته‌بندی"
                               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
                               to={`/categories/edit/${item._id}`}
                             >
                               <Pencil className="h-4 w-4" />
                             </Link>
                             <DeleteModal
-                              ariaLabel="??? ?????????"
+                              ariaLabel="حذف دسته‌بندی"
                               isLoading={isDeleting}
                               itemTitle={item.name}
                               message="این دسته‌بندی حذف شود؟"
@@ -165,7 +165,7 @@ function Categories() {
                   ) : (
                     <tr>
                       <td className="py-6 text-center text-zinc-500" colSpan="5">
-                        ????? ???? ????? ???? ?????.
+                        دسته‌بندی‌ای با این جستجو پیدا نشد.
                       </td>
                     </tr>
                   )}

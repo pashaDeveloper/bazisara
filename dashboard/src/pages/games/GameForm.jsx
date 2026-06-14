@@ -59,7 +59,7 @@ const initialForm = {
   languages: [],
   regions: [],
   launcher: [],
-  edition: "?????????",
+  edition: "استاندارد",
   hasDubbing: false,
   hasSubtitle: false,
   dlcs: [],
@@ -86,19 +86,19 @@ const initialForm = {
 };
 
 const steps = [
-  { key: "basic", title: "????" },
-  { key: "relations", title: "?????????" },
-  { key: "platforms", title: "??????" },
-  { key: "release", title: "??????" },
-  { key: "sizes", title: "??? ???????" },
+  { key: "basic", title: "پایه" },
+  { key: "relations", title: "ارتباطات" },
+  { key: "platforms", title: "پلتفرم‌ها" },
+  { key: "release", title: "انتشار" },
+  { key: "sizes", title: "حجم پلتفرم‌ها" },
   { key: "dlcEdition", title: "DLC / Edition" },
   { key: "patch", title: "Patch" },
-  { key: "social", title: "???????" },
-  { key: "summary", title: "?????" },
-  { key: "review", title: "??? ? ?????" },
-  { key: "description", title: "????? ????" },
-  { key: "media", title: "?????" },
-  { key: "videos", title: "?????" },
+  { key: "social", title: "شبکه‌ها" },
+  { key: "summary", title: "خلاصه" },
+  { key: "review", title: "نقد و بررسی" },
+  { key: "description", title: "توضیح کامل" },
+  { key: "media", title: "رسانه" },
+  { key: "videos", title: "ویدیوها" },
 ];
 
 function toObjectArray(value, fallback = []) {
@@ -211,7 +211,7 @@ function GameForm({ mode = "create" }) {
       languages: game.languages || [],
       regions: game.regions || [],
       launcher: normalizeOptionValue(game.launcher, launcherOptions, []),
-      edition: normalizeOptionValue(game.edition, editionOptions, "?????????"),
+      edition: normalizeOptionValue(game.edition, editionOptions, "استاندارد"),
       dlcs: Array.isArray(game.dlcs)
         ? game.dlcs.map((item) => ({
             title: String(item?.title || "").trim(),
@@ -284,13 +284,13 @@ function GameForm({ mode = "create" }) {
     const targetIndex = step - 1;
 
     if (targetIndex > 0 && !titleIsValid) {
-      toast.error("????? ???? ?? ???? ????", { id: "game-step" });
+      toast.error("عنوان بازی را وارد کنید", { id: "game-step" });
       setCurrentStep(0);
       return;
     }
 
     if (targetIndex > 1 && !categoryIsValid) {
-      toast.error("????????? ???? ?? ?????? ????", { id: "game-step" });
+      toast.error("دسته‌بندی بازی را انتخاب کنید", { id: "game-step" });
       setCurrentStep(1);
       return;
     }
@@ -300,7 +300,7 @@ function GameForm({ mode = "create" }) {
 
   const goToNextStep = () => {
     if (!canGoNext) {
-      toast.error(steps[currentStep].key === "basic" ? "????? ???? ?? ???? ????" : "????????? ???? ?? ?????? ????", { id: "game-step" });
+      toast.error(steps[currentStep].key === "basic" ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "game-step" });
       return;
     }
 
@@ -388,22 +388,22 @@ function GameForm({ mode = "create" }) {
     }
 
     if (!titleIsValid || !categoryIsValid) {
-      toast.error(!titleIsValid ? "????? ???? ?? ???? ????" : "????????? ???? ?? ?????? ????", { id: "save-game" });
+      toast.error(!titleIsValid ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "save-game" });
       setCurrentStep(!titleIsValid ? 0 : 1);
       return;
     }
 
     try {
-      toast.loading(isEdit ? "?? ??? ??????????? ????..." : "?? ??? ??? ????...", {
+      toast.loading(isEdit ? "در حال به‌روزرسانی بازی..." : "در حال ثبت بازی...", {
         id: "save-game",
       });
       const formData = buildFormData();
       const response = isEdit ? await updateGame({ id, formData }).unwrap() : await createGame(formData).unwrap();
 
-      toast.success(response.description || "???? ????? ??", { id: "save-game" });
+      toast.success(response.description || "بازی ذخیره شد", { id: "save-game" });
       navigate("/games");
     } catch (error) {
-      toast.error(error?.data?.description || "????? ???? ????? ???", {
+      toast.error(error?.data?.description || "ذخیره بازی ناموفق بود", {
         id: "save-game",
       });
     }
@@ -508,17 +508,17 @@ function GameForm({ mode = "create" }) {
       <section className="mx-auto max-w-[1800px] space-y-6">
         <div className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div>
-            <p className="text-xs text-zinc-400">?????? ????? ???????</p>
-            <h1 className="mt-1 text-2xl font-bold text-white">{isEdit ? "?????? ????" : "?????? ????"}</h1>
+            <p className="text-xs text-zinc-400">مدیریت محتوای بازی‌ها</p>
+            <h1 className="mt-1 text-2xl font-bold text-white">{isEdit ? "ویرایش بازی" : "افزودن بازی"}</h1>
           </div>
           <Link className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white" to="/games">
-            ?????? ?? ????
+            بازگشت به لیست
           </Link>
         </div>
 
         <form className="space-y-5 rounded-2xl border border-zinc-700 bg-zinc-950 p-5" onSubmit={handleSubmit}>
           {isLoadingGame ? (
-            <div className="rounded-xl border border-zinc-800 bg-black px-4 py-8 text-center text-sm text-zinc-500">?? ??? ??????...</div>
+            <div className="rounded-xl border border-zinc-800 bg-black px-4 py-8 text-center text-sm text-zinc-500">در حال دریافت...</div>
           ) : (
             <>
               <div className="sticky top-16 z-20 rounded-xl border border-gray-200 bg-white/95 p-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
@@ -527,7 +527,7 @@ function GameForm({ mode = "create" }) {
               <div className="grid gap-5 xl:grid-cols-[minmax(460px,660px)_minmax(260px,340px)_minmax(420px,1fr)]" dir="ltr">
                 <div className="space-y-5 rounded-xl border border-zinc-800 bg-black p-4" dir="rtl">
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-500">??? ????? ????</span>
+                    <span className="text-xs font-bold text-zinc-500">فرم اطلاعات بازی</span>
                     <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] text-zinc-500">
                       {currentStep + 1} / {steps.length}
                     </span>
@@ -535,7 +535,7 @@ function GameForm({ mode = "create" }) {
                   {renderStep()}
                   <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
                     {isLastStep ? (
-                      <SendButton isLoading={isSaving} label={isEdit ? "????? ????" : "??? ????"} loadingLabel="?? ??? ?????..." />
+                      <SendButton isLoading={isSaving} label={isEdit ? "ذخیره بازی" : "ثبت بازی"} loadingLabel="در حال ذخیره..." />
                     ) : (
                       <NavigationButton direction="next" disabled={!canGoNext || isSaving} onClick={goToNextStep} />
                     )}
@@ -577,7 +577,7 @@ function GameForm({ mode = "create" }) {
         {isDesktopPreviewOpen ? (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur" dir="rtl">
             <button
-              aria-label="???? ????????? ??????"
+              aria-label="بستن پیش‌نمایش دسکتاپ"
               className="fixed left-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 bg-black/70 text-white backdrop-blur transition hover:border-white"
               onClick={() => setIsDesktopPreviewOpen(false)}
               type="button"

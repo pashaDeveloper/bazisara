@@ -12,7 +12,7 @@ function ThumbnailUpload({
   iconSize = 20,
   imageSize = 96,
   border = true,
-  title = "?????? ????",
+  title = "انتخاب فایل",
   name = "thumbnail",
   accept = "image/*",
   multiple = false,

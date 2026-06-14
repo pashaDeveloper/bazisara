@@ -66,7 +66,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
                   src={item.url}
                   width={imageSize}
                 >
-                  ?????? ??? ?? ??? ??? ???? ???????? ???????.
+                  مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.
                 </video>
               ) : (
                 <img

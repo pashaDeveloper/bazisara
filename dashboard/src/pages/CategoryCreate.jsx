@@ -11,7 +11,7 @@ import {
 
 function SvgPreview({ svg, label }) {
   if (!svg?.trim()) {
-    return <span className="text-zinc-500">?????</span>;
+    return <span className="text-zinc-500">ندارد</span>;
   }
 
   return (
@@ -78,23 +78,23 @@ function CategoryCreate() {
       <MutationFeedback
         state={mutationState}
         toastId="create-category"
-        loadingMessage="?? ??? ??? ?????????..."
-        successMessage="????????? ?? ?????? ??? ??"
-        errorMessage="??? ????????? ????? ???"
+        loadingMessage="در حال ثبت دسته‌بندی..."
+        successMessage="دسته‌بندی با موفقیت ثبت شد"
+        errorMessage="ثبت دسته‌بندی ناموفق بود"
         navigateTo="/categories"
       />
 
       <section className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div>
-            <p className="text-xs text-zinc-400">?????? ?????? ????</p>
-            <h1 className="mt-1 text-2xl font-bold text-white">?????? ?????????</h1>
+            <p className="text-xs text-zinc-400">مدیریت دسته‌بندی‌ها</p>
+            <h1 className="mt-1 text-2xl font-bold text-white">افزودن دسته‌بندی</h1>
           </div>
           <Link
             className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white"
             to="/categories"
           >
-            ?????? ?? ????
+            بازگشت به لیست
           </Link>
         </div>
 
@@ -104,31 +104,31 @@ function CategoryCreate() {
         >
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-xs text-zinc-400">???</label>
+              <label className="mb-2 block text-xs text-zinc-400">نام</label>
               <input
                 className="w-full rounded-xl border border-zinc-800 bg-black text-white"
                 name="name"
                 onChange={handleChange}
-                placeholder="???? ????"
+                placeholder="نام دسته"
                 value={form.name}
               />
             </div>
             <div>
-              <label className="mb-2 block text-xs text-zinc-400">????</label>
+              <label className="mb-2 block text-xs text-zinc-400">والد</label>
               <select
                 className="w-full rounded-xl border border-zinc-800 bg-black text-white"
                 name="parent"
                 onChange={handleChange}
                 value={form.parent}
               >
-                <option value="">???? ????</option>
+                <option value="">بدون والد</option>
                 {renderTreeOptions(tree)}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="mb-2 block text-xs text-zinc-400">?? SVG ?????</label>
+            <label className="mb-2 block text-xs text-zinc-400">کد SVG آیکون</label>
             <textarea
               className="w-full rounded-xl border border-zinc-800 bg-black text-white"
               name="icon"
@@ -138,25 +138,25 @@ function CategoryCreate() {
               value={form.icon}
             />
             <div className="mt-3 flex items-center gap-3 rounded-xl border border-zinc-800 bg-black px-3 py-3">
-              <span className="text-xs text-zinc-500">?????????</span>
+              <span className="text-xs text-zinc-500">پیش‌نمایش</span>
               <SvgPreview label="category icon preview" svg={form.icon} />
             </div>
           </div>
 
           <div>
-            <label className="mb-2 block text-xs text-zinc-400">?????</label>
+            <label className="mb-2 block text-xs text-zinc-400">توضیحات</label>
             <textarea
               className="w-full rounded-xl border border-zinc-800 bg-black text-white"
               name="description"
               onChange={handleChange}
-              placeholder="????? ????? ???? ?????????"
+              placeholder="توضیح کوتاه برای دسته‌بندی"
               rows="4"
               value={form.description}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-xs text-zinc-400">?????</label>
+            <label className="mb-2 block text-xs text-zinc-400">تصویر</label>
             <ThumbnailUpload
               name="image"
               preview={imagePreview}
@@ -167,7 +167,7 @@ function CategoryCreate() {
                 }))
               }
               setThumbnailPreview={setImagePreview}
-              title="?????? ????? ?????????"
+              title="انتخاب تصویر دسته‌بندی"
             />
     
           </div>
@@ -177,7 +177,7 @@ function CategoryCreate() {
             disabled={mutationState.isLoading}
             type="submit"
           >
-            {mutationState.isLoading ? "?? ??? ???..." : "??? ?????????"}
+            {mutationState.isLoading ? "در حال ثبت..." : "ثبت دسته‌بندی"}
           </button>
         </form>
       </section>

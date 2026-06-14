@@ -290,7 +290,7 @@ function normalizeArticlePayload(body, uploadedFiles) {
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
-  if (!body._keepStatus) payload.status = "pending";
+  if (!body._keepStatus) payload.status = payload.status || "active";
 
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
 }
@@ -404,7 +404,7 @@ exports.getArticles = async (req, res) => {
   }
   const query = {
     isDeleted: false,
-    ...(req.adminRecord ? {} : { status: "active" }),
+    ...(req.adminRecord ? {} : { status: { $in: ["active", "pending"] } }),
     ...(category ? { category } : {}),
     ...buildSearchQuery(search, [
       "title",
@@ -447,7 +447,7 @@ exports.getArticle = async (req, res) => {
     Article.findOne({
       _id: id,
       isDeleted: false,
-      ...(req.adminRecord ? {} : { status: "active" }),
+      ...(req.adminRecord ? {} : { status: { $in: ["active", "pending"] } }),
     })
   );
 
