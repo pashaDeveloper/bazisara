@@ -4,7 +4,7 @@
   "description": "an intuitive eco shop server",
   "main": "index.js",
   "engines": {
-    "node": ">=22.x",
+    "node": "22.x",
     "npm": ">=8.x"
   },
   "scripts": {
