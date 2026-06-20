@@ -2,6 +2,7 @@ const Product = require("../models/product.model");
 const Brand = require("../models/brand.model");
 const Specification = require("../models/specification.model");
 const Variant = require("../models/variant.model");
+const Price = require("../models/price.model");
 const Badge = require("../models/badge.model");
 const DigiPlus = require("../models/digiPlus.model");
 const Seo = require("../models/seo.model");
@@ -141,9 +142,86 @@ async function ensureBrand(body, existingProduct) {
   return brand?._id || null;
 }
 
-async function createVariant(body) {
-  const variant = await Variant.create(normalizeVariant(body.variant));
-  return variant._id;
+function normalizePriceModifiers(value) {
+  return parseArray(value)
+    .map((item) => ({
+      categoryFilter: item?.categoryFilter || item?.category_filter || null,
+      filterKey: String(item?.filterKey || item?.filter_key || "").trim(),
+      filterLabel: String(item?.filterLabel || item?.filter_label || "").trim(),
+      optionValue: String(item?.optionValue || item?.option_value || "").trim(),
+      optionLabel: String(item?.optionLabel || item?.option_label || "").trim(),
+      priceDelta: parseNumber(item?.priceDelta ?? item?.price_delta),
+    }))
+    .filter((item) => item.filterKey || item.filterLabel || item.optionValue || item.optionLabel);
+}
+
+function normalizeProductVariant(value, basePriceFallback = 0, index = 0) {
+  const raw = parseObject(value);
+  const basePrice = parseNumber(raw.basePrice, basePriceFallback);
+  const priceModifiers = normalizePriceModifiers(raw.priceModifiers);
+  const modifierTotal = priceModifiers.reduce((sum, item) => sum + item.priceDelta, 0);
+  const hasExplicitPrice = raw.price !== undefined && raw.price !== null && raw.price !== "";
+  const variant = normalizeVariant(raw);
+
+  return {
+    ...variant,
+    title: String(raw.title || variant.title || `تنوع ${index + 1}`).trim(),
+    basePrice,
+    price: hasExplicitPrice ? parseNumber(raw.price) : basePrice + modifierTotal,
+    priceModifiers,
+  };
+}
+
+async function createVariants(body) {
+  const priceConfig = parseObject(body.priceConfig);
+  const basePrice = parseNumber(body.basePrice ?? priceConfig.basePrice);
+  const variants = parseArray(body.variants);
+  const rawVariants = variants.length ? variants : [body.variant];
+  const created = await Variant.insertMany(
+    rawVariants.map((item, index) => normalizeProductVariant(item, basePrice, index))
+  );
+  return created;
+}
+
+async function createProductPrice(body, variants, adminId, existing = null) {
+  const priceConfig = parseObject(body.priceConfig);
+  const hasPriceConfig = body.priceConfig !== undefined || body.basePrice !== undefined || parseArray(body.variants).length;
+
+  if (!hasPriceConfig) {
+    return body.price !== undefined ? body.price || null : existing?.price || null;
+  }
+
+  const basePrice = parseNumber(body.basePrice ?? priceConfig.basePrice);
+  const sellingPrices = variants.map((variant) => parseNumber(variant.price)).filter((value) => value > 0);
+  const sellingPrice = sellingPrices.length ? Math.min(...sellingPrices) : basePrice;
+  const price = await Price.create({
+    base_price: basePrice,
+    selling_price: sellingPrice,
+    rrp_price: parseNumber(priceConfig.rrp_price ?? priceConfig.rrpPrice, sellingPrice) || sellingPrice,
+    order_limit: parseNumber(priceConfig.order_limit ?? priceConfig.orderLimit, 1),
+    is_incredible: parseBoolean(priceConfig.is_incredible),
+    is_promotion: parseBoolean(priceConfig.is_promotion),
+    is_locked_for_techplus: parseBoolean(priceConfig.is_locked_for_techplus),
+    bnpl_active: parseBoolean(priceConfig.bnpl_active),
+    marketable_stock: variants.reduce((sum, variant) => sum + parseNumber(variant.stock), 0),
+    discount_percent: parseNumber(priceConfig.discount_percent),
+    is_plus_early_access: parseBoolean(priceConfig.is_plus_early_access),
+    variant_prices: variants.map((variant) => ({
+      variant_title: variant.title || "",
+      base_price: parseNumber(variant.basePrice, basePrice),
+      final_price: parseNumber(variant.price),
+      modifiers: parseArray(variant.priceModifiers).map((modifier) => ({
+        category_filter: modifier.categoryFilter || null,
+        filter_key: modifier.filterKey || "",
+        filter_label: modifier.filterLabel || "",
+        option_value: modifier.optionValue || "",
+        option_label: modifier.optionLabel || "",
+        price_delta: parseNumber(modifier.priceDelta),
+      })),
+    })),
+    creator: adminId,
+  });
+  return price._id;
 }
 
 async function createSpecifications(body, adminId) {
@@ -211,14 +289,16 @@ function buildImages(body, uploadedFiles = {}, existing = null) {
 
 async function normalizeProductPayload(req, existing = null, { defaultStatus = false } = {}) {
   const body = req.body || {};
-  const variantId = await createVariant(body);
+  const createdVariants = await createVariants(body);
+  const variantIds = createdVariants.map((variant) => variant._id);
+  const primaryVariant = createdVariants[0] || {};
   const specifications = await createSpecifications(body, req.admin?._id);
   const technoPlus = await createDigiPlus(body.technoPlus);
   const seo = await createSeo(body.seo);
   const brand = await ensureBrand(body, existing);
   const productBadges = await createBadgeIds(body.product_badges);
-  const variant = normalizeVariant(body.variant);
-  const statusProduct = body.statusProduct || (parseNumber(variant.stock) > 0 ? "marketable" : "out_of_stock");
+  const productPrice = await createProductPrice(body, createdVariants, req.admin?._id, existing);
+  const statusProduct = body.statusProduct || (parseNumber(primaryVariant.stock) > 0 ? "marketable" : "out_of_stock");
 
   const payload = {
     title: String(body.title || "").trim(),
@@ -230,13 +310,13 @@ async function normalizeProductPayload(req, existing = null, { defaultStatus = f
     category: body.category || existing?.category,
     brand,
     images: buildImages(body, req.uploadedFiles, existing),
-    variants: [variantId],
-    default_variant: variantId,
-    second_default_variant: undefined,
+    variants: variantIds,
+    default_variant: variantIds[0],
+    second_default_variant: variantIds[1],
     specifications,
     warranties: body.warranties !== undefined ? parseArray(body.warranties) : existing?.warranties || [],
     insurances: body.insurances !== undefined ? parseArray(body.insurances) : existing?.insurances || [],
-    price: body.price !== undefined ? body.price || null : existing?.price || null,
+    price: productPrice,
     shipping_methods: body.shipping_methods !== undefined ? parseArray(body.shipping_methods) : existing?.shipping_methods || [],
     comments: [],
     questions: [],
@@ -268,7 +348,7 @@ async function normalizeProductPayload(req, existing = null, { defaultStatus = f
         deviceType: body.deviceType || "web",
         name: body.title || "",
         productImageUrl: buildImages(body, req.uploadedFiles, existing).main.url,
-        unitPrice: parseNumber(variant.price),
+        unitPrice: parseNumber(primaryVariant.price),
         supplyCategory: body.supplyCategory || "",
         leafCategory: body.leafCategory || "",
       },
@@ -335,10 +415,30 @@ function decorateProduct(product) {
     image: { url: imageUrl, type: "image" },
     gallery: item.images?.list?.map((entry) => ({ url: entry.url?.[0] || "", type: "image" })).filter((entry) => entry.url) || [],
     priceRef: item.price || null,
+    priceConfig: item.price
+      ? {
+          basePrice: item.price.base_price || 0,
+          sellingPrice: item.price.selling_price || 0,
+          rrpPrice: item.price.rrp_price || 0,
+          variantPrices: item.price.variant_prices || [],
+        }
+      : null,
     platform: item.product_type,
     genre: item.category?.name || "",
     maker: item.brand?.title_fa || "",
     price: item.price?.selling_price || variant.price || 0,
+    basePrice: item.price?.base_price || variant.basePrice || 0,
+    variantGroups:
+      item.variants?.map((entry) => ({
+        id: entry._id,
+        title: entry.title,
+        basePrice: entry.basePrice || item.price?.base_price || 0,
+        price: entry.price || 0,
+        oldPrice: entry.oldPrice || 0,
+        stock: entry.stock || 0,
+        color: entry.color || "",
+        priceModifiers: entry.priceModifiers || [],
+      })) || [],
     oldPrice: variant.oldPrice || 0,
     stock: variant.stock || 0,
     available: item.statusProduct === "marketable",

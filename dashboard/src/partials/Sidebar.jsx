@@ -5,12 +5,14 @@ import SidebarItem from "./SidebarItem";
 import Expand from "@/components/icons/Expand";
 import Category from "@/components/icons/Category";
 import Company from "@/components/icons/Company";
+import DashboardIcon from "@/components/icons/Dashboard";
 import Gallery from "@/components/icons/Gallery";
 import Keyword from "@/components/icons/Keyword";
 import Blog from "@/components/icons/Blog";
 import Products from "@/components/icons/Products";
 import Rank from "@/components/icons/Rank";
 import Setting from "@/components/icons/Setting";
+import { FullScreen as Screen } from "@/components/icons/Screen";
 import Tag from "@/components/icons/Tag";
 import User from "@/components/icons/User";
 import Messages from "@/components/icons/Messages";
@@ -60,8 +62,10 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
   }, [sidebarExpanded]);
 
   const sidebarItems = [
+    { title: "صفحه اصلی", icon: DashboardIcon, path: "/" },
     { title: "پروفایل", icon: User, path: "/profile" },
     { title: "پیام‌ها", icon: Messages, path: "/messages" },
+    { title: "نشست‌ها", icon: Screen, path: "/sessions" },
     ...(canManageUsers ? [{ title: "کاربران", icon: User, path: "/users" }] : []),
     ...(isOwner ? [{ title: "تأییدیه‌ها", icon: User, path: "/approvals" }] : []),
     { title: "آیکون‌ها", icon: Gallery, path: "/icons" },
@@ -74,7 +78,9 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { title: "سازنده و ناشر", icon: Company, path: "/companies" },
     { title: "برندها", icon: Company, path: "/brands" },
     { title: "بازی‌ها", icon: Products, path: "/games" },
+    { title: "کالکشن‌های بازی", icon: Products, path: "/game-collections" },
     { title: "محصولات", icon: Products, path: "/products" },
+    { title: "مدل‌های وابسته محصول", icon: Products, path: "/product-dependencies" },
     { title: "شرکت‌های گارانتی", icon: Company, path: "/warranty-companies" },
     { title: "گارانتی‌ها", icon: Company, path: "/warranties" },
     { title: "شرکت‌های بیمه", icon: Company, path: "/insurance-companies" },
@@ -97,10 +103,10 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       <div
         id="sidebar"
         ref={sidebar}
-        className={`no-scrollbar absolute right-0 top-0 z-40 flex h-screen w-64 shrink-0 translate-x-64 flex-col overflow-y-auto border-l border-zinc-800 bg-black p-3 transition-all duration-200 ease-in-out lg:static lg:top-auto lg:!flex lg:translate-x-0 lg:right-auto ${
+        className={`no-scrollbar absolute right-0 top-0 z-50 flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-black p-3 transition-transform duration-200 ease-in-out lg:static lg:right-auto lg:top-auto lg:!flex lg:translate-x-0 lg:transition-none ${
           sidebarExpanded ? "lg:w-64" : "lg:w-20"
         } ${
-          sidebarOpen ? "translate-x-0" : ""
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className={`mb-8 flex items-center gap-2 ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
@@ -147,7 +153,13 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
             </h3>
             <ul className="mt-3 max-h-screen overflow-h-auto">
               {sidebarItems.map((item, index) => (
-                <SidebarItem key={`${item.title}-${index}`} item={item} sidebarExpanded={sidebarExpanded} pathname={pathname} />
+                <SidebarItem
+                  key={`${item.title}-${index}`}
+                  item={item}
+                  sidebarExpanded={sidebarExpanded}
+                  pathname={pathname}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
               ))}
             </ul>
           </div>

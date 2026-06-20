@@ -5,6 +5,7 @@ import Providers from "./providers";
 import "./css/style.css";
 import "./charts/ChartjsConfig";
 import Dashboard from "./pages/Dashboard";
+import Sessions from "./pages/Sessions";
 import Categories from "./pages/categories/index";
 import CategoryAdd from "./pages/categories/add";
 import CategoryEdit from "./pages/categories/edit";
@@ -24,7 +25,10 @@ import Tags from "./pages/Tags";
 import TagCreate from "./pages/TagCreate";
 import Games from "./pages/games";
 import GameForm from "./pages/games/GameForm";
+import GameCollections from "./pages/gameCollections";
+import GameCollectionForm from "./pages/gameCollections/GameCollectionForm";
 import Products from "./pages/products";
+import ProductDependencies from "./pages/products/ProductDependencies";
 import ProductForm from "./pages/products/ProductForm";
 import {
   InsuranceCompanies,
@@ -83,6 +87,14 @@ function App() {
           element={
             <Auth>
               <AdminProfile />
+            </Auth>
+          }
+        />
+        <Route
+          path="/sessions"
+          element={
+            <Auth>
+              <Sessions />
             </Auth>
           }
         />
@@ -327,6 +339,9 @@ function App() {
             </Auth>
           }
         />
+        <Route path="/game-collections" element={<Auth><GameCollections /></Auth>} />
+        <Route path="/game-collections/create" element={<Auth><GameCollectionForm /></Auth>} />
+        <Route path="/game-collections/edit/:id" element={<Auth><GameCollectionForm mode="edit" /></Auth>} />
         <Route
           path="/products"
           element={
@@ -351,6 +366,7 @@ function App() {
             </Auth>
           }
         />
+        <Route path="/product-dependencies" element={<Auth><ProductDependencies /></Auth>} />
         <Route path="/warranty-companies" element={<Auth><WarrantyCompanies /></Auth>} />
         <Route path="/warranty-companies/create" element={<Auth><WarrantyCompanyForm /></Auth>} />
         <Route path="/warranty-companies/edit/:id" element={<Auth><WarrantyCompanyForm mode="edit" /></Auth>} />
@@ -424,5 +440,4 @@ function App() {
 }
 
 export default App;
-
 

@@ -31,10 +31,21 @@ const variantBadgeSchema = new mongoose.Schema(
 const variantSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, default: "" },
+    basePrice: { type: Number, default: 0 },
     price: { type: Number, default: 0 },
     oldPrice: { type: Number, default: 0 },
     stock: { type: Number, default: 0 },
     color: { type: String, trim: true, default: "" },
+    priceModifiers: [
+      {
+        categoryFilter: { type: mongoose.Schema.Types.ObjectId, ref: "CategoryFilter", default: null },
+        filterKey: { type: String, trim: true, default: "" },
+        filterLabel: { type: String, trim: true, default: "" },
+        optionValue: { type: String, trim: true, default: "" },
+        optionLabel: { type: String, trim: true, default: "" },
+        priceDelta: { type: Number, default: 0 },
+      },
+    ],
     variant_badges: [variantBadgeSchema],
     ...baseSchema.obj,
   },

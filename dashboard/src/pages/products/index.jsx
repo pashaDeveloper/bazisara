@@ -25,6 +25,10 @@ function Products() {
 
   const products = data?.data || [];
   const meta = data?.pagination;
+  const getDisplayPrice = (item) => {
+    const firstVariant = item.priceConfig?.variantPrices?.[0] || item.variantGroups?.[0];
+    return firstVariant?.finalPrice ?? firstVariant?.price ?? item.priceConfig?.basePrice ?? item.basePrice ?? item.price ?? 0;
+  };
 
   useEffect(() => {
     setLocalProducts(products);
@@ -89,18 +93,17 @@ function Products() {
               <div className="col-span-full rounded-xl border border-zinc-800 bg-black p-6 text-center text-sm text-zinc-500">در حال دریافت...</div>
             ) : localProducts.length ? (
               localProducts.map((item) => (
-                <article className="rounded-xl border border-zinc-800 bg-black p-3 text-right" key={item._id}>
-                  <div className="aspect-square overflow-hidden rounded-xl bg-white">
+                <article className="group rounded-xl border border-[#e8ecf1] bg-white p-4 text-right shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#dce3eb] hover:shadow-[0_18px_32px_-28px_rgba(24,35,55,.28)]" key={item._id}>
+                  <div className="aspect-square overflow-hidden rounded-xl bg-[#eef2f7]">
                     {item.image?.url ? (
-                      <img alt={item.title || ""} className="h-full w-full object-contain p-4" src={item.image.url} />
+                      <img alt={item.title || ""} className="h-full w-full object-contain p-6 transition-transform duration-300 group-hover:scale-[1.04]" src={item.image.url} />
                     ) : (
-                      <div className="h-full w-full bg-zinc-900" />
+                      <div className="flex h-full w-full items-center justify-center bg-[#eef2f7] text-xs font-bold text-[#7f879c]">بدون تصویر</div>
                     )}
                   </div>
-                  <h3 className="mt-3 line-clamp-2 min-h-12 text-sm font-black leading-6 text-white">{item.title}</h3>
-                  <p className="line-clamp-1 text-xs text-zinc-500">{item.subtitle || item.platform}</p>
+                  <h3 className="mt-4 line-clamp-2 min-h-12 text-[13px] font-black leading-6 text-[#444d68]">{item.title}</h3>
+                  <p className="line-clamp-1 text-[12px] font-medium text-[#7f879c]">{item.subtitle || item.platform}</p>
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className="text-sm font-black text-emerald-400">{Number(item.price || 0).toLocaleString("fa-IR")} تومان</span>
                     <StatusSwitch
                       checked={item.status === "active"}
                       className="!w-auto justify-center gap-0 !border-0 !bg-transparent !px-0 !py-0 hover:!border-transparent hover:!bg-transparent"
@@ -109,9 +112,16 @@ function Products() {
                       name="status"
                       onChange={() => handleStatusToggle(item)}
                     />
+                    {item.stock === 0 || item.status === "inactive" ? (
+                      <span className="text-[11px] font-bold text-[#ff5268]">ناموجود</span>
+                    ) : (
+                      <span className="text-left text-[14px] font-black text-[#2f3446]">
+                        {Number(getDisplayPrice(item)).toLocaleString("fa-IR")} <span className="text-[10px] font-bold text-[#7f879c]">تومان</span>
+                      </span>
+                    )}
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-2">
-                    <Link className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white" to={`/products/edit/${item._id}`}>
+                    <Link className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-[#e8ecf1] text-[#444d68] transition hover:border-[#d0dae6] hover:bg-[#f7f9fb]" to={`/products/edit/${item._id}`}>
                       <Edit className="h-4 w-4" />
                     </Link>
                     <DeleteModal

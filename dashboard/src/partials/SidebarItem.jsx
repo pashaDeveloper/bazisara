@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import Arrow from "@/components/icons/Arrow";
 
-const SidebarItem = ({ item, sidebarExpanded, pathname }) => {
+const SidebarItem = ({ item, sidebarExpanded, pathname, onNavigate }) => {
   const isActive = pathname === item.path || item.subItems?.some((sub) => pathname === sub.path);
   const [isOpen, setIsOpen] = useState(isActive);
 
@@ -27,6 +27,7 @@ const SidebarItem = ({ item, sidebarExpanded, pathname }) => {
           <NavLink
             end
             to={item.path}
+            onClick={onNavigate}
             className={`flex min-w-0 items-center text-zinc-300 transition ${sidebarExpanded ? "" : "lg:justify-center"} ${
               isActive ? "text-white" : "hover:text-white"
             }`}
@@ -57,6 +58,7 @@ const SidebarItem = ({ item, sidebarExpanded, pathname }) => {
               <NavLink
                 end
                 to={subItem.path}
+                onClick={onNavigate}
                 className={({ isActive: activeSub }) =>
                   `flex items-center gap-x-2 truncate rounded-md px-2 py-1 text-sm transition ${
                     !sidebarExpanded ? "" : "mr-3"

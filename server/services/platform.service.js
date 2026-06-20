@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Platform = require("../models/platform.model");
+const Brand = require("../models/brand.model");
 const {
   buildPaginationMeta,
   buildSearchQuery,
@@ -24,6 +25,16 @@ function normalizeDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function buildImage(uploadedFiles = {}) {
+  const file = uploadedFiles.image?.[0];
+  if (!file) return null;
+  return {
+    url: file.url || file.path || "",
+    public_id: file.public_id || file.key || file.filename || "",
+    storage: file.storage || "",
+  };
+}
+
 function buildTree(items, parentId = null) {
   return items
     .filter((item) => String(item.parent?._id || item.parent || "") === String(parentId || ""))
@@ -42,6 +53,15 @@ async function ensureParent(parent, currentId = null) {
   return parent;
 }
 
+async function ensureBrand(brand) {
+  const value = Array.isArray(brand) ? brand[0] : brand;
+  if (!value) return null;
+  if (!mongoose.Types.ObjectId.isValid(value)) throw new Error("Brand id is not valid");
+  const item = await Brand.findOne({ _id: value, isDeleted: false });
+  if (!item) throw new Error("Brand not found");
+  return value;
+}
+
 async function slugExists(slug, currentId = null) {
   return Platform.exists({
     slug,
@@ -51,18 +71,21 @@ async function slugExists(slug, currentId = null) {
 }
 
 function populatePlatform(query) {
-  return query.populate("parent", "name slug");
+  return query
+    .populate("parent", "name name_fa name_en slug")
+    .populate("brand", "title_fa title_en logo brandId code");
 }
 
 exports.createPlatform = async (req, res) => {
-  const name = String(req.body?.name || "").trim();
-  const slug = makeSlug(req.body?.slug || name);
+  const nameFa = String(req.body?.name_fa || req.body?.name || "").trim();
+  const nameEn = String(req.body?.name_en || "").trim();
+  const slug = makeSlug(req.body?.slug || nameEn);
 
-  if (!name || !slug) {
+  if (!nameFa || !nameEn || !slug) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
-      description: "نام و اسلاگ پلتفرم الزامی است",
+      description: "نام فارسی، نام انگلیسی و اسلاگ پلتفرم الزامی است",
     });
   }
 
@@ -75,12 +98,33 @@ exports.createPlatform = async (req, res) => {
   }
 
   const parent = await ensureParent(req.body?.parent);
+  const brand = await ensureBrand(req.body?.brand ?? req.body?.brands);
+  if (!brand) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "برند پلتفرم الزامی است",
+    });
+  }
+  const image = buildImage(req.uploadedFiles);
+  if (!image?.url) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "تصویر پلتفرم الزامی است",
+    });
+  }
+
   const platform = await Platform.create({
-    name,
+    name_fa: nameFa,
+    name_en: nameEn,
+    name: nameFa,
     slug,
     parent,
+    brand,
     description: String(req.body?.description || "").trim(),
     productionDate: normalizeDate(req.body?.productionDate),
+    image,
     creator: req.admin?._id || null,
   });
 
@@ -97,7 +141,7 @@ exports.getPlatforms = async (req, res) => {
   const asTree = String(req.query.tree || "") === "true";
   const query = {
     isDeleted: false,
-    ...buildSearchQuery(search, ["name", "slug", "description"]),
+    ...buildSearchQuery(search, ["name_fa", "name_en", "name", "slug", "description"]),
   };
 
   if (asTree) {
@@ -180,11 +224,44 @@ exports.updatePlatform = async (req, res) => {
     });
   }
 
-  if (req.body?.name !== undefined) platform.name = String(req.body.name).trim();
-  if (slug !== undefined) platform.slug = slug || makeSlug(platform.name);
+  if (req.body?.name_fa !== undefined || req.body?.name !== undefined) {
+    platform.name_fa = String(req.body.name_fa || req.body.name || "").trim();
+    platform.name = platform.name_fa;
+  }
+  if (req.body?.name_en !== undefined) platform.name_en = String(req.body.name_en || "").trim();
+  if (!platform.name_fa && platform.name) platform.name_fa = platform.name;
+  if (!platform.name_en && platform.slug) platform.name_en = platform.slug;
+  if (slug !== undefined) platform.slug = slug || makeSlug(platform.name_en);
+  if (!platform.slug) platform.slug = makeSlug(platform.name_en);
   if (req.body?.parent !== undefined) platform.parent = await ensureParent(req.body.parent, id);
+  if (req.body?.brand !== undefined || req.body?.brands !== undefined) {
+    platform.brand = await ensureBrand(req.body.brand ?? req.body.brands);
+  }
+  if (!platform.brand) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "برند پلتفرم الزامی است",
+    });
+  }
   if (req.body?.description !== undefined) platform.description = String(req.body.description || "").trim();
   if (req.body?.productionDate !== undefined) platform.productionDate = normalizeDate(req.body.productionDate);
+  if (!platform.name_fa || !platform.name_en || !platform.slug) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "نام فارسی، نام انگلیسی و اسلاگ پلتفرم الزامی است",
+    });
+  }
+  const image = buildImage(req.uploadedFiles);
+  if (image?.url) platform.image = image;
+  if (!platform.image?.url) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "تصویر پلتفرم الزامی است",
+    });
+  }
 
   await platform.save();
 

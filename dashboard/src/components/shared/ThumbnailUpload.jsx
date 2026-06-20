@@ -17,12 +17,15 @@ function ThumbnailUpload({
   accept = "image/*",
   multiple = false,
   preview,
+  poster = "",
+  previewShape = "square",
   className = "",
+  disabled = false,
 }) {
   const inputRegistration = useMemo(() => register || {}, [register]);
   const galleryPreview = useMemo(
-    () => (preview ? [{ url: preview, type: preview.startsWith("data:video") || accept.includes("video") ? "video" : "image" }] : []),
-    [accept, preview]
+    () => (preview ? [{ url: preview, poster, type: preview.startsWith("data:video") || accept.includes("video") ? "video" : "image" }] : []),
+    [accept, poster, preview]
   );
 
   const handleThumbnailPreview = (event) => {
@@ -59,7 +62,7 @@ function ThumbnailUpload({
 
   return (
     <div className={`flex flex-col items-center ${compact ? "gap-y-2" : "gap-y-3"} ${className}`.trim()}>
-      <label htmlFor={name} className="relative block w-fit">
+      <label htmlFor={name} className={`relative block w-fit ${disabled ? "pointer-events-none opacity-60" : ""}`.trim()}>
         <span
           className={`inline-flex items-center gap-x-2 text-zinc-100 transition ${
             border
@@ -75,6 +78,7 @@ function ThumbnailUpload({
           {...inputRegistration}
           accept={accept}
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          disabled={disabled}
           id={name}
           multiple={multiple}
           name={name}
@@ -83,7 +87,7 @@ function ThumbnailUpload({
         />
       </label>
 
-      {showPreview ? <DisplayImages galleryPreview={galleryPreview} imageSize={imageSize} /> : null}
+      {showPreview ? <DisplayImages galleryPreview={galleryPreview} imageSize={imageSize} rounded={previewShape} /> : null}
 
     </div>
   );

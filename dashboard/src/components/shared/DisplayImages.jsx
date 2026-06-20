@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 
-function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) {
+function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", rounded = "full" }) {
   const [loadedMap, setLoadedMap] = useState({});
   const hasMedia = galleryPreview?.length > 0;
+  const roundedClass = rounded === "square" ? "rounded-xl" : "rounded-full";
 
   useEffect(() => {
     setLoadedMap({});
@@ -19,7 +20,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
     <div className={`mt-4 flex flex-row gap-x-2 overflow-x-auto ${className}`.trim()}>
       {!hasMedia ? (
         <div
-          className="profile-container relative mb-2 flex-shrink-0 overflow-hidden rounded-full shine-effect"
+          className={`profile-container relative mb-2 flex-shrink-0 overflow-hidden ${roundedClass} shine-effect`}
           style={{
             width: imageSize,
           
@@ -28,7 +29,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
             minHeight: imageSize,
           }}
         >
-          <div className="absolute inset-[4%] animate-pulse rounded-full bg-white/50 dark:bg-white/20" />
+          <div className={`absolute inset-[4%] animate-pulse ${roundedClass} bg-white/50 dark:bg-white/20`} />
         </div>
       ) : (
         galleryPreview.map((item, index) => {
@@ -40,7 +41,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
           return (
             <div
               key={mediaKey}
-              className={`profile-container relative mb-2 flex-shrink-0 overflow-hidden rounded-full ${
+              className={`profile-container relative mb-2 flex-shrink-0 overflow-hidden ${roundedClass} ${
                 !isLoaded ? "shine-effect" : ""
               }`}
               style={{
@@ -51,18 +52,19 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
               }}
             >
               {!isLoaded ? (
-                <div className="absolute inset-[4%] animate-pulse rounded-full bg-white/50 dark:bg-white/20" />
+                <div className={`absolute inset-[4%] animate-pulse ${roundedClass} bg-white/50 dark:bg-white/20`} />
               ) : null}
 
               {isVideo ? (
                 <video
-                  className={`profile-pic rounded-full object-cover transition-opacity duration-200 ${
+                  className={`profile-pic ${roundedClass} object-cover transition-opacity duration-200 ${
                     isLoaded ? "opacity-100" : "opacity-0"
                   }`}
                   controls
                   height={imageSize}
                   onCanPlay={() => markLoaded(mediaKey)}
                   onLoadedData={() => markLoaded(mediaKey)}
+                  poster={item.poster || ""}
                   src={item.url}
                   width={imageSize}
                 >
@@ -71,7 +73,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "" }) 
               ) : (
                 <img
                   alt="gallery"
-                  className="profile-pic h-full w-full rounded-full object-cover"
+                  className={`profile-pic h-full w-full ${roundedClass} object-cover`}
                   height={imageSize}
                   onLoad={() => markLoaded(mediaKey)}
                   src={item.url}

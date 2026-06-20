@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SkeletonBlock } from "../../../components/cards";
 import { ContentEngagement } from "../../../components/content-engagement";
-import type { Game } from "../../../lib/api";
+import type { Game, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, getApiItem, mediaUrl } from "../../../lib/api";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,12 @@ function stripHtml(value?: string) {
 
 function valueOrSkeleton(value?: string | number | null, width = "w-20") {
   return value ? String(value) : <SkeletonBlock className={`h-4 ${width}`} />;
+}
+
+function entityLabel(value?: string | NamedEntity | null) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value.name_fa || value.name || value.name_en || value.slug || "";
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -47,7 +53,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     mediaUrl(game.gallery?.[0]);
   const description = stripHtml(game.description) || game.shortDescription || "";
   const genres = game.genres?.map((item) => item.name).filter(Boolean).join("، ") || "";
-  const platforms = game.platforms?.join("، ") || "";
+  const platforms = game.platforms?.map(entityLabel).filter(Boolean).join("، ") || "";
   const specs = [
     ["پلتفرم", platforms],
     ["نسخه", game.edition],
@@ -187,8 +193,8 @@ export default async function GameDetailPage({ params }: PageProps) {
                   <p className="mb-3 text-xs font-bold text-zinc-500">حجم نسخه‌ها</p>
                   <div className="space-y-2">
                     {game.platformSizes.map((item, index) => (
-                      <div className="grid gap-2 text-xs text-zinc-200 md:grid-cols-[90px_1fr_90px]" key={`${item.platform}-${index}`}>
-                        <span className="rounded-lg bg-zinc-900 px-3 py-2">{item.platform || "-"}</span>
+                      <div className="grid gap-2 text-xs text-zinc-200 md:grid-cols-[90px_1fr_90px]" key={`${entityLabel(item.platform)}-${index}`}>
+                        <span className="rounded-lg bg-zinc-900 px-3 py-2">{entityLabel(item.platform) || "-"}</span>
                         <span className="rounded-lg bg-zinc-900 px-3 py-2">{item.variant || "-"}</span>
                         <span className="rounded-lg bg-zinc-900 px-3 py-2">{item.size || "-"}</span>
                       </div>

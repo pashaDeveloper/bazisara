@@ -4,9 +4,20 @@ const baseSchema = require("./baseSchema.model");
 
 const platformSchema = new mongoose.Schema(
   {
+    name_fa: {
+      type: String,
+      required: [true, "Platform Persian name is required"],
+      trim: true,
+      maxLength: [120, "Platform Persian name must be at most 120 characters"],
+    },
+    name_en: {
+      type: String,
+      required: [true, "Platform English name is required"],
+      trim: true,
+      maxLength: [120, "Platform English name must be at most 120 characters"],
+    },
     name: {
       type: String,
-      required: [true, "Platform name is required"],
       trim: true,
       maxLength: [120, "Platform name must be at most 120 characters"],
     },
@@ -22,6 +33,7 @@ const platformSchema = new mongoose.Schema(
       ref: "Platform",
       default: null,
     },
+    brand: { type: ObjectId, ref: "Brand", default: null },
     description: {
       type: String,
       trim: true,
@@ -31,6 +43,11 @@ const platformSchema = new mongoose.Schema(
     productionDate: {
       type: Date,
       default: null,
+    },
+    image: {
+      url: { type: String, trim: true, default: "" },
+      public_id: { type: String, trim: true, default: "" },
+      storage: { type: String, trim: true, default: "" },
     },
     ...baseSchema.obj,
   },

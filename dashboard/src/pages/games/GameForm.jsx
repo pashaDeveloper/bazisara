@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -21,6 +21,8 @@ import {
 } from "./gameOptions";
 import { formatDate, normalizeOptionValue, toIdArray } from "./gameFormUtils";
 import { useGetPlatformsQuery } from "@/services/platformApi";
+import { useGetGameCollectionsQuery } from "@/services/gameCollectionApi";
+import { useDeleteUploadMutation, useUploadMutation } from "@/services/upload/uploadApi";
 import { flattenPlatforms } from "../platforms/utils";
 import DesktopCoverCropper from "./components/DesktopCoverCropper";
 import { GameCardPreview, GameDetailPreview } from "./components/GamePreviews";
@@ -29,7 +31,6 @@ import {
   DescriptionStep,
   DlcEditionStep,
   MediaStep,
-  PatchStep,
   PlatformSizesStep,
   PlatformsStep,
   RelationsStep,
@@ -53,6 +54,7 @@ const initialForm = {
   developers: [],
   publishers: [],
   tags: [],
+  collections: [],
   platforms: [],
   platformSizes: [],
   gameModes: [],
@@ -85,6 +87,22 @@ const initialForm = {
   gallery: [],
 };
 
+const isFile = (value) => value instanceof File;
+
+const isMediaObject = (value) => Boolean(value && typeof value === "object" && !(value instanceof File) && value.url);
+
+const normalizeUploadedMedia = (response, fallbackType = "video") => {
+  const file = response?.data || response;
+  if (!file?.url) return null;
+
+  return {
+    url: file.url,
+    public_id: file.public_id || file.key || "",
+    storage: file.storage || "arvan",
+    type: file.resource_type === "video" ? "video" : file.type || fallbackType,
+  };
+};
+
 const steps = [
   { key: "basic", title: "پایه" },
   { key: "relations", title: "ارتباطات" },
@@ -92,7 +110,6 @@ const steps = [
   { key: "release", title: "انتشار" },
   { key: "sizes", title: "حجم پلتفرم‌ها" },
   { key: "dlcEdition", title: "DLC / Edition" },
-  { key: "patch", title: "Patch" },
   { key: "social", title: "شبکه‌ها" },
   { key: "summary", title: "خلاصه" },
   { key: "review", title: "نقد و بررسی" },
@@ -156,8 +173,14 @@ function GameForm({ mode = "create" }) {
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
   const [gameplayVideoPreview, setGameplayVideoPreview] = useState("");
   const [gameplayThumbnailPreview, setGameplayThumbnailPreview] = useState("");
-  const [patchImagePreview, setPatchImagePreview] = useState("");
   const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
+  const [videoUploadState, setVideoUploadState] = useState({
+    trailerVideo: false,
+    gameplayVideo: false,
+  });
+  const tempUploadedVideosRef = useRef(new Map());
+  const didSaveRef = useRef(false);
+  const didUnmountRef = useRef(false);
 
   const { data: gameData, isLoading: isLoadingGame } = useGetGameQuery(id, {
     skip: !isEdit || !id,
@@ -167,6 +190,9 @@ function GameForm({ mode = "create" }) {
   const { data: companiesData } = useGetCompaniesQuery({ page: 1, limit: 200 });
   const { data: tagsData } = useGetTagsQuery({ page: 1, limit: 200 });
   const { data: platformsData } = useGetPlatformsQuery({ tree: true, limit: 500 });
+  const { data: collectionsData } = useGetGameCollectionsQuery({ page: 1, limit: 300 });
+  const [uploadFile] = useUploadMutation();
+  const [deleteUpload] = useDeleteUploadMutation();
   const [createGame, createState] = useCreateGameMutation();
   const [updateGame, updateState] = useUpdateGameMutation();
 
@@ -175,16 +201,26 @@ function GameForm({ mode = "create" }) {
   const companies = companiesData?.data || [];
   const tags = tagsData?.data || [];
   const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
+  const collections = collectionsData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
+  const isUploadingVideo = videoUploadState.trailerVideo || videoUploadState.gameplayVideo;
   const isLastStep = currentStep === steps.length - 1;
   const titleIsValid = Boolean(form.title.trim());
   const categoryIsValid = Boolean(form.category);
-  const canGoNext = steps[currentStep].key === "basic" ? titleIsValid : steps[currentStep].key === "relations" ? categoryIsValid : true;
+  const canGoNext =
+    steps[currentStep].key === "basic"
+      ? titleIsValid
+      : steps[currentStep].key === "relations"
+        ? categoryIsValid
+        : steps[currentStep].key === "videos"
+          ? !isUploadingVideo
+          : true;
 
   const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.name, value: item._id })), [categories]);
   const genreOptions = useMemo(() => genres.map((item) => ({ label: item.name, value: item._id })), [genres]);
   const companyOptions = useMemo(() => companies.map((item) => ({ label: item.name, value: item._id })), [companies]);
   const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id })), [tags]);
+  const collectionOptions = useMemo(() => collections.map((item) => ({ label: item.title_fa, value: item._id })), [collections]);
   const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
 
   useEffect(() => {
@@ -205,6 +241,7 @@ function GameForm({ mode = "create" }) {
       developers: toIdArray(game.developers),
       publishers: toIdArray(game.publishers),
       tags: toIdArray(game.tags),
+      collections: toIdArray(game.collections),
       platforms: toIdArray(game.platforms),
       platformSizes: toObjectArray(game.platformSizes),
       gameModes: game.gameModes || [],
@@ -237,9 +274,9 @@ function GameForm({ mode = "create" }) {
       isFeatured: Boolean(game.isFeatured),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerUrl: game.trailerUrl || "",
-      trailerVideo: null,
+      trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
       trailerThumbnail: null,
-      gameplayVideo: null,
+      gameplayVideo: game.gameplayVideo?.url ? game.gameplayVideo : null,
       gameplayThumbnail: null,
       patchTitle: game.patchTitle || "",
       patchImage: null,
@@ -258,7 +295,6 @@ function GameForm({ mode = "create" }) {
     setTrailerThumbnailPreview(game.trailerThumbnail?.url || "");
     setGameplayVideoPreview(game.gameplayVideo?.url || "");
     setGameplayThumbnailPreview(game.gameplayThumbnail?.url || "");
-    setPatchImagePreview(game.patchImage?.url || "");
   }, [gameData]);
 
   const completedSteps = steps.reduce((acc, step, index) => {
@@ -280,8 +316,87 @@ function GameForm({ mode = "create" }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const deleteTemporaryMedia = async (media) => {
+    if (!media?.public_id) return;
+
+    try {
+      await deleteUpload({
+        public_id: media.public_id,
+        resource_type: media.type || "video",
+      }).unwrap();
+    } catch (_) {}
+  };
+
+  const handleVideoUpload = async (field, file) => {
+    if (!file) return;
+
+    const previousTempMedia = tempUploadedVideosRef.current.get(field);
+    const previewSetter = field === "trailerVideo" ? setTrailerVideoPreview : setGameplayVideoPreview;
+    const localPreview = URL.createObjectURL(file);
+
+    setVideoUploadState((prev) => ({ ...prev, [field]: true }));
+    previewSetter(localPreview);
+
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      const response = await uploadFile(uploadFormData).unwrap();
+      const media = normalizeUploadedMedia(response, "video");
+
+      if (!media) {
+        throw new Error("Uploaded video response is invalid");
+      }
+
+      if (didUnmountRef.current && !didSaveRef.current) {
+        await deleteTemporaryMedia(media);
+        return;
+      }
+
+      setForm((prev) => ({ ...prev, [field]: media }));
+      previewSetter(media.url);
+      tempUploadedVideosRef.current.set(field, media);
+
+      if (previousTempMedia?.public_id && previousTempMedia.public_id !== media.public_id) {
+        await deleteTemporaryMedia(previousTempMedia);
+      }
+
+      toast.success(field === "trailerVideo" ? "تریلر آپلود شد" : "گیم‌پلی آپلود شد", { id: `${field}-upload` });
+    } catch (error) {
+      if (!didUnmountRef.current) {
+        setForm((prev) => ({ ...prev, [field]: previousTempMedia || null }));
+        previewSetter(previousTempMedia?.url || "");
+        toast.error(error?.data?.description || "آپلود ویدئو ناموفق بود", { id: `${field}-upload` });
+      }
+    } finally {
+      URL.revokeObjectURL(localPreview);
+      if (!didUnmountRef.current) {
+        setVideoUploadState((prev) => ({ ...prev, [field]: false }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    didUnmountRef.current = false;
+
+    return () => {
+      didUnmountRef.current = true;
+      if (didSaveRef.current) return;
+
+      tempUploadedVideosRef.current.forEach((media) => {
+        deleteTemporaryMedia(media);
+      });
+      tempUploadedVideosRef.current.clear();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const goToStep = (step) => {
     const targetIndex = step - 1;
+
+    if (steps[currentStep].key === "videos" && targetIndex !== currentStep && isUploadingVideo) {
+      toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
+      return;
+    }
 
     if (targetIndex > 0 && !titleIsValid) {
       toast.error("عنوان بازی را وارد کنید", { id: "game-step" });
@@ -299,6 +414,11 @@ function GameForm({ mode = "create" }) {
   };
 
   const goToNextStep = () => {
+    if (steps[currentStep].key === "videos" && isUploadingVideo) {
+      toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
+      return;
+    }
+
     if (!canGoNext) {
       toast.error(steps[currentStep].key === "basic" ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "game-step" });
       return;
@@ -314,6 +434,7 @@ function GameForm({ mode = "create" }) {
       "developers",
       "publishers",
       "tags",
+      "collections",
       "platforms",
       "platformSizes",
       "gameModes",
@@ -337,7 +458,11 @@ function GameForm({ mode = "create" }) {
         return;
       }
       if (key === "trailerVideo" || key === "gameplayVideo" || key === "trailerThumbnail" || key === "gameplayThumbnail") {
-        if (value instanceof File) formData.append(key, value);
+        if (isFile(value)) {
+          formData.append(key, value);
+        } else if (isMediaObject(value)) {
+          formData.append(key, JSON.stringify(value));
+        }
         return;
       }
       if (key === "dlcs") {
@@ -387,6 +512,11 @@ function GameForm({ mode = "create" }) {
       return;
     }
 
+    if (isUploadingVideo) {
+      toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
+      return;
+    }
+
     if (!titleIsValid || !categoryIsValid) {
       toast.error(!titleIsValid ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "save-game" });
       setCurrentStep(!titleIsValid ? 0 : 1);
@@ -400,6 +530,8 @@ function GameForm({ mode = "create" }) {
       const formData = buildFormData();
       const response = isEdit ? await updateGame({ id, formData }).unwrap() : await createGame(formData).unwrap();
 
+      didSaveRef.current = true;
+      tempUploadedVideosRef.current.clear();
       toast.success(response.description || "بازی ذخیره شد", { id: "save-game" });
       navigate("/games");
     } catch (error) {
@@ -432,6 +564,7 @@ function GameForm({ mode = "create" }) {
           <RelationsStep
             categoryOptions={categoryOptions}
             companyOptions={companyOptions}
+            collectionOptions={collectionOptions}
             form={form}
             genreOptions={genreOptions}
             onChange={handleChange}
@@ -458,16 +591,6 @@ function GameForm({ mode = "create" }) {
         return <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
       case "dlcEdition":
         return <DlcEditionStep form={form} onChange={handleChange} setArrayField={setArrayField} />;
-      case "patch":
-        return (
-          <PatchStep
-            form={form}
-            onChange={handleChange}
-            patchImagePreview={patchImagePreview}
-            setForm={setForm}
-            setPatchImagePreview={setPatchImagePreview}
-          />
-        );
       case "social":
         return <SocialStep form={form} setArrayField={setArrayField} />;
       case "summary":
@@ -484,7 +607,10 @@ function GameForm({ mode = "create" }) {
             form={form}
             gameplayThumbnailPreview={gameplayThumbnailPreview}
             gameplayVideoPreview={gameplayVideoPreview}
+            isGameplayVideoUploading={videoUploadState.gameplayVideo}
+            isTrailerVideoUploading={videoUploadState.trailerVideo}
             onChange={handleChange}
+            onVideoUpload={handleVideoUpload}
             setForm={setForm}
             setGameplayThumbnailPreview={setGameplayThumbnailPreview}
             setGameplayVideoPreview={setGameplayVideoPreview}
@@ -535,7 +661,11 @@ function GameForm({ mode = "create" }) {
                   {renderStep()}
                   <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
                     {isLastStep ? (
-                      <SendButton isLoading={isSaving} label={isEdit ? "ذخیره بازی" : "ثبت بازی"} loadingLabel="در حال ذخیره..." />
+                      <SendButton
+                        isLoading={isSaving || isUploadingVideo}
+                        label={isEdit ? "ذخیره بازی" : "ثبت بازی"}
+                        loadingLabel={isUploadingVideo ? "در حال آپلود ویدئو..." : "در حال ذخیره..."}
+                      />
                     ) : (
                       <NavigationButton direction="next" disabled={!canGoNext || isSaving} onClick={goToNextStep} />
                     )}

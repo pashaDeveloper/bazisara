@@ -439,7 +439,7 @@ export function BasicStep({
   );
 }
 
-export function RelationsStep({ categoryOptions, companyOptions, form, genreOptions, onChange, setArrayField, tagOptions }) {
+export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, genreOptions, onChange, setArrayField, tagOptions }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
@@ -447,6 +447,7 @@ export function RelationsStep({ categoryOptions, companyOptions, form, genreOpti
       <MultiSelectDropdown label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
       <MultiSelectDropdown label="ناشرها" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
       <MultiSelectDropdown label="تگ‌های سئو" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
+      <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
     </div>
   );
 }
@@ -600,7 +601,7 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
             }}
             title="انتخاب"
           />
-          {galleryPreview.length ? <DisplayImages galleryPreview={galleryPreview} imageSize={86} /> : null}
+          {galleryPreview.length ? <DisplayImages galleryPreview={galleryPreview} imageSize={86} rounded="square" /> : null}
         </div>
       </div>
     </div>
@@ -611,7 +612,10 @@ export function VideosStep({
   form,
   gameplayThumbnailPreview,
   gameplayVideoPreview,
+  isGameplayVideoUploading = false,
+  isTrailerVideoUploading = false,
   onChange,
+  onVideoUpload,
   setForm,
   setGameplayThumbnailPreview,
   setGameplayVideoPreview,
@@ -627,17 +631,24 @@ export function VideosStep({
           <span className="mb-3 block text-sm text-zinc-300">تریلر</span>
           <ThumbnailUpload
             accept="video/*"
+            disabled={isTrailerVideoUploading}
+            imageSize={150}
             name="trailerVideo"
+            poster={trailerThumbnailPreview}
             preview={trailerVideoPreview}
-            setThumbnail={(file) => setForm((prev) => ({ ...prev, trailerVideo: file }))}
-            setThumbnailPreview={setTrailerVideoPreview}
+            previewShape="square"
+            setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
+            setThumbnailPreview={() => {}}
             title="انتخاب"
           />
+          {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
           <div className="mt-4">
             <span className="mb-3 block text-sm text-zinc-300">تصویر تریلر</span>
             <ThumbnailUpload
+              imageSize={150}
               name="trailerThumbnail"
               preview={trailerThumbnailPreview}
+              previewShape="square"
               setThumbnail={(file) => setForm((prev) => ({ ...prev, trailerThumbnail: file }))}
               setThumbnailPreview={setTrailerThumbnailPreview}
               title="انتخاب"
@@ -648,17 +659,24 @@ export function VideosStep({
           <span className="mb-3 block text-sm text-zinc-300">گیم‌پلی</span>
           <ThumbnailUpload
             accept="video/*"
+            disabled={isGameplayVideoUploading}
+            imageSize={150}
             name="gameplayVideo"
+            poster={gameplayThumbnailPreview}
             preview={gameplayVideoPreview}
-            setThumbnail={(file) => setForm((prev) => ({ ...prev, gameplayVideo: file }))}
-            setThumbnailPreview={setGameplayVideoPreview}
+            previewShape="square"
+            setThumbnail={(file) => onVideoUpload?.("gameplayVideo", file)}
+            setThumbnailPreview={() => {}}
             title="انتخاب"
           />
+          {isGameplayVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود گیم‌پلی روی Arvan...</p> : null}
           <div className="mt-4">
             <span className="mb-3 block text-sm text-zinc-300">تصویر گیم‌پلی</span>
             <ThumbnailUpload
+              imageSize={150}
               name="gameplayThumbnail"
               preview={gameplayThumbnailPreview}
+              previewShape="square"
               setThumbnail={(file) => setForm((prev) => ({ ...prev, gameplayThumbnail: file }))}
               setThumbnailPreview={setGameplayThumbnailPreview}
               title="انتخاب"

@@ -44,7 +44,9 @@ function Platforms() {
             <table className="w-full table-fixed text-right text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500">
+                  <th className="w-16 pb-3 font-medium">تصویر</th>
                   <th className="pb-3 font-medium">نام</th>
+                  <th className="hidden pb-3 font-medium xl:table-cell">برند</th>
                   <th className="hidden pb-3 font-medium md:table-cell">والد</th>
                   <th className="hidden pb-3 font-medium lg:table-cell">تاریخ تولید</th>
                   <th className="w-24 pb-3 text-center font-medium">عملیات</th>
@@ -53,16 +55,30 @@ function Platforms() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td className="py-6 text-center text-zinc-500" colSpan="4">در حال دریافت...</td>
+                    <td className="py-6 text-center text-zinc-500" colSpan="6">در حال دریافت...</td>
                   </tr>
                 ) : platforms.length ? (
                   platforms.map((item) => (
                     <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
                       <td className="py-4 pl-3">
-                        <span className="block truncate" style={{ paddingRight: `${item.depth * 20}px` }}>{item.name}</span>
-                        <span className="mt-1 block truncate text-xs text-zinc-500">{item.slug}</span>
+                        {item.image?.url ? (
+                          <img alt={item.name_fa || item.name || item.name_en} className="h-11 w-11 rounded-xl border border-zinc-800 object-cover" src={item.image.url} />
+                        ) : (
+                          <div className="h-11 w-11 rounded-xl border border-zinc-800 bg-black" />
+                        )}
                       </td>
-                      <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name || "-"}</td>
+                      <td className="py-4 pl-3">
+                        <span className="block truncate" style={{ paddingRight: `${item.depth * 20}px` }}>{item.name_fa || item.name || "-"}</span>
+                        <span className="mt-1 block truncate text-xs text-zinc-500">{item.name_en || item.slug}</span>
+                      </td>
+                      <td className="hidden py-4 text-zinc-400 xl:table-cell">
+                        {item.brand ? (
+                          <span className="line-clamp-1">{item.brand.title_fa || item.brand.name || item.brand.title_en}</span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name_fa || item.parent?.name || "-"}</td>
                       <td className="hidden py-4 text-zinc-400 lg:table-cell">
                         {item.productionDate ? new Date(item.productionDate).toLocaleDateString("fa-IR") : "-"}
                       </td>
@@ -76,7 +92,7 @@ function Platforms() {
                           </Link>
                           <DeleteModal
                             isLoading={isDeleting}
-                            itemTitle={item.name}
+                            itemTitle={item.name_fa || item.name || item.name_en}
                             message="این پلتفرم حذف شود؟"
                             onDelete={() => handleDelete(item._id)}
                           />
@@ -86,7 +102,7 @@ function Platforms() {
                   ))
                 ) : (
                   <tr>
-                    <td className="py-6 text-center text-zinc-500" colSpan="4">هنوز پلتفرمی ثبت نشده است.</td>
+                    <td className="py-6 text-center text-zinc-500" colSpan="6">هنوز پلتفرمی ثبت نشده است.</td>
                   </tr>
                 )}
               </tbody>

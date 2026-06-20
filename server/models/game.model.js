@@ -132,6 +132,7 @@ const gameSchema = new mongoose.Schema(
         ref: "Tag",
       },
     ],
+    collections: [{ type: ObjectId, ref: "GameCollection" }],
     platforms: [{ type: ObjectId, ref: "Platform" }],
     platformSizes: [platformSizeSchema],
     gameModes: [{ type: String, trim: true }],

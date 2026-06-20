@@ -65,6 +65,7 @@ export const bazisaraApi = createApi({
     "ShippingMethod",
     "Tag",
     "Game",
+    "GameCollection",
     "Product",
     "Article",
     "Slider",

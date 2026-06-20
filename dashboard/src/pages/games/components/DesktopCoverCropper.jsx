@@ -1,6 +1,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import Cross from "@/components/icons/Cross";
 
+const OUTPUT_WIDTH = 1960;
+const OUTPUT_HEIGHT = 1080;
+const CROP_WIDTH = 1960;
+const CROP_HEIGHT = 540;
+const CROP_ASPECT = CROP_WIDTH / CROP_HEIGHT;
+
+function fitAspectCrop(width, height) {
+  const cropWidth = width;
+  const cropHeight = Math.min(height, cropWidth / CROP_ASPECT);
+
+  return {
+    height: cropHeight,
+    width: cropWidth,
+    x: 0,
+    y: (height - cropHeight) / 2,
+  };
+}
+
 export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
   const imageRef = useRef(null);
   const dragRef = useRef(null);
@@ -25,40 +43,16 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
       if (!drag) return;
 
       event.preventDefault();
-      const dx = event.clientX - drag.startX;
       const dy = event.clientY - drag.startY;
 
       setCrop(() => {
-        const minSize = 60;
         const box = imageBox;
         let next = { ...drag.startCrop };
 
         if (drag.type === "move") {
-          next.x = Math.min(Math.max(0, drag.startCrop.x + dx), box.width - drag.startCrop.width);
+          next.x = 0;
           next.y = Math.min(Math.max(0, drag.startCrop.y + dy), box.height - drag.startCrop.height);
-        }
-
-        if (drag.type.includes("e")) {
-          next.width = Math.min(Math.max(minSize, drag.startCrop.width + dx), box.width - drag.startCrop.x);
-        }
-        if (drag.type.includes("s")) {
-          next.height = Math.min(Math.max(minSize, drag.startCrop.height + dy), box.height - drag.startCrop.y);
-        }
-        if (drag.type.includes("w")) {
-          const nextX = Math.min(
-            Math.max(0, drag.startCrop.x + dx),
-            drag.startCrop.x + drag.startCrop.width - minSize
-          );
-          next.width = drag.startCrop.width + (drag.startCrop.x - nextX);
-          next.x = nextX;
-        }
-        if (drag.type.includes("n")) {
-          const nextY = Math.min(
-            Math.max(0, drag.startCrop.y + dy),
-            drag.startCrop.y + drag.startCrop.height - minSize
-          );
-          next.height = drag.startCrop.height + (drag.startCrop.y - nextY);
-          next.y = nextY;
+          return next;
         }
 
         return next;
@@ -85,14 +79,7 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
     const { width, height } = image.getBoundingClientRect();
     setImageBox({ width, height });
 
-    const cropWidth = width * 0.82;
-    const cropHeight = Math.min(height * 0.7, cropWidth * 0.58);
-    setCrop({
-      x: (width - cropWidth) / 2,
-      y: (height - cropHeight) / 2,
-      width: cropWidth,
-      height: cropHeight,
-    });
+    setCrop(fitAspectCrop(width, height));
   };
 
   const startDrag = (event, type) => {
@@ -112,27 +99,47 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
 
     const scaleX = image.naturalWidth / imageBox.width;
     const scaleY = image.naturalHeight / imageBox.height;
+    const sourceX = crop.x * scaleX;
+    const sourceY = crop.y * scaleY;
+    const sourceWidth = crop.width * scaleX;
+    const sourceHeight = crop.height * scaleY;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(crop.width * scaleX);
-    canvas.height = Math.round(crop.height * scaleY);
+    canvas.width = OUTPUT_WIDTH;
+    canvas.height = OUTPUT_HEIGHT;
 
     const context = canvas.getContext("2d");
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+    context.save();
+    context.filter = "blur(28px)";
     context.drawImage(
       image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      -60,
+      -40,
+      OUTPUT_WIDTH + 120,
+      OUTPUT_HEIGHT + 80
+    );
+    context.restore();
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
       0,
-      0,
-      canvas.width,
-      canvas.height
+      (OUTPUT_HEIGHT - CROP_HEIGHT) / 2,
+      CROP_WIDTH,
+      CROP_HEIGHT
     );
 
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        const croppedFile = new File([blob], `desktop-${file.name.replace(/\.[^.]+$/, "")}.webp`, {
+        const croppedFile = new File([blob], `desktop-1960x1080-${file.name.replace(/\.[^.]+$/, "")}.webp`, {
           type: "image/webp",
         });
         onCrop(croppedFile, URL.createObjectURL(blob));
@@ -166,7 +173,7 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
           <div className="no-scrollbar max-h-[72vh] overflow-auto bg-black">
             <div className="relative mx-auto w-fit select-none">
               <img
-                alt="mobile crop"
+                alt="desktop crop"
                 className="block max-h-[72vh] max-w-full"
                 onLoad={handleImageLoad}
                 ref={imageRef}
@@ -190,15 +197,12 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
                         <span className="border border-white/25" key={index} />
                       ))}
                     </div>
-                    {["nw", "ne", "sw", "se"].map((handle) => (
-                      <button
-                        aria-label={`resize ${handle}`}
-                        className={`absolute h-5 w-5 rounded-full border-2 border-white bg-red-500 ${
-                          handle.includes("n") ? "-top-3" : "-bottom-3"
-                        } ${handle.includes("w") ? "-left-3 cursor-nwse-resize" : "-right-3 cursor-nesw-resize"}`}
+                    {["left", "right"].map((handle) => (
+                      <span
+                        className={`absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border-2 border-white bg-red-500 ${
+                          handle === "left" ? "-left-3" : "-right-3"
+                        }`}
                         key={handle}
-                        onPointerDown={(event) => startDrag(event, handle)}
-                        type="button"
                       />
                     ))}
                   </div>
@@ -208,7 +212,10 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
           </div>
 
           <div className="flex flex-col justify-between gap-4">
-            <div className="space-y-3 text-sm text-zinc-400" />
+            <div className="space-y-3 text-sm leading-7 text-zinc-400">
+              <p>کادر انتخاب همیشه تمام عرض تصویر را می‌گیرد و نسبت آن 1960 در 540 است.</p>
+              <p>فقط جای عمودی کادر را تنظیم کنید؛ خروجی نهایی 1960 در 1080 ساخته می‌شود.</p>
+            </div>
             <div className="grid gap-2">
               <button
                 className="rounded-lg bg-red-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-400"

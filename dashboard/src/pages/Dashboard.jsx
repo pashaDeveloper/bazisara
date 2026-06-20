@@ -177,6 +177,55 @@ function ContentTable({ title, rows, type }) {
   );
 }
 
+function RecentSessionsTable({ recentSessions }) {
+  return (
+    <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-white">آخرین نشست‌های کاربران</h2>
+        <span className="text-xs text-zinc-500">{formatNumber(recentSessions.length)} مورد اخیر</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] text-right text-xs">
+          <thead>
+            <tr className="border-b border-zinc-800 text-zinc-500">
+              <th className="pb-3 font-medium">بازدیدکننده</th>
+              <th className="pb-3 font-medium">IP</th>
+              <th className="pb-3 font-medium">دستگاه</th>
+              <th className="pb-3 font-medium">مرورگر</th>
+              <th className="pb-3 font-medium">ورودی</th>
+              <th className="pb-3 font-medium">آخرین صفحه</th>
+              <th className="pb-3 font-medium">مدت حضور</th>
+              <th className="pb-3 font-medium">آخرین فعالیت</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentSessions.length ? (
+              recentSessions.map((session) => (
+                <tr key={session._id} className="border-b border-zinc-900 text-zinc-200">
+                  <td className="max-w-36 truncate py-3">{session.visitorId}</td>
+                  <td className="py-3">{session.ip || "-"}</td>
+                  <td className="py-3">{session.deviceType || "-"}</td>
+                  <td className="py-3">{session.browser || "-"}</td>
+                  <td className="max-w-44 truncate py-3">{session.referrer || "مستقیم"}</td>
+                  <td className="max-w-44 truncate py-3">{session.currentPath || session.landingPage || "-"}</td>
+                  <td className="py-3">{formatDuration(session.durationMs)}</td>
+                  <td className="py-3">{formatDate(session.lastSeenAt)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="py-8 text-center text-zinc-500" colSpan="8">
+                  هنوز نشست کاربری ثبت نشده است.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  );
+}
+
 function Dashboard() {
   const { data, isLoading, isFetching } = useGetAnalyticsSummaryQuery(undefined, {
     pollingInterval: 30000,
@@ -275,6 +324,8 @@ function Dashboard() {
           <StatCard title="میانگین حضور" value={Math.round((totals.averageDurationMs || 0) / 1000)} unit={formatDuration(totals.averageDurationMs)} />
         </div>
 
+        <RecentSessionsTable recentSessions={recentSessions} />
+
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <AnalyticsChart title="روند بازدید ۷ روز اخیر" type="bar" data={trendChartData} />
           <AnalyticsChart title="نوع دستگاه کاربران" type="doughnut" data={deviceChartData} />
@@ -295,50 +346,6 @@ function Dashboard() {
           <ContentTable title="بازی‌های پربازدید" rows={topGames} type="game" />
         </div>
 
-        <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white">آخرین نشست‌های کاربران</h2>
-            <span className="text-xs text-zinc-500">{formatNumber(recentSessions.length)} مورد اخیر</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-right text-xs">
-              <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500">
-                  <th className="pb-3 font-medium">بازدیدکننده</th>
-                  <th className="pb-3 font-medium">IP</th>
-                  <th className="pb-3 font-medium">دستگاه</th>
-                  <th className="pb-3 font-medium">مرورگر</th>
-                  <th className="pb-3 font-medium">ورودی</th>
-                  <th className="pb-3 font-medium">آخرین صفحه</th>
-                  <th className="pb-3 font-medium">مدت حضور</th>
-                  <th className="pb-3 font-medium">آخرین فعالیت</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSessions.length ? (
-                  recentSessions.map((session) => (
-                    <tr key={session._id} className="border-b border-zinc-900 text-zinc-200">
-                      <td className="max-w-36 truncate py-3">{session.visitorId}</td>
-                      <td className="py-3">{session.ip || "-"}</td>
-                      <td className="py-3">{session.deviceType || "-"}</td>
-                      <td className="py-3">{session.browser || "-"}</td>
-                      <td className="max-w-44 truncate py-3">{session.referrer || "مستقیم"}</td>
-                      <td className="max-w-44 truncate py-3">{session.currentPath || session.landingPage || "-"}</td>
-                      <td className="py-3">{formatDuration(session.durationMs)}</td>
-                      <td className="py-3">{formatDate(session.lastSeenAt)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="py-8 text-center text-zinc-500" colSpan="8">
-                      هنوز نشست کاربری ثبت نشده است.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </article>
       </section>
     </ControlPanel>
   );

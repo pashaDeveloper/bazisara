@@ -3,7 +3,7 @@ export function flattenPlatforms(items = [], depth = 0) {
     {
       ...item,
       depth,
-      label: `${"— ".repeat(depth)}${item.name}`,
+      label: `${"— ".repeat(depth)}${item.name_fa || item.name || item.name_en}`,
       value: item._id,
     },
     ...flattenPlatforms(item.children || [], depth + 1),

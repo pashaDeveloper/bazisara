@@ -19,6 +19,8 @@ export type Media = {
 export type NamedEntity = {
   _id?: string;
   name?: string;
+  name_fa?: string;
+  name_en?: string;
   slug?: string;
   parent?: NamedEntity | null;
   icon?: Media;
@@ -44,9 +46,9 @@ export type Game = {
   developers?: NamedEntity[];
   publishers?: NamedEntity[];
   tags?: NamedEntity[];
-  platforms?: string[];
+  platforms?: Array<string | NamedEntity>;
   platformSizes?: Array<{
-    platform?: string;
+    platform?: string | NamedEntity;
     variant?: string;
     size?: string;
   }>;

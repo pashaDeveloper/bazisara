@@ -9,10 +9,10 @@ import StepIndicator from "../categories/components/StepIndicator";
 import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
 import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/Dropdown";
 import { useGetCategoriesQuery } from "@/services/category/categoryApi";
+import { useGetCategoryFiltersQuery } from "@/services/category/categoryFilterApi";
 import { useGetBrandsQuery } from "@/services/brandApi";
 import {
   useGetInsurancesQuery,
-  useGetPricesQuery,
   useGetShippingMethodsQuery,
   useGetWarrantiesQuery,
 } from "@/services/catalogEntityApi";
@@ -34,6 +34,9 @@ const initialForm = {
   gallery: [],
   imageUrl: "",
   galleryUrls: [],
+  basePrice: "",
+  priceConfig: { basePrice: "", orderLimit: 1 },
+  variants: [],
   variant: {
     title: "تنوع اصلی",
     price: "",
@@ -82,6 +85,17 @@ function formatPrice(value) {
 
 function toArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function toNumber(value) {
+  const number = Number(String(value ?? "").replace(/,/g, ""));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function calculateVariantPrice(variant, basePrice) {
+  const base = toNumber(variant.basePrice || basePrice);
+  const modifiersTotal = toArray(variant.priceModifiers).reduce((sum, item) => sum + toNumber(item.priceDelta), 0);
+  return base + modifiersTotal;
 }
 
 function Field({ label, children }) {
@@ -213,8 +227,176 @@ function SpecificationRows({ items, onChange }) {
   );
 }
 
+function VariantPricingRows({ basePrice, categoryFilters, items, onBasePriceChange, onChange }) {
+  const rows = items.length
+    ? items
+    : [{ title: "تنوع اصلی", stock: "", color: "", basePrice: "", oldPrice: "", priceModifiers: [] }];
+  const [editingIndex, setEditingIndex] = useState(null);
+  const editingVariant = editingIndex === null ? null : rows[editingIndex];
+
+  const update = (index, next) => onChange(rows.map((item, itemIndex) => (itemIndex === index ? next : item)));
+  const addVariant = () =>
+    onChange([
+      ...rows,
+      {
+        title: `تنوع ${rows.length + 1}`,
+        stock: "",
+        color: "",
+        basePrice: "",
+        oldPrice: "",
+        priceModifiers: [],
+      },
+    ]);
+
+  const upsertModifier = (filter, option, priceDelta) => {
+    if (editingIndex === null) return;
+    const modifiers = toArray(editingVariant.priceModifiers);
+    const nextModifier = {
+      categoryFilter: filter._id,
+      filterKey: filter.key,
+      filterLabel: filter.label || filter.key,
+      optionValue: option.value,
+      optionLabel: option.label,
+      priceDelta,
+    };
+    const exists = modifiers.some((item) => item.categoryFilter === filter._id && item.optionValue === option.value);
+    const nextModifiers = exists
+      ? modifiers.map((item) => (item.categoryFilter === filter._id && item.optionValue === option.value ? nextModifier : item))
+      : [...modifiers, nextModifier];
+    update(editingIndex, { ...editingVariant, priceModifiers: nextModifiers });
+  };
+
+  const removeModifier = (filterId, optionValue) => {
+    if (editingIndex === null) return;
+    update(editingIndex, {
+      ...editingVariant,
+      priceModifiers: toArray(editingVariant.priceModifiers).filter(
+        (item) => !(item.categoryFilter === filterId && item.optionValue === optionValue)
+      ),
+    });
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-800 dark:bg-black">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">قیمت‌گذاری محصول</h3>
+          <p className="mt-1 text-xs text-zinc-500">قیمت نهایی هر تنوع از قیمت پایه و قیمت بخش‌های انتخابی محاسبه می‌شود.</p>
+        </div>
+        <button className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:border-white" onClick={addVariant} type="button">
+          افزودن variant
+        </button>
+      </div>
+
+      <Field label="قیمت پایه">
+        <TextInput inputMode="numeric" onChange={(event) => onBasePriceChange(event.target.value)} value={basePrice} />
+      </Field>
+
+      <div className="space-y-3">
+        {rows.map((variant, index) => {
+          const finalPrice = calculateVariantPrice(variant, basePrice);
+
+          return (
+            <div className="rounded-2xl border border-zinc-300 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950" key={`variant-${index}`}>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="عنوان variant">
+                  <TextInput onChange={(event) => update(index, { ...variant, title: event.target.value })} value={variant.title || ""} />
+                </Field>
+                <Field label="رنگ/مدل">
+                  <TextInput onChange={(event) => update(index, { ...variant, color: event.target.value })} value={variant.color || ""} />
+                </Field>
+                <Field label="موجودی">
+                  <TextInput inputMode="numeric" onChange={(event) => update(index, { ...variant, stock: event.target.value })} value={variant.stock || ""} />
+                </Field>
+                <Field label="قیمت قبل">
+                  <TextInput inputMode="numeric" onChange={(event) => update(index, { ...variant, oldPrice: event.target.value })} value={variant.oldPrice || ""} />
+                </Field>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-3 text-xs dark:border-zinc-800">
+                <span className="font-bold text-emerald-500">قیمت نهایی: {formatPrice(finalPrice)} تومان</span>
+                <div className="flex gap-2">
+                  <button className="rounded-lg border border-zinc-700 px-3 py-2 text-zinc-300 transition hover:border-white" onClick={() => setEditingIndex(index)} type="button">
+                    تنظیم قیمت بخش‌ها
+                  </button>
+                  {rows.length > 1 ? (
+                    <button className="rounded-lg border border-red-900/70 px-3 py-2 text-red-300 transition hover:border-red-400" onClick={() => onChange(rows.filter((_, rowIndex) => rowIndex !== index))} type="button">
+                      حذف
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {editingVariant ? (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur" dir="rtl">
+          <div className="mx-auto mt-10 max-w-3xl rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
+            <div className="flex items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-white">قیمت‌گذاری {editingVariant.title}</h3>
+                <p className="mt-1 text-xs text-zinc-500">برای هر گزینه از فیلترهای دسته‌بندی، مبلغ افزایشی جدا ثبت می‌شود.</p>
+              </div>
+              <button className="rounded-lg border border-zinc-800 px-3 py-2 text-xs text-zinc-300 transition hover:border-white" onClick={() => setEditingIndex(null)} type="button">
+                بستن
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {categoryFilters.length ? (
+                categoryFilters.map((filter) => (
+                  <div className="rounded-xl border border-zinc-800 bg-black p-4" key={filter._id}>
+                    <h4 className="text-sm font-bold text-white">{filter.label || filter.key}</h4>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {toArray(filter.options).map((option) => {
+                        const current = toArray(editingVariant.priceModifiers).find(
+                          (item) => item.categoryFilter === filter._id && item.optionValue === option.value
+                        );
+
+                        return (
+                          <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3" key={`${filter._id}-${option.value}`}>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <span className="text-sm font-bold text-zinc-200">{option.label}</span>
+                              {current ? (
+                                <button className="text-xs text-red-300" onClick={() => removeModifier(filter._id, option.value)} type="button">
+                                  حذف قیمت
+                                </button>
+                              ) : null}
+                            </div>
+                            <TextInput
+                              inputMode="numeric"
+                              onChange={(event) => upsertModifier(filter, option, event.target.value)}
+                              placeholder="مبلغ افزایشی"
+                              value={current?.priceDelta ?? ""}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-zinc-800 bg-black p-6 text-center text-sm text-zinc-500">
+                  برای این دسته‌بندی هنوز فیلتری ثبت نشده است.
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 rounded-xl border border-emerald-900/60 bg-emerald-950/30 p-4 text-sm font-bold text-emerald-200">
+              قیمت نهایی: {formatPrice(calculateVariantPrice(editingVariant, basePrice))} تومان
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ProductCardPreview({ form, imagePreview }) {
   const available = form.statusProduct === "marketable";
+  const previewVariant = form.variants?.[0] || form.variant;
+  const previewPrice = calculateVariantPrice(previewVariant, form.basePrice || form.priceConfig.basePrice);
   return (
     <aside className="sticky top-24 self-start" dir="rtl">
       <div className="group block w-full">
@@ -231,7 +413,7 @@ function ProductCardPreview({ form, imagePreview }) {
             <p className="line-clamp-1 text-right text-[12px] font-medium text-[#7f879c]">{form.summary || "خلاصه کوتاه محصول"}</p>
             {available ? (
               <div className="pt-1 text-left text-[14px] font-black text-[#2f3446]">
-                {formatPrice(form.variant.price)} <span className="text-[10px] font-bold text-[#7f879c]">تومان</span>
+                {formatPrice(previewPrice)} <span className="text-[10px] font-bold text-[#7f879c]">تومان</span>
               </div>
             ) : (
               <div className="pt-1 text-left text-[11px] font-bold text-[#ff5268]">ناموجود</div>
@@ -244,6 +426,8 @@ function ProductCardPreview({ form, imagePreview }) {
 }
 
 function ProductDetailPreview({ brandLabel, form, imagePreview, isSticky = true }) {
+  const previewVariant = form.variants?.[0] || form.variant;
+  const previewPrice = calculateVariantPrice(previewVariant, form.basePrice || form.priceConfig.basePrice);
   return (
     <article className={`${isSticky ? "sticky top-24" : ""} w-full overflow-hidden rounded-[28px] bg-[#f6f8fb] text-right text-[#29467c] shadow-2xl shadow-black/20`} dir="rtl">
       <div className="grid gap-6 p-5 lg:grid-cols-[1fr_1.1fr]">
@@ -261,7 +445,7 @@ function ProductDetailPreview({ brandLabel, form, imagePreview, isSticky = true 
           <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#7f879c]">{form.statusProduct === "marketable" ? "آماده ارسال" : "ناموجود"}</span>
-              <span className="text-lg font-black text-[#2f3446]">{formatPrice(form.variant.price)} تومان</span>
+              <span className="text-lg font-black text-[#2f3446]">{formatPrice(previewPrice)} تومان</span>
             </div>
           </div>
           <div className="grid gap-2 text-xs font-bold text-[#5d6683]">
@@ -287,25 +471,27 @@ function ProductForm({ mode = "create" }) {
   const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
   const { data: productData, isLoading: isLoadingProduct } = useGetProductQuery(id, { skip: !isEdit || !id });
   const { data: categoriesData } = useGetCategoriesQuery({ page: 1, limit: 200 });
+  const { data: categoryFiltersData } = useGetCategoryFiltersQuery(
+    { page: 1, limit: 200, category: form.category },
+    { skip: !form.category }
+  );
   const { data: brandsData } = useGetBrandsQuery({ page: 1, limit: 300 });
   const { data: warrantiesData } = useGetWarrantiesQuery({ page: 1, limit: 300 });
   const { data: insurancesData } = useGetInsurancesQuery({ page: 1, limit: 300 });
-  const { data: pricesData } = useGetPricesQuery({ page: 1, limit: 300 });
   const { data: shippingMethodsData } = useGetShippingMethodsQuery({ page: 1, limit: 300 });
   const [createProduct, createState] = useCreateProductMutation();
   const [updateProduct, updateState] = useUpdateProductMutation();
 
   const categories = categoriesData?.data || [];
+  const categoryFilters = categoryFiltersData?.data || [];
   const brands = brandsData?.data || [];
   const warranties = warrantiesData?.data || [];
   const insurances = insurancesData?.data || [];
-  const prices = pricesData?.data || [];
   const shippingMethods = shippingMethodsData?.data || [];
   const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.name, value: item._id })), [categories]);
   const brandOptions = useMemo(() => brands.map((item) => ({ label: item.title_fa || item.name, value: item._id })), [brands]);
   const warrantyOptions = useMemo(() => warranties.map((item) => ({ label: item.title_fa, value: item._id })), [warranties]);
   const insuranceOptions = useMemo(() => insurances.map((item) => ({ label: item.title_fa, value: item._id })), [insurances]);
-  const priceOptions = useMemo(() => prices.map((item) => ({ label: `${Number(item.selling_price || 0).toLocaleString("fa-IR")} تومان`, value: item._id })), [prices]);
   const shippingMethodOptions = useMemo(() => shippingMethods.map((item) => ({ label: item.title_fa, value: item._id })), [shippingMethods]);
   const selectedBrandLabel = useMemo(() => brandOptions.find((item) => item.value === form.brand)?.label || "", [brandOptions, form.brand]);
   const isSaving = createState.isLoading || updateState.isLoading;
@@ -336,6 +522,21 @@ function ProductForm({ mode = "create" }) {
       product_type: product.product_type || "product",
       imageUrl: mainImage,
       galleryUrls: toArray(product.gallery).map((item) => item.url).filter(Boolean),
+      basePrice: product.priceConfig?.basePrice ?? product.basePrice ?? defaultVariant.basePrice ?? "",
+      priceConfig: {
+        basePrice: product.priceConfig?.basePrice ?? product.basePrice ?? defaultVariant.basePrice ?? "",
+        orderLimit: product.priceRef?.order_limit ?? 1,
+      },
+      variants: (product.variantGroups?.length ? product.variantGroups : product.variants || []).map((item, index) => ({
+        title: item.title || `تنوع ${index + 1}`,
+        basePrice: item.basePrice ?? product.priceConfig?.basePrice ?? product.basePrice ?? "",
+        price: item.price ?? "",
+        oldPrice: item.oldPrice ?? "",
+        stock: item.stock ?? "",
+        color: item.color || "",
+        priceModifiers: toArray(item.priceModifiers),
+        badgeLabel: item.variant_badges?.[0]?.payload?.text || "",
+      })),
       variant: {
         ...initialForm.variant,
         title: defaultVariant.title || "تنوع اصلی",
@@ -429,6 +630,18 @@ function ProductForm({ mode = "create" }) {
           values: String(attribute.values || "").split(",").map((item) => item.trim()).filter(Boolean),
         })),
       })),
+      basePrice: form.basePrice || form.priceConfig.basePrice,
+      priceConfig: {
+        ...form.priceConfig,
+        basePrice: form.basePrice || form.priceConfig.basePrice,
+      },
+      variants: (form.variants.length ? form.variants : [form.variant]).map((variant, index) => ({
+        ...variant,
+        title: variant.title || `تنوع ${index + 1}`,
+        basePrice: variant.basePrice || form.basePrice || form.priceConfig.basePrice,
+        price: calculateVariantPrice(variant, form.basePrice || form.priceConfig.basePrice),
+        priceModifiers: toArray(variant.priceModifiers),
+      })),
     };
 
     Object.entries(payload).forEach(([key, value]) => {
@@ -498,14 +711,25 @@ function ProductForm({ mode = "create" }) {
               <Field label="نوع محصول"><TextInput name="product_type" onChange={handleChange} value={form.product_type} /></Field>
               <Field label="نوع نمایش"><TextInput name="show_type" onChange={handleChange} value={form.show_type} /></Field>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="عنوان تنوع"><TextInput onChange={(event) => setNestedField("variant", "title", event.target.value)} value={form.variant.title} /></Field>
-              <Field label="رنگ/مدل"><TextInput onChange={(event) => setNestedField("variant", "color", event.target.value)} value={form.variant.color} /></Field>
-              <Field label="قیمت"><TextInput inputMode="numeric" onChange={(event) => setNestedField("variant", "price", event.target.value)} value={form.variant.price} /></Field>
-              <Field label="قیمت قبل"><TextInput inputMode="numeric" onChange={(event) => setNestedField("variant", "oldPrice", event.target.value)} value={form.variant.oldPrice} /></Field>
-              <Field label="موجودی"><TextInput inputMode="numeric" onChange={(event) => setNestedField("variant", "stock", event.target.value)} value={form.variant.stock} /></Field>
-              <Field label="متن بج تنوع"><TextInput onChange={(event) => setNestedField("variant", "badgeLabel", event.target.value)} value={form.variant.badgeLabel} /></Field>
-            </div>
+            <VariantPricingRows
+              basePrice={form.basePrice}
+              categoryFilters={categoryFilters}
+              items={form.variants}
+              onBasePriceChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  basePrice: value,
+                  priceConfig: { ...prev.priceConfig, basePrice: value },
+                }))
+              }
+              onChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  variants: value,
+                  variant: value[0] || prev.variant,
+                }))
+              }
+            />
             <Field label="گالری محصول">
               <TextInput
                 accept="image/*"
@@ -556,7 +780,13 @@ function ProductForm({ mode = "create" }) {
                   <option value="inactive">غیرفعال</option>
                 </select>
               </Field>
-              <SingleSelectDropdown label="قیمت" name="price" onChange={handleChange} options={priceOptions} placeholder="قیمت را از بخش قیمت‌ها بسازید" value={form.price} />
+              <Field label="محدودیت سفارش">
+                <TextInput
+                  inputMode="numeric"
+                  onChange={(event) => setNestedField("priceConfig", "orderLimit", event.target.value)}
+                  value={form.priceConfig.orderLimit}
+                />
+              </Field>
               <Field label="عنوان تکنو پلاس"><TextInput onChange={(event) => setNestedField("technoPlus", "title", event.target.value)} value={form.technoPlus.title} /></Field>
               <Field label="قیمت تکنو پلاس"><TextInput onChange={(event) => setNestedField("technoPlus", "price", event.target.value)} value={form.technoPlus.price} /></Field>
             </div>

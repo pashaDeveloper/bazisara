@@ -5,6 +5,7 @@ const Genre = require("../models/genre.model");
 const Platform = require("../models/platform.model");
 const Company = require("../models/company.model");
 const Tag = require("../models/tag.model");
+const GameCollection = require("../models/gameCollection.model");
 const {
   buildSearchQuery,
   buildPaginationMeta,
@@ -16,11 +17,12 @@ const populateGame = (query) =>
   query
     .populate("category", "name")
     .populate("genres", "name icon image")
-    .populate("platforms", "name slug parent")
+    .populate("platforms", "name name_fa name_en slug parent")
     .populate("platformSizes.platform", "name slug parent")
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
-    .populate("tags", "name slug image");
+    .populate("tags", "name slug image")
+    .populate("collections", "title_fa title_en slug placement visibility");
 
 function makeSlug(value) {
   return String(value || "")
@@ -148,6 +150,30 @@ function buildMedia(file) {
   };
 }
 
+function parseMediaValue(value, fallbackType = "image") {
+  if (value === undefined || value === null || value === "") return undefined;
+
+  const raw =
+    typeof value === "string"
+      ? (() => {
+          try {
+            return JSON.parse(value);
+          } catch (_) {
+            return { url: value };
+          }
+        })()
+      : value;
+
+  if (!raw?.url) return undefined;
+
+  return {
+    url: String(raw.url || "").trim(),
+    public_id: String(raw.public_id || raw.key || "").trim(),
+    storage: String(raw.storage || "").trim(),
+    type: raw.type === "video" || raw.resource_type === "video" ? "video" : fallbackType,
+  };
+}
+
 function limitText(value, maxLength) {
   const text = String(value || "").trim();
   return text.length > maxLength ? text.slice(0, maxLength).trim() : text;
@@ -223,6 +249,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     publishers:
       body.publishers !== undefined ? parseArray(body.publishers) : undefined,
     tags: body.tags !== undefined ? parseArray(body.tags) : undefined,
+    collections: body.collections !== undefined ? parseArray(body.collections) : undefined,
     platforms:
       body.platforms !== undefined ? parseArray(body.platforms) : undefined,
     gameModes:
@@ -314,15 +341,19 @@ function normalizePayload(body, uploadedFiles, currentGame) {
 
   const trailerVideo = buildMedia(uploadedFiles?.trailerVideo?.[0]);
   if (trailerVideo) payload.trailerVideo = trailerVideo;
+  else if (body.trailerVideo !== undefined) payload.trailerVideo = parseMediaValue(body.trailerVideo, "video");
 
   const trailerThumbnail = buildMedia(uploadedFiles?.trailerThumbnail?.[0]);
   if (trailerThumbnail) payload.trailerThumbnail = trailerThumbnail;
+  else if (body.trailerThumbnail !== undefined) payload.trailerThumbnail = parseMediaValue(body.trailerThumbnail, "image");
 
   const gameplayVideo = buildMedia(uploadedFiles?.gameplayVideo?.[0]);
   if (gameplayVideo) payload.gameplayVideo = gameplayVideo;
+  else if (body.gameplayVideo !== undefined) payload.gameplayVideo = parseMediaValue(body.gameplayVideo, "video");
 
   const gameplayThumbnail = buildMedia(uploadedFiles?.gameplayThumbnail?.[0]);
   if (gameplayThumbnail) payload.gameplayThumbnail = gameplayThumbnail;
+  else if (body.gameplayThumbnail !== undefined) payload.gameplayThumbnail = parseMediaValue(body.gameplayThumbnail, "image");
 
   const patchImage = buildMedia(uploadedFiles?.patchImage?.[0]);
   if (patchImage) payload.patchImage = patchImage;
@@ -364,6 +395,27 @@ async function validatePayload(payload) {
     await ensureExists(Company, payload.publishers, "Publisher");
   }
   if (payload.tags !== undefined) await ensureExists(Tag, payload.tags, "Tag");
+  if (payload.collections !== undefined) await ensureExists(GameCollection, payload.collections, "GameCollection");
+}
+
+async function syncGameCollections(gameId, previousCollections = [], nextCollections = []) {
+  const previousIds = previousCollections.map((item) => String(item?._id || item)).filter(Boolean);
+  const nextIds = nextCollections.map((item) => String(item?._id || item)).filter(Boolean);
+  const removed = previousIds.filter((id) => !nextIds.includes(id));
+
+  if (removed.length) {
+    await GameCollection.updateMany(
+      { _id: { $in: removed } },
+      { $pull: { games: { game: gameId } } }
+    );
+  }
+
+  for (const [index, collectionId] of nextIds.entries()) {
+    await GameCollection.updateOne(
+      { _id: collectionId, "games.game": { $ne: gameId } },
+      { $push: { games: { game: gameId, sortOrder: index, visible: true } } }
+    );
+  }
 }
 
 exports.createGame = async (req, res) => {
@@ -387,6 +439,9 @@ exports.createGame = async (req, res) => {
   await validatePayload(payload);
 
   const game = await Game.create(payload);
+  if (payload.collections !== undefined) {
+    await syncGameCollections(game._id, [], payload.collections);
+  }
   const populatedGame = await populateGame(Game.findById(game._id));
 
   res.status(201).json({
@@ -496,12 +551,16 @@ exports.updateGame = async (req, res) => {
   }
 
   const payload = normalizePayload(req.body, req.uploadedFiles, game);
+  const previousCollections = game.collections || [];
   if (payload.title !== undefined) {
     payload.slug = await makeUniqueSlug(payload.title, id);
   }
   await validatePayload(payload);
   Object.assign(game, payload);
   await game.save();
+  if (payload.collections !== undefined) {
+    await syncGameCollections(game._id, previousCollections, payload.collections);
+  }
 
   const populatedGame = await populateGame(Game.findById(game._id));
 
@@ -537,6 +596,10 @@ exports.deleteGame = async (req, res) => {
       description: "بازی یافت نشد",
     });
   }
+  await GameCollection.updateMany(
+    { "games.game": id },
+    { $pull: { games: { game: id } } }
+  );
 
   res.status(200).json({
     acknowledgement: true,
