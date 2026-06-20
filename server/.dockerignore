@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+.env
+serviceAccountKey.json
+uploads
+.git
+.gitignore
+Dockerfile
