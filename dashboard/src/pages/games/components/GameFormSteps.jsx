@@ -119,6 +119,58 @@ function ObjectRowsEditor({ columns, items = [], onChange, title }) {
   );
 }
 
+function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
+  const rows = items.length ? items : [{ platform: "", releaseDate: "" }];
+
+  const updateItem = (index, patch) => {
+    const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
+    onChange?.(next.filter((item) => String(item.platform || "").trim() || String(item.releaseDate || "").trim()));
+  };
+
+  const addItem = () => onChange?.([...rows, { platform: "", releaseDate: "" }]);
+  const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
+
+  return (
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-zinc-300">تاریخ انتشار پلتفرم‌ها</span>
+        <button
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
+          onClick={addItem}
+          type="button"
+        >
+          <Plus />
+        </button>
+      </div>
+      <div className="space-y-3">
+        {rows.map((item, index) => (
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`platform-release-${index}`}>
+            <SingleSelectDropdown
+              label="پلتفرم"
+              name={`platform-release-platform-${index}`}
+              onChange={(event) => updateItem(index, { platform: event.target.value })}
+              options={platformOptions}
+              value={item.platform}
+            />
+            <DatePickerField
+              label="تاریخ انتشار"
+              onChange={(value) => updateItem(index, { releaseDate: value })}
+              value={item.releaseDate}
+            />
+            <button
+              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              onClick={() => removeItem(index)}
+              type="button"
+            >
+              <Trash className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
   const rows = items.length ? items : [{ title: "", type: "", image: "", versionSize: "" }];
   const [previews, setPreviews] = React.useState(
@@ -456,19 +508,42 @@ export function PlatformsStep({
   form,
   gameModeOptions,
   launcherOptions,
-  languageOptions,
   onChange,
-  platformOptions,
-  regionOptions,
   setArrayField,
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <MultiSelectDropdown label="پلتفرم‌ها" onChange={(value) => setArrayField("platforms", value)} options={platformOptions} value={form.platforms} />
       <MultiSelectDropdown label="حالت‌های بازی" onChange={(value) => setArrayField("gameModes", value)} options={gameModeOptions} value={form.gameModes} />
-      <MultiSelectDropdown label="زبان‌ها" onChange={(value) => setArrayField("languages", value)} options={languageOptions} value={form.languages} />
-      <MultiSelectDropdown label="ریجن‌ها" onChange={(value) => setArrayField("regions", value)} options={regionOptions} value={form.regions} />
       <MultiSelectDropdown label="سرویس / پلتفرم انتشار" onChange={(value) => setArrayField("launcher", value)} options={launcherOptions} value={form.launcher} />
+    </div>
+  );
+}
+
+export function PlatformReleasesStep({ form, platformOptions, setArrayField }) {
+  return (
+    <PlatformReleaseRowsEditor
+      items={form.platformReleases}
+      onChange={(value) => setArrayField("platformReleases", value)}
+      platformOptions={platformOptions}
+    />
+  );
+}
+
+export function PlayersStep({ form, offlinePlayerOptions, onlinePlayerOptions, setArrayField }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <MultiSelectDropdown
+        label="بازیکنان آفلاین"
+        onChange={(value) => setArrayField("offlinePlayers", value)}
+        options={offlinePlayerOptions}
+        value={form.offlinePlayers}
+      />
+      <MultiSelectDropdown
+        label="بازیکنان آنلاین"
+        onChange={(value) => setArrayField("onlinePlayers", value)}
+        options={onlinePlayerOptions}
+        value={form.onlinePlayers}
+      />
     </div>
   );
 }
@@ -476,11 +551,6 @@ export function PlatformsStep({
 export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <DatePickerField
-        label="تاریخ انتشار"
-        onChange={(value) => setForm((prev) => ({ ...prev, releaseDate: value }))}
-        value={form.releaseDate}
-      />
       <SingleSelectDropdown label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
       <TextField label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
       <TextField label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
@@ -609,82 +679,43 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
 }
 
 export function VideosStep({
-  form,
-  gameplayThumbnailPreview,
-  gameplayVideoPreview,
-  isGameplayVideoUploading = false,
   isTrailerVideoUploading = false,
-  onChange,
   onVideoUpload,
   setForm,
-  setGameplayThumbnailPreview,
-  setGameplayVideoPreview,
   setTrailerThumbnailPreview,
-  setTrailerVideoPreview,
   trailerThumbnailPreview,
   trailerVideoPreview,
 }) {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-zinc-800 bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-300">تریلر</span>
+      <div className="rounded-xl border border-zinc-800 bg-black p-4">
+        <span className="mb-3 block text-sm text-zinc-300">تریلر</span>
+        <ThumbnailUpload
+          accept="video/*"
+          disabled={isTrailerVideoUploading}
+          imageSize={150}
+          name="trailerVideo"
+          poster={trailerThumbnailPreview}
+          preview={trailerVideoPreview}
+          previewShape="square"
+          setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
+          setThumbnailPreview={() => {}}
+          title="انتخاب"
+        />
+        {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
+        <div className="mt-4">
+          <span className="mb-3 block text-sm text-zinc-300">تصویر تریلر</span>
           <ThumbnailUpload
-            accept="video/*"
-            disabled={isTrailerVideoUploading}
             imageSize={150}
-            name="trailerVideo"
-            poster={trailerThumbnailPreview}
-            preview={trailerVideoPreview}
+            name="trailerThumbnail"
+            preview={trailerThumbnailPreview}
             previewShape="square"
-            setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
-            setThumbnailPreview={() => {}}
+            setThumbnail={(file) => setForm((prev) => ({ ...prev, trailerThumbnail: file }))}
+            setThumbnailPreview={setTrailerThumbnailPreview}
             title="انتخاب"
           />
-          {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
-          <div className="mt-4">
-            <span className="mb-3 block text-sm text-zinc-300">تصویر تریلر</span>
-            <ThumbnailUpload
-              imageSize={150}
-              name="trailerThumbnail"
-              preview={trailerThumbnailPreview}
-              previewShape="square"
-              setThumbnail={(file) => setForm((prev) => ({ ...prev, trailerThumbnail: file }))}
-              setThumbnailPreview={setTrailerThumbnailPreview}
-              title="انتخاب"
-            />
-          </div>
-        </div>
-        <div className="rounded-xl border border-zinc-800 bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-300">گیم‌پلی</span>
-          <ThumbnailUpload
-            accept="video/*"
-            disabled={isGameplayVideoUploading}
-            imageSize={150}
-            name="gameplayVideo"
-            poster={gameplayThumbnailPreview}
-            preview={gameplayVideoPreview}
-            previewShape="square"
-            setThumbnail={(file) => onVideoUpload?.("gameplayVideo", file)}
-            setThumbnailPreview={() => {}}
-            title="انتخاب"
-          />
-          {isGameplayVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود گیم‌پلی روی Arvan...</p> : null}
-          <div className="mt-4">
-            <span className="mb-3 block text-sm text-zinc-300">تصویر گیم‌پلی</span>
-            <ThumbnailUpload
-              imageSize={150}
-              name="gameplayThumbnail"
-              preview={gameplayThumbnailPreview}
-              previewShape="square"
-              setThumbnail={(file) => setForm((prev) => ({ ...prev, gameplayThumbnail: file }))}
-              setThumbnailPreview={setGameplayThumbnailPreview}
-              title="انتخاب"
-            />
-          </div>
         </div>
       </div>
-      <TextField dir="ltr" label="لینک تریلر" name="trailerUrl" onChange={onChange} value={form.trailerUrl} />
     </div>
   );
 }

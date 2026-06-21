@@ -1,6 +1,6 @@
 const profileLevelRequirements = {
   1: ["avatar", "name", "fatherName", "email", "phone"],
-  2: ["nationalCode", "birthDate", "gender", "nationalCard"],
+  2: ["nationalCode", "birthDate", "gender", "nationalCard", "province", "city", "address", "plateNumber", "postalCode"],
   3: ["biography"],
 };
 
@@ -12,6 +12,9 @@ function fieldCompleted(admin = {}, field) {
   if (field === "avatar") return Boolean(admin?.avatar?.url && !String(admin.avatar.url).includes("placehold.co"));
   if (field === "nationalCard") return Boolean(admin?.nationalCard?.url);
   if (field === "birthDate") return Boolean(admin?.birthDate);
+  if (["province", "city", "address", "plateNumber", "postalCode"].includes(field)) {
+    return isFilled(admin?.address?.[field]);
+  }
   return isFilled(admin?.[field]);
 }
 

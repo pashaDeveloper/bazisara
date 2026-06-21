@@ -12,6 +12,22 @@ import Edit from "@/components/icons/Edit";
 import Plus from "@/components/icons/Plus";
 import { useDeleteGameMutation, useGetGamesQuery, useUpdateGameMutation } from "../../services/gameApi";
 
+function formatPlatformReleases(item) {
+  const releases = Array.isArray(item.platformReleases) ? item.platformReleases : [];
+  if (releases.length) {
+    return releases
+      .map((entry) => {
+        const platform = entry.platform?.name_fa || entry.platform?.name || entry.platform?.name_en || "";
+        const date = entry.releaseDate ? new Date(entry.releaseDate).toLocaleDateString("fa-IR") : "";
+        return [platform, date].filter(Boolean).join(": ");
+      })
+      .filter(Boolean)
+      .join("، ");
+  }
+
+  return item.releaseDate ? new Date(item.releaseDate).toLocaleDateString("fa-IR") : "-";
+}
+
 function Games() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -180,7 +196,7 @@ function Games() {
                         </span>
                       </td>
                       <td className="hidden py-4 text-zinc-400 lg:table-cell">
-                        {item.releaseDate ? new Date(item.releaseDate).toLocaleDateString("fa-IR") : "-"}
+                        {formatPlatformReleases(item)}
                       </td>
                       <td className="hidden py-4 text-zinc-400 xl:table-cell">
                         <div className="flex items-center justify-between gap-2">

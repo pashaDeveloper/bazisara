@@ -5,6 +5,18 @@ import ControlPanel from "./ControlPanel";
 import StepIndicator from "./categories/components/StepIndicator";
 import NavigationButton from "@/components/shared/button/NavigationButton";
 import SendButton from "@/components/shared/button/SendButton";
+import AuthInput from "@/components/shared/AuthInput";
+import ProfileImageSelector from "@/components/shared/gallery/ProfileImageSelector";
+import SkeletonImage from "@/components/shared/skeleton/SkeletonImage";
+import AddressIcon from "@/components/icons/Address";
+import Calendar from "@/components/icons/Calendar";
+import Country from "@/components/icons/Country";
+import Email from "@/components/icons/Email";
+import Post from "@/components/icons/Post";
+import Qrc from "@/components/icons/Qrc";
+import Telephone from "@/components/icons/Telephone";
+import User from "@/components/icons/User";
+import CloudUpload from "@/components/icons/CloudUpload";
 import { addAdmin } from "@/features/auth/authSlice";
 import { useUpdateAdminProfileMutation } from "@/services/auth/authApi";
 
@@ -19,11 +31,16 @@ const initialForm = {
   biography: "",
   avatarUrl: "",
   nationalCardUrl: "",
+  province: "",
+  city: "",
+  address: "",
+  plateNumber: "",
+  postalCode: "",
 };
 
 const steps = [
   { key: "level1", title: "سطح یک", fields: ["avatar", "name", "fatherName", "email", "phone"] },
-  { key: "level2", title: "سطح دو", fields: ["nationalCode", "birthDate", "gender", "nationalCard"] },
+  { key: "level2", title: "سطح دو", fields: ["nationalCode", "birthDate", "gender", "nationalCard", "province", "city", "address", "plateNumber", "postalCode"] },
   { key: "level3", title: "سطح سه", fields: ["biography"] },
 ];
 
@@ -37,6 +54,11 @@ const fieldLabels = {
   birthDate: "تاریخ تولد",
   gender: "جنسیت",
   nationalCard: "کارت ملی",
+  province: "استان",
+  city: "شهر",
+  address: "آدرس دقیق",
+  plateNumber: "پلاک دقیق",
+  postalCode: "کد پستی",
   biography: "بیوگرافی",
 };
 
@@ -51,18 +73,43 @@ function isFilled(value) {
   return String(value ?? "").trim().length > 0;
 }
 
-function TextField({ label, name, onChange, type = "text", value }) {
+function TextField({ icon, label, name, onChange, type = "text", value }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">{label}</span>
-      <input
-        className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white"
+    <label className="flex flex-col gap-y-1">
+      <span className="text-sm text-zinc-700 dark:text-gray-100">{label}</span>
+      <AuthInput
+        icon={icon}
+        id={name}
         name={name}
         onChange={onChange}
         placeholder={label}
         type={type}
         value={value}
       />
+    </label>
+  );
+}
+
+function SelectField({ children, icon: Icon, label, name, onChange, value }) {
+  return (
+    <label className="flex flex-col gap-y-1">
+      <span className="text-sm text-zinc-700 dark:text-gray-100">{label}</span>
+      <div className="relative">
+        {Icon && (
+          <span className="pointer-events-none absolute right-0 top-0 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+            <Icon className="h-5 w-5" />
+          </span>
+        )}
+        <select
+          className="h-12 w-full border bg-white py-2 pl-3 pr-14 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
+          id={name}
+          name={name}
+          onChange={onChange}
+          value={value}
+        >
+          {children}
+        </select>
+      </div>
     </label>
   );
 }
@@ -80,6 +127,53 @@ function FileField({ accept = "image/*", label, onChange, preview }) {
           <input accept={accept} className="hidden" onChange={onChange} type="file" />
         </label>
       </div>
+    </div>
+  );
+}
+
+function AvatarProfileField({ avatarPreview, onImageSelect }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="profile-container shine-effect mb-4 flex justify-center rounded-full">
+        {avatarPreview && !avatarPreview.includes("placehold.co") ? (
+          <img
+            alt="avatar"
+            className="profile-pic h-[100px] w-[100px] rounded-full"
+            height={100}
+            src={avatarPreview}
+            width={100}
+          />
+        ) : (
+          <SkeletonImage />
+        )}
+      </div>
+      <ProfileImageSelector onImageSelect={onImageSelect} />
+    </div>
+  );
+}
+
+function NationalCardField({ onChange, preview }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="profile-container shine-effect mb-4 flex h-36 w-full max-w-[220px] justify-center rounded-primary">
+        {preview ? (
+          <img alt="national card" className="h-full w-full rounded-primary object-cover" src={preview} />
+        ) : (
+          <SkeletonImage />
+        )}
+      </div>
+      <label htmlFor="national-card-file" className="flex w-fit cursor-pointer flex-row gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+        <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+        انتخاب کارت ملی*
+        <input
+          accept="image/png, image/jpg, image/jpeg"
+          className="hidden"
+          id="national-card-file"
+          name="nationalCard"
+          onChange={onChange}
+          type="file"
+        />
+      </label>
     </div>
   );
 }
@@ -119,10 +213,15 @@ export default function AdminProfile() {
       biography: admin.biography || "",
       avatarUrl: admin.avatar?.url || "",
       nationalCardUrl: admin.nationalCard?.url || "",
+      province: admin.address?.province || "",
+      city: admin.address?.city || "",
+      address: admin.address?.address || "",
+      plateNumber: admin.address?.plateNumber || "",
+      postalCode: admin.address?.postalCode || "",
     });
-    if (!avatarFile) setAvatarPreview(admin.avatar?.url || "https://placehold.co/300x300.png");
-    if (!nationalCardFile) setNationalCardPreview(admin.nationalCard?.url || "");
-  }, [admin, avatarFile, nationalCardFile]);
+    setAvatarPreview(admin.avatar?.url || "https://placehold.co/300x300.png");
+    setNationalCardPreview(admin.nationalCard?.url || "");
+  }, [admin]);
 
   useEffect(() => {
     if (!avatarFile) return undefined;
@@ -173,6 +272,18 @@ export default function AdminProfile() {
     setForm((current) => ({ ...current, [name]: value }));
   };
 
+  const handleAvatarSelect = (imageOrUrl) => {
+    if (imageOrUrl instanceof File) {
+      setAvatarFile(imageOrUrl);
+      setForm((current) => ({ ...current, avatarUrl: "" }));
+      return;
+    }
+
+    setAvatarFile(null);
+    setAvatarPreview(imageOrUrl);
+    setForm((current) => ({ ...current, avatarUrl: imageOrUrl }));
+  };
+
   const buildPayload = () => {
     const payload = new FormData();
     Object.entries(form).forEach(([key, value]) => payload.append(key, value ?? ""));
@@ -218,12 +329,12 @@ export default function AdminProfile() {
           <h2 className="text-lg font-black text-zinc-950 dark:text-white">سطح یک</h2>
           <p className="mt-1 text-sm leading-7 text-zinc-500">عکس نمایه، نام و نام خانوادگی، نام پدر، ایمیل و شماره موبایل را تکمیل کنید.</p>
           <div className="mt-5 grid gap-4 lg:grid-cols-[260px_1fr]">
-            <FileField label="عکس نمایه" onChange={(event) => setAvatarFile(event.target.files?.[0] || null)} preview={avatarPreview} />
+            <AvatarProfileField avatarPreview={avatarPreview} onImageSelect={handleAvatarSelect} />
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="نام و نام خانوادگی" name="name" onChange={handleChange} value={form.name} />
-              <TextField label="نام پدر" name="fatherName" onChange={handleChange} value={form.fatherName} />
-              <TextField label="ایمیل" name="email" onChange={handleChange} type="email" value={form.email} />
-              <TextField label="شماره موبایل" name="phone" onChange={handleChange} value={form.phone} />
+              <TextField icon={User} label="نام و نام خانوادگی" name="name" onChange={handleChange} value={form.name} />
+              <TextField icon={User} label="نام پدر" name="fatherName" onChange={handleChange} value={form.fatherName} />
+              <TextField icon={Email} label="ایمیل" name="email" onChange={handleChange} type="email" value={form.email} />
+              <TextField icon={Telephone} label="شماره موبایل" name="phone" onChange={handleChange} value={form.phone} />
             </div>
           </div>
         </section>
@@ -234,26 +345,25 @@ export default function AdminProfile() {
       return (
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <h2 className="text-lg font-black text-zinc-950 dark:text-white">سطح دو</h2>
-          <p className="mt-1 text-sm leading-7 text-zinc-500">کد ملی، تاریخ تولد، جنسیت و تصویر کارت ملی را تکمیل کنید.</p>
+          <p className="mt-1 text-sm leading-7 text-zinc-500">کد ملی، تاریخ تولد، جنسیت، تصویر کارت ملی و نشانی کامل را تکمیل کنید.</p>
           <div className="mt-5 grid gap-4 lg:grid-cols-[260px_1fr]">
-            <FileField label="کارت ملی" onChange={(event) => setNationalCardFile(event.target.files?.[0] || null)} preview={nationalCardPreview} />
+            <NationalCardField onChange={(event) => setNationalCardFile(event.target.files?.[0] || null)} preview={nationalCardPreview} />
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="کد ملی" name="nationalCode" onChange={handleChange} value={form.nationalCode} />
-              <TextField label="تاریخ تولد" name="birthDate" onChange={handleChange} type="date" value={form.birthDate} />
-              <label className="block md:col-span-2">
-                <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-400">جنسیت</span>
-                <select
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
-                  name="gender"
-                  onChange={handleChange}
-                  value={form.gender}
-                >
+              <TextField icon={Qrc} label="کد ملی" name="nationalCode" onChange={handleChange} value={form.nationalCode} />
+              <TextField icon={Calendar} label="تاریخ تولد" name="birthDate" onChange={handleChange} type="date" value={form.birthDate} />
+              <div className="md:col-span-2">
+                <SelectField icon={User} label="جنسیت" name="gender" onChange={handleChange} value={form.gender}>
                   <option value="">انتخاب نشده</option>
                   <option value="male">آقا</option>
                   <option value="female">خانم</option>
                   <option value="other">سایر</option>
-                </select>
-              </label>
+                </SelectField>
+              </div>
+              <TextField icon={Country} label="استان" name="province" onChange={handleChange} value={form.province} />
+              <TextField icon={AddressIcon} label="شهر" name="city" onChange={handleChange} value={form.city} />
+              <TextField icon={AddressIcon} label="آدرس دقیق" name="address" onChange={handleChange} value={form.address} />
+              <TextField icon={AddressIcon} label="پلاک دقیق" name="plateNumber" onChange={handleChange} type="number" value={form.plateNumber} />
+              <TextField icon={Post} label="کد پستی" name="postalCode" onChange={handleChange} value={form.postalCode} />
             </div>
           </div>
         </section>

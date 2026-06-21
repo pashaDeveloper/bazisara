@@ -8,10 +8,13 @@ function ControlPanel({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-100 text-zinc-950 dark:bg-black dark:text-zinc-100">
+    <div className="dashboard-panel relative flex h-screen overflow-hidden bg-white text-zinc-950 dark:bg-gray-950 dark:text-zinc-100">
+      <div className="wave"></div>
+      <div className="wave wave2"></div>
+      <div className="wave wave3"></div>
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <div className="dashboard-content-scroll relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-zinc-50 via-white to-zinc-100 dark:from-zinc-950 dark:via-black dark:to-black">
+      <div className="dashboard-content-scroll relative z-10 flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         <main className="grow">

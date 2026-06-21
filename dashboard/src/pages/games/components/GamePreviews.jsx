@@ -39,6 +39,7 @@ export function GameDetailPreview({
   isSticky = true,
   onTabChange,
   platforms,
+  platformReleases = [],
   reviewItems = [],
   seoTags = [],
   variant = "desktop",
@@ -64,11 +65,18 @@ export function GameDetailPreview({
   const activeTabIndex = Math.max(detailTabs.findIndex((tab) => tab.key === resolvedActiveTab), 0);
 
   const platformSizes = useMemo(() => form.platformSizes || [], [form.platformSizes]);
+  const releaseSummary = platformReleases
+    .map((item) => {
+      const date = parseInputDate(item.releaseDate)?.toLocaleDateString("fa-IR");
+      return [item.label, date].filter(Boolean).join(": ");
+    })
+    .filter(Boolean)
+    .join("، ");
   const specs = [
     ["پلتفرم", platforms.join("، ")],
     ["نسخه", form.edition],
     ["سرویس انتشار", Array.isArray(form.launcher) ? form.launcher.join("، ") : form.launcher],
-    ["تاریخ انتشار", form.releaseDate ? parseInputDate(form.releaseDate)?.toLocaleDateString("fa-IR") : ""],
+    ["تاریخ انتشار", releaseSummary],
     ["رده سنی", form.ageRating],
     ["زمان تقریبی گیم‌پلی", form.gameplayTime],
     ["امتیاز متاکریتیک", form.metacriticScore],

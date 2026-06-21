@@ -42,6 +42,14 @@ const platformSizeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const platformReleaseSchema = new mongoose.Schema(
+  {
+    platform: { type: ObjectId, ref: "Platform", default: null },
+    releaseDate: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const dlcSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, default: "" },
@@ -134,10 +142,11 @@ const gameSchema = new mongoose.Schema(
     ],
     collections: [{ type: ObjectId, ref: "GameCollection" }],
     platforms: [{ type: ObjectId, ref: "Platform" }],
+    platformReleases: [platformReleaseSchema],
     platformSizes: [platformSizeSchema],
     gameModes: [{ type: String, trim: true }],
-    languages: [{ type: String, trim: true }],
-    regions: [{ type: String, trim: true }],
+    offlinePlayers: [{ type: String, trim: true }],
+    onlinePlayers: [{ type: String, trim: true }],
     launcher: [{ type: String, trim: true }],
     edition: {
       type: String,
@@ -201,15 +210,8 @@ const gameSchema = new mongoose.Schema(
     desktopCover: mediaSchema,
     mobileCover: mediaSchema,
     gallery: [mediaSchema],
-    trailerUrl: {
-      type: String,
-      trim: true,
-      default: "",
-    },
     trailerVideo: mediaSchema,
     trailerThumbnail: mediaSchema,
-    gameplayVideo: mediaSchema,
-    gameplayThumbnail: mediaSchema,
     patchTitle: {
       type: String,
       trim: true,

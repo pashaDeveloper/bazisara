@@ -31,7 +31,7 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
 
   return (
     <header
-      className={`sticky top-0 z-30 border-b border-zinc-800/80 bg-black/90 backdrop-blur ${
+      className={`sticky top-0 z-30 border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur dark:border-gray-800 dark:bg-gray-900/90 ${
         variant === "v2" || variant === "v3" ? "" : ""
       }`}
     >
@@ -60,7 +60,7 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
           <div className="flex items-center gap-3">
             <button
               aria-label={isDark ? "فعال کردن حالت روشن" : "فعال کردن حالت تاریک"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 transition hover:border-white hover:text-white"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-secondary border border-gray-300 bg-gray-100 text-gray-700 shadow-sm transition hover:border-green-500 hover:text-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-blue-500 dark:hover:text-blue-300"
               onClick={() => changeCurrentTheme(isDark ? "light" : "dark")}
               title={isDark ? "حالت روشن" : "حالت تاریک"}
               type="button"
@@ -84,7 +84,7 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
               <p className="text-xs text-zinc-500">{displayRole}</p>
             </div>
             <button
-              className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-white hover:text-white"
+              className="rounded-secondary border border-green-700 bg-green-600 px-4 py-2 text-xs !text-white shadow-sm shadow-green-900/20 transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-green-500 dark:bg-green-600 dark:!text-white dark:hover:bg-green-500"
               onClick={handleLogout}
               type="button"
             >

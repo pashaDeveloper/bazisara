@@ -77,8 +77,8 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { title: "پلتفرم‌ها", icon: Rank, path: "/platforms" },
     { title: "سازنده و ناشر", icon: Company, path: "/companies" },
     { title: "برندها", icon: Company, path: "/brands" },
-    { title: "بازی‌ها", icon: Products, path: "/games" },
     { title: "کالکشن‌های بازی", icon: Products, path: "/game-collections" },
+    { title: "بازی‌ها", icon: Products, path: "/games" },
     { title: "محصولات", icon: Products, path: "/products" },
     { title: "مدل‌های وابسته محصول", icon: Products, path: "/product-dependencies" },
     { title: "شرکت‌های گارانتی", icon: Company, path: "/warranty-companies" },
@@ -103,7 +103,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       <div
         id="sidebar"
         ref={sidebar}
-        className={`no-scrollbar absolute right-0 top-0 z-50 flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-black p-3 transition-transform duration-200 ease-in-out lg:static lg:right-auto lg:top-auto lg:!flex lg:translate-x-0 lg:transition-none ${
+        className={`no-scrollbar absolute right-0 top-0 z-50 flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white p-3 shadow-lg transition-transform duration-200 ease-in-out dark:border-gray-800 dark:bg-gray-900 lg:static lg:right-auto lg:top-auto lg:!flex lg:translate-x-0 lg:transition-none ${
           sidebarExpanded ? "lg:w-64" : "lg:w-20"
         } ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
@@ -132,7 +132,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
             </svg>
           </button>
           <button
-            className="hidden h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition hover:border-white hover:text-white lg:inline-flex"
+            className="hidden h-10 w-10 items-center justify-center rounded-secondary border border-gray-300 bg-gray-100 text-gray-700 shadow-sm transition hover:border-green-500 hover:text-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-blue-500 dark:hover:text-blue-300 lg:inline-flex"
             onClick={() => setSidebarExpanded(!sidebarExpanded)}
             type="button"
             aria-controls="sidebar"

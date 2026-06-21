@@ -18,6 +18,7 @@ const populateGame = (query) =>
     .populate("category", "name")
     .populate("genres", "name icon image")
     .populate("platforms", "name name_fa name_en slug parent")
+    .populate("platformReleases.platform", "name name_fa name_en slug parent")
     .populate("platformSizes.platform", "name slug parent")
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
@@ -108,6 +109,12 @@ function parseObjectArray(value, shape) {
   return rawItems
     .map((item) => shape(item))
     .filter((item) => Object.values(item).some((part) => String(part || "").trim()));
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function normalizeStructuredImages(items, uploadedFiles, fieldName) {
@@ -254,9 +261,10 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.platforms !== undefined ? parseArray(body.platforms) : undefined,
     gameModes:
       body.gameModes !== undefined ? parseArray(body.gameModes) : undefined,
-    languages:
-      body.languages !== undefined ? parseArray(body.languages) : undefined,
-    regions: body.regions !== undefined ? parseArray(body.regions) : undefined,
+    offlinePlayers:
+      body.offlinePlayers !== undefined ? parseArray(body.offlinePlayers) : undefined,
+    onlinePlayers:
+      body.onlinePlayers !== undefined ? parseArray(body.onlinePlayers) : undefined,
     launcher: body.launcher !== undefined ? parseArray(body.launcher) : undefined,
     edition: body.edition !== undefined ? String(body.edition).trim() : undefined,
     hasDubbing: body.hasDubbing !== undefined ? parseBoolean(body.hasDubbing) : undefined,
@@ -286,6 +294,13 @@ function normalizePayload(body, uploadedFiles, currentGame) {
             size: String(item?.size || "").trim(),
           }))
         : undefined,
+    platformReleases:
+      body.platformReleases !== undefined
+        ? parseObjectArray(body.platformReleases, (item) => ({
+            platform: String(item?.platform || "").trim() || null,
+            releaseDate: parseDateValue(item?.releaseDate),
+          }))
+        : undefined,
     releaseDate:
       body.releaseDate !== undefined
         ? body.releaseDate
@@ -310,8 +325,6 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.reviewLink !== undefined ? String(body.reviewLink).trim() : undefined,
     metacriticScore:
       body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
-    trailerUrl:
-      body.trailerUrl !== undefined ? String(body.trailerUrl).trim() : undefined,
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
   };
@@ -347,14 +360,6 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   if (trailerThumbnail) payload.trailerThumbnail = trailerThumbnail;
   else if (body.trailerThumbnail !== undefined) payload.trailerThumbnail = parseMediaValue(body.trailerThumbnail, "image");
 
-  const gameplayVideo = buildMedia(uploadedFiles?.gameplayVideo?.[0]);
-  if (gameplayVideo) payload.gameplayVideo = gameplayVideo;
-  else if (body.gameplayVideo !== undefined) payload.gameplayVideo = parseMediaValue(body.gameplayVideo, "video");
-
-  const gameplayThumbnail = buildMedia(uploadedFiles?.gameplayThumbnail?.[0]);
-  if (gameplayThumbnail) payload.gameplayThumbnail = gameplayThumbnail;
-  else if (body.gameplayThumbnail !== undefined) payload.gameplayThumbnail = parseMediaValue(body.gameplayThumbnail, "image");
-
   const patchImage = buildMedia(uploadedFiles?.patchImage?.[0]);
   if (patchImage) payload.patchImage = patchImage;
 
@@ -381,6 +386,13 @@ async function validatePayload(payload) {
   }
   if (payload.genres !== undefined) await ensureExists(Genre, payload.genres, "Genre");
   if (payload.platforms !== undefined) await ensureExists(Platform, payload.platforms, "Platform");
+  if (payload.platformReleases !== undefined) {
+    await ensureExists(
+      Platform,
+      payload.platformReleases.map((item) => item.platform).filter(Boolean),
+      "Platform"
+    );
+  }
   if (payload.platformSizes !== undefined) {
     await ensureExists(
       Platform,

@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import ControlPanel from "./ControlPanel";
 import { useGetAnalyticsSummaryQuery } from "../services/analyticsApi";
+import { useThemeProvider } from "@/utils/ThemeContext";
 
 Chart.register(
   ArcElement,
@@ -46,23 +47,28 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
-function StatCard({ title, value, unit, accent = "from-zinc-800 to-black" }) {
+function StatCard({ title, value, unit }) {
   return (
-    <article className={`rounded-2xl border border-zinc-700 bg-gradient-to-br ${accent} p-4 shadow-lg shadow-black/20`}>
-      <p className="text-xs text-zinc-400">{title}</p>
-      <p className="mt-4 text-2xl font-black text-white">{formatNumber(value)}</p>
-      <span className="mt-3 inline-block rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-300">
+    <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">{title}</p>
+      <p className="mt-4 text-2xl text-zinc-950 dark:text-white">{formatNumber(value)}</p>
+      <span className="mt-3 inline-block rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-[11px] text-green-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
         {unit}
       </span>
     </article>
   );
 }
 
-function AnalyticsChart({ title, type, data, height = 260 }) {
+function AnalyticsChart({ title, type, data, height = 260, isDark }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     if (!canvasRef.current) return undefined;
+    const axisTextColor = isDark ? "#a1a1aa" : "#52525b";
+    const legendTextColor = isDark ? "#d4d4d8" : "#3f3f46";
+    const gridColor = isDark ? "rgba(82, 82, 91, 0.35)" : "rgba(212, 212, 216, 0.8)";
+    const surfaceColor = isDark ? "#09090b" : "#ffffff";
+    const tooltipTextColor = isDark ? "#f4f4f5" : "#18181b";
 
     const chart = new Chart(canvasRef.current, {
       type,
@@ -75,7 +81,7 @@ function AnalyticsChart({ title, type, data, height = 260 }) {
           legend: {
             position: "bottom",
             labels: {
-              color: "#d4d4d8",
+              color: legendTextColor,
               boxWidth: 10,
               boxHeight: 10,
               padding: 16,
@@ -85,11 +91,11 @@ function AnalyticsChart({ title, type, data, height = 260 }) {
             },
           },
           tooltip: {
-            backgroundColor: "#09090b",
-            borderColor: "#3f3f46",
+            backgroundColor: surfaceColor,
+            borderColor: isDark ? "#3f3f46" : "#d4d4d8",
             borderWidth: 1,
-            bodyColor: "#f4f4f5",
-            titleColor: "#ffffff",
+            bodyColor: tooltipTextColor,
+            titleColor: tooltipTextColor,
             displayColors: true,
             callbacks: {
               label: (context) => {
@@ -105,13 +111,13 @@ function AnalyticsChart({ title, type, data, height = 260 }) {
             ? {
                 x: {
                   grid: { display: false },
-                  ticks: { color: "#a1a1aa", font: { family: "Vazir, sans-serif", size: 11 } },
+                  ticks: { color: axisTextColor, font: { family: "Vazir, sans-serif", size: 11 } },
                 },
                 y: {
                   beginAtZero: true,
-                  grid: { color: "rgba(82, 82, 91, 0.35)" },
+                  grid: { color: gridColor },
                   ticks: {
-                    color: "#a1a1aa",
+                    color: axisTextColor,
                     precision: 0,
                     font: { family: "Vazir, sans-serif", size: 11 },
                   },
@@ -122,11 +128,11 @@ function AnalyticsChart({ title, type, data, height = 260 }) {
     });
 
     return () => chart.destroy();
-  }, [data, type]);
+  }, [data, isDark, type]);
 
   return (
-    <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
-      <h2 className="text-sm font-bold text-white">{title}</h2>
+    <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <h2 className="text-sm text-zinc-950 dark:text-white">{title}</h2>
       <div className="mt-4" style={{ height }}>
         <canvas ref={canvasRef} />
       </div>
@@ -136,17 +142,17 @@ function AnalyticsChart({ title, type, data, height = 260 }) {
 
 function ContentTable({ title, rows, type }) {
   return (
-    <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
+    <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-white">{title}</h2>
-        <Link className="text-xs text-zinc-400 transition hover:text-white" to={type === "game" ? "/games" : "/articles"}>
+        <h2 className="text-sm text-zinc-950 dark:text-white">{title}</h2>
+        <Link className="text-xs text-zinc-500 transition hover:text-green-600 dark:text-zinc-400 dark:hover:text-blue-200" to={type === "game" ? "/games" : "/articles"}>
           مدیریت
         </Link>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[460px] text-right text-xs">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-500">
+            <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800">
               <th className="pb-3 font-medium">عنوان</th>
               <th className="pb-3 font-medium">بازدید</th>
               <th className="pb-3 font-medium">لایک</th>
@@ -156,7 +162,7 @@ function ContentTable({ title, rows, type }) {
           <tbody>
             {rows.length ? (
               rows.map((item) => (
-                <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
+                <tr key={item._id} className="border-b border-zinc-100 text-zinc-700 dark:border-zinc-900 dark:text-zinc-200">
                   <td className="max-w-48 truncate py-3">{item.title}</td>
                   <td className="py-3">{formatNumber(item.views)}</td>
                   <td className="py-3">{formatNumber(item.likes)}</td>
@@ -179,15 +185,15 @@ function ContentTable({ title, rows, type }) {
 
 function RecentSessionsTable({ recentSessions }) {
   return (
-    <article className="rounded-2xl border border-zinc-700 bg-zinc-950 p-4">
+    <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-white">آخرین نشست‌های کاربران</h2>
+        <h2 className="text-sm text-zinc-950 dark:text-white">آخرین نشست‌های کاربران</h2>
         <span className="text-xs text-zinc-500">{formatNumber(recentSessions.length)} مورد اخیر</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-right text-xs">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-500">
+            <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800">
               <th className="pb-3 font-medium">بازدیدکننده</th>
               <th className="pb-3 font-medium">IP</th>
               <th className="pb-3 font-medium">دستگاه</th>
@@ -201,7 +207,7 @@ function RecentSessionsTable({ recentSessions }) {
           <tbody>
             {recentSessions.length ? (
               recentSessions.map((session) => (
-                <tr key={session._id} className="border-b border-zinc-900 text-zinc-200">
+                <tr key={session._id} className="border-b border-zinc-100 text-zinc-700 dark:border-zinc-900 dark:text-zinc-200">
                   <td className="max-w-36 truncate py-3">{session.visitorId}</td>
                   <td className="py-3">{session.ip || "-"}</td>
                   <td className="py-3">{session.deviceType || "-"}</td>
@@ -227,6 +233,8 @@ function RecentSessionsTable({ recentSessions }) {
 }
 
 function Dashboard() {
+  const { currentTheme } = useThemeProvider();
+  const isDark = currentTheme === "dark";
   const { data, isLoading, isFetching } = useGetAnalyticsSummaryQuery(undefined, {
     pollingInterval: 30000,
   });
@@ -307,11 +315,11 @@ function Dashboard() {
   return (
     <ControlPanel>
       <section className="space-y-6">
-        <div className="rounded-2xl border border-zinc-700 bg-black/80 p-4 sm:p-6">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs text-zinc-400">رفتار کاربران و محتوای سایت</p>
-              <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">داشبورد آمار بازدید</h1>
+              <h1 className="mt-1 text-2xl text-zinc-950 dark:text-white sm:text-3xl">داشبورد آمار بازدید</h1>
             </div>
           
           </div>
@@ -327,9 +335,9 @@ function Dashboard() {
         <RecentSessionsTable recentSessions={recentSessions} />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <AnalyticsChart title="روند بازدید ۷ روز اخیر" type="bar" data={trendChartData} />
-          <AnalyticsChart title="نوع دستگاه کاربران" type="doughnut" data={deviceChartData} />
-          <AnalyticsChart title="مرورگر کاربران" type="doughnut" data={browserChartData} />
+          <AnalyticsChart title="روند بازدید ۷ روز اخیر" type="bar" data={trendChartData} isDark={isDark} />
+          <AnalyticsChart title="نوع دستگاه کاربران" type="doughnut" data={deviceChartData} isDark={isDark} />
+          <AnalyticsChart title="مرورگر کاربران" type="doughnut" data={browserChartData} isDark={isDark} />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -339,7 +347,7 @@ function Dashboard() {
           <StatCard title="لایک‌ها" value={totals.totalLikes} unit="article / game" />
         </div>
 
-        <AnalyticsChart title="آمار بازدید صفحات مجله" type="bar" data={articleViewsChartData} />
+        <AnalyticsChart title="آمار بازدید صفحات مجله" type="bar" data={articleViewsChartData} isDark={isDark} />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <ContentTable title="مجله‌های پربازدید" rows={topArticles} type="article" />
@@ -352,4 +360,5 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
 

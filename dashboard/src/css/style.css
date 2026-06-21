@@ -358,3 +358,50 @@ textarea,
 select {
   border-radius: 1.5rem !important;
 }
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select) {
+  border: 1px solid #d1d5db !important;
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  font-size: 0.875rem;
+  outline: none !important;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select):focus {
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 0 0 transparent !important;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea)::placeholder {
+  color: #6b7280 !important;
+}
+
+.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select) {
+  border-color: #4b5563 !important;
+  background-color: #0a2d4d !important;
+  color: #f3f4f6 !important;
+}
+
+.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea, select):focus {
+  border-color: #3b82f6 !important;
+}
+
+.dark :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), textarea)::placeholder {
+  color: #d1d5db !important;
+}
+
+.dashboard-panel,
+.dashboard-panel :where(*) {
+  font-weight: 400 !important;
+}
+
+.dashboard-add-button,
+.dashboard-add-button :where(*) {
+  color: #ffffff !important;
+}
+
+.dark .dashboard-add-button,
+.dark .dashboard-add-button :where(*) {
+  color: #ffffff !important;
+}

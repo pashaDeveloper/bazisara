@@ -8,7 +8,7 @@ const AddButton = ({ link, onClick }) => {
     <ButtonComponent
       to={link}
       onClick={!link ? onClick : undefined} // اگر `link` نبود، `onClick` فعال شود
-      className="inline-flex w-auto items-center rounded-lg bg-green-500 dark:bg-blue-500 px-5 py-2 text-white shadow-sm cursor-pointer transition-all hover:bg-green-400 dark:hover:bg-blue-400 gap-2"
+      className="dashboard-add-button inline-flex w-auto cursor-pointer items-center gap-2 rounded-primary border border-green-600 bg-green-600 px-5 py-2 text-white shadow-sm shadow-green-900/20 transition-all hover:bg-green-700 dark:border-blue-600 dark:bg-blue-600 dark:text-white dark:shadow-blue-900/20 dark:hover:bg-blue-700"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16">
         <path

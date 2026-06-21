@@ -17,22 +17,16 @@ export const gameModeOptions = [
   { label: "PvP", value: "pvp" },
 ];
 
-export const languageOptions = [
-  { label: "English", value: "English" },
-  { label: "فارسی", value: "Persian" },
-  { label: "Arabic", value: "Arabic" },
-  { label: "French", value: "French" },
-  { label: "German", value: "German" },
-  { label: "Spanish", value: "Spanish" },
-  { label: "Japanese", value: "Japanese" },
+export const offlinePlayerOptions = [
+  { label: "1-2 نفره", value: "offline_1_2" },
+  { label: "1-3 نفره", value: "offline_1_3" },
+  { label: "1-4 نفره", value: "offline_1_4" },
+  { label: "دو نفره", value: "offline_2" },
 ];
 
-export const regionOptions = [
-  { label: "Global", value: "Global" },
-  { label: "US", value: "US" },
-  { label: "EU", value: "EU" },
-  { label: "Turkey", value: "Turkey" },
-  { label: "Argentina", value: "Argentina" },
+export const onlinePlayerOptions = [
+  { label: "بازیکنان آنلاین مولتی", value: "online_multi" },
+  { label: "بازیکنان آنلاین کوآپ", value: "online_coop" },
 ];
 
 export const dlcTypeOptions = [

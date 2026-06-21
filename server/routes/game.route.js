@@ -21,8 +21,6 @@ const gameUploadFields = [
   { name: "gallery", maxCount: 12 },
   { name: "trailerVideo", maxCount: 1 },
   { name: "trailerThumbnail", maxCount: 1 },
-  { name: "gameplayVideo", maxCount: 1 },
-  { name: "gameplayThumbnail", maxCount: 1 },
   { name: "patchImage", maxCount: 1 },
   { name: "dlcImages", maxCount: 20 },
   { name: "extraEditionImages", maxCount: 20 },

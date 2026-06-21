@@ -35,6 +35,23 @@ function renderTreePreview(nodes, depth = 0) {
   ));
 }
 
+function collectParentPaths(nodes, parentNames = [], paths = {}) {
+  nodes.forEach((node) => {
+    paths[node._id] = parentNames;
+    if (node.children?.length) {
+      collectParentPaths(node.children, [...parentNames, node.name], paths);
+    }
+  });
+
+  return paths;
+}
+
+function getCategoryParentPath(item, parentPathById) {
+  const parentNames = parentPathById[item._id];
+  if (parentNames?.length) return parentNames.join(" / ");
+  return item.parent?.name || "ندارد";
+}
+
 function Categories() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -50,6 +67,7 @@ function Categories() {
   const categories = categoriesData?.data || [];
   const categoriesMeta = categoriesData?.pagination;
   const tree = treeData?.data || [];
+  const parentPathById = React.useMemo(() => collectParentPaths(tree), [tree]);
 
   const handleDelete = async (id) => {
     try {
@@ -130,7 +148,7 @@ function Categories() {
                         <td className="py-4">
                           <IconPreview icon={item.icon} label={item.name} />
                         </td>
-                        <td className="hidden py-4 text-zinc-400 md:table-cell">{item.parent?.name || "ندارد"}</td>
+                        <td className="hidden py-4 text-zinc-400 md:table-cell">{getCategoryParentPath(item, parentPathById)}</td>
                         <td className="hidden py-4 sm:table-cell">
                           {item.image?.url ? (
                             <DisplayImages

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", rounded = "full" }) {
+function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", rounded = "square" }) {
   const [loadedMap, setLoadedMap] = useState({});
   const hasMedia = galleryPreview?.length > 0;
   const roundedClass = rounded === "square" ? "rounded-xl" : "rounded-full";

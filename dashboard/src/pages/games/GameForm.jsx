@@ -15,9 +15,9 @@ import {
   ageRatingOptions,
   editionOptions,
   gameModeOptions,
-  languageOptions,
   launcherOptions,
-  regionOptions,
+  offlinePlayerOptions,
+  onlinePlayerOptions,
 } from "./gameOptions";
 import { formatDate, normalizeOptionValue, toIdArray } from "./gameFormUtils";
 import { useGetPlatformsQuery } from "@/services/platformApi";
@@ -33,6 +33,8 @@ import {
   MediaStep,
   PlatformSizesStep,
   PlatformsStep,
+  PlatformReleasesStep,
+  PlayersStep,
   RelationsStep,
   ReleaseStep,
   ReviewStep,
@@ -56,28 +58,25 @@ const initialForm = {
   tags: [],
   collections: [],
   platforms: [],
+  platformReleases: [],
   platformSizes: [],
   gameModes: [],
-  languages: [],
-  regions: [],
+  offlinePlayers: [],
+  onlinePlayers: [],
   launcher: [],
   edition: "استاندارد",
   hasDubbing: false,
   hasSubtitle: false,
   dlcs: [],
   extraEditions: [],
-  releaseDate: "",
   officialWebsite: "",
   ageRating: "",
   gameplayTime: "",
   metacriticScore: "",
   isFeatured: false,
   socialLinks: [],
-  trailerUrl: "",
   trailerVideo: null,
   trailerThumbnail: null,
-  gameplayVideo: null,
-  gameplayThumbnail: null,
   patchTitle: "",
   patchImage: null,
   cover: null,
@@ -106,7 +105,9 @@ const normalizeUploadedMedia = (response, fallbackType = "video") => {
 const steps = [
   { key: "basic", title: "پایه" },
   { key: "relations", title: "ارتباطات" },
-  { key: "platforms", title: "پلتفرم‌ها" },
+  { key: "platforms", title: "مشخصات" },
+  { key: "platformReleases", title: "انتشار پلتفرم‌ها" },
+  { key: "players", title: "بازیکنان" },
   { key: "release", title: "انتشار" },
   { key: "sizes", title: "حجم پلتفرم‌ها" },
   { key: "dlcEdition", title: "DLC / Edition" },
@@ -136,6 +137,24 @@ function toObjectArray(value, fallback = []) {
   } catch (_) {}
 
   return fallback;
+}
+
+function toPlatformReleaseArray(value, fallbackPlatforms = [], fallbackReleaseDate = "") {
+  if (Array.isArray(value) && value.length) {
+    return value
+      .map((item) => ({
+        platform: item?.platform?._id || item?.platform || "",
+        releaseDate: formatDate(item?.releaseDate),
+      }))
+      .filter((item) => item.platform || item.releaseDate);
+  }
+
+  return fallbackPlatforms
+    .map((platform) => ({
+      platform: platform?._id || platform || "",
+      releaseDate: formatDate(fallbackReleaseDate),
+    }))
+    .filter((item) => item.platform || item.releaseDate);
 }
 
 function toLinkArray(value) {
@@ -171,12 +190,9 @@ function GameForm({ mode = "create" }) {
   const [galleryPreview, setGalleryPreview] = useState([]);
   const [trailerVideoPreview, setTrailerVideoPreview] = useState("");
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
-  const [gameplayVideoPreview, setGameplayVideoPreview] = useState("");
-  const [gameplayThumbnailPreview, setGameplayThumbnailPreview] = useState("");
   const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
   const [videoUploadState, setVideoUploadState] = useState({
     trailerVideo: false,
-    gameplayVideo: false,
   });
   const tempUploadedVideosRef = useRef(new Map());
   const didSaveRef = useRef(false);
@@ -203,7 +219,7 @@ function GameForm({ mode = "create" }) {
   const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
   const collections = collectionsData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
-  const isUploadingVideo = videoUploadState.trailerVideo || videoUploadState.gameplayVideo;
+  const isUploadingVideo = videoUploadState.trailerVideo;
   const isLastStep = currentStep === steps.length - 1;
   const titleIsValid = Boolean(form.title.trim());
   const categoryIsValid = Boolean(form.category);
@@ -243,10 +259,11 @@ function GameForm({ mode = "create" }) {
       tags: toIdArray(game.tags),
       collections: toIdArray(game.collections),
       platforms: toIdArray(game.platforms),
+      platformReleases: toPlatformReleaseArray(game.platformReleases, game.platforms, game.releaseDate),
       platformSizes: toObjectArray(game.platformSizes),
       gameModes: game.gameModes || [],
-      languages: game.languages || [],
-      regions: game.regions || [],
+      offlinePlayers: game.offlinePlayers || [],
+      onlinePlayers: game.onlinePlayers || [],
       launcher: normalizeOptionValue(game.launcher, launcherOptions, []),
       edition: normalizeOptionValue(game.edition, editionOptions, "استاندارد"),
       dlcs: Array.isArray(game.dlcs)
@@ -266,18 +283,14 @@ function GameForm({ mode = "create" }) {
         : [],
       hasDubbing: Boolean(game.hasDubbing),
       hasSubtitle: Boolean(game.hasSubtitle),
-      releaseDate: formatDate(game.releaseDate),
       officialWebsite: game.officialWebsite || "",
       ageRating: normalizeOptionValue(game.ageRating, ageRatingOptions),
       gameplayTime: game.gameplayTime || "",
       metacriticScore: game.metacriticScore ?? "",
       isFeatured: Boolean(game.isFeatured),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
-      trailerUrl: game.trailerUrl || "",
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
       trailerThumbnail: null,
-      gameplayVideo: game.gameplayVideo?.url ? game.gameplayVideo : null,
-      gameplayThumbnail: null,
       patchTitle: game.patchTitle || "",
       patchImage: null,
       cover: null,
@@ -293,8 +306,6 @@ function GameForm({ mode = "create" }) {
     setGalleryPreview((game.gallery || []).map((item) => ({ url: item.url, type: item.type })));
     setTrailerVideoPreview(game.trailerVideo?.url || "");
     setTrailerThumbnailPreview(game.trailerThumbnail?.url || "");
-    setGameplayVideoPreview(game.gameplayVideo?.url || "");
-    setGameplayThumbnailPreview(game.gameplayThumbnail?.url || "");
   }, [gameData]);
 
   const completedSteps = steps.reduce((acc, step, index) => {
@@ -331,11 +342,10 @@ function GameForm({ mode = "create" }) {
     if (!file) return;
 
     const previousTempMedia = tempUploadedVideosRef.current.get(field);
-    const previewSetter = field === "trailerVideo" ? setTrailerVideoPreview : setGameplayVideoPreview;
     const localPreview = URL.createObjectURL(file);
 
     setVideoUploadState((prev) => ({ ...prev, [field]: true }));
-    previewSetter(localPreview);
+    setTrailerVideoPreview(localPreview);
 
     try {
       const uploadFormData = new FormData();
@@ -353,18 +363,18 @@ function GameForm({ mode = "create" }) {
       }
 
       setForm((prev) => ({ ...prev, [field]: media }));
-      previewSetter(media.url);
+      setTrailerVideoPreview(media.url);
       tempUploadedVideosRef.current.set(field, media);
 
       if (previousTempMedia?.public_id && previousTempMedia.public_id !== media.public_id) {
         await deleteTemporaryMedia(previousTempMedia);
       }
 
-      toast.success(field === "trailerVideo" ? "تریلر آپلود شد" : "گیم‌پلی آپلود شد", { id: `${field}-upload` });
+      toast.success("تریلر آپلود شد", { id: `${field}-upload` });
     } catch (error) {
       if (!didUnmountRef.current) {
         setForm((prev) => ({ ...prev, [field]: previousTempMedia || null }));
-        previewSetter(previousTempMedia?.url || "");
+        setTrailerVideoPreview(previousTempMedia?.url || "");
         toast.error(error?.data?.description || "آپلود ویدئو ناموفق بود", { id: `${field}-upload` });
       }
     } finally {
@@ -436,17 +446,26 @@ function GameForm({ mode = "create" }) {
       "tags",
       "collections",
       "platforms",
+      "platformReleases",
       "platformSizes",
       "gameModes",
-      "languages",
-      "regions",
+      "offlinePlayers",
+      "onlinePlayers",
       "socialLinks",
       "dlcs",
       "extraEditions",
       "reviewItems",
     ];
 
-    Object.entries(form).forEach(([key, value]) => {
+    const derivedPlatforms = [
+      ...new Set((form.platformReleases || []).map((item) => item.platform).filter(Boolean)),
+    ];
+    const normalizedForm = {
+      ...form,
+      platforms: derivedPlatforms,
+    };
+
+    Object.entries(normalizedForm).forEach(([key, value]) => {
       if (key === "cover" || key === "cardDesktopCover" || key === "cardMobileCover" || key === "desktopCover" || key === "patchImage") {
         if (value instanceof File) formData.append(key, value);
         return;
@@ -457,7 +476,7 @@ function GameForm({ mode = "create" }) {
         });
         return;
       }
-      if (key === "trailerVideo" || key === "gameplayVideo" || key === "trailerThumbnail" || key === "gameplayThumbnail") {
+      if (key === "trailerVideo" || key === "trailerThumbnail") {
         if (isFile(value)) {
           formData.append(key, value);
         } else if (isMediaObject(value)) {
@@ -578,10 +597,18 @@ function GameForm({ mode = "create" }) {
             form={form}
             gameModeOptions={gameModeOptions}
             launcherOptions={launcherOptions}
-            languageOptions={languageOptions}
             onChange={handleChange}
-            platformOptions={platformOptions}
-            regionOptions={regionOptions}
+            setArrayField={setArrayField}
+          />
+        );
+      case "platformReleases":
+        return <PlatformReleasesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
+      case "players":
+        return (
+          <PlayersStep
+            form={form}
+            offlinePlayerOptions={offlinePlayerOptions}
+            onlinePlayerOptions={onlinePlayerOptions}
             setArrayField={setArrayField}
           />
         );
@@ -604,18 +631,10 @@ function GameForm({ mode = "create" }) {
       case "videos":
         return (
           <VideosStep
-            form={form}
-            gameplayThumbnailPreview={gameplayThumbnailPreview}
-            gameplayVideoPreview={gameplayVideoPreview}
-            isGameplayVideoUploading={videoUploadState.gameplayVideo}
             isTrailerVideoUploading={videoUploadState.trailerVideo}
-            onChange={handleChange}
             onVideoUpload={handleVideoUpload}
             setForm={setForm}
-            setGameplayThumbnailPreview={setGameplayThumbnailPreview}
-            setGameplayVideoPreview={setGameplayVideoPreview}
             setTrailerThumbnailPreview={setTrailerThumbnailPreview}
-            setTrailerVideoPreview={setTrailerVideoPreview}
             trailerThumbnailPreview={trailerThumbnailPreview}
             trailerVideoPreview={trailerVideoPreview}
           />
@@ -625,7 +644,14 @@ function GameForm({ mode = "create" }) {
     }
   };
 
-  const selectedPlatformLabels = platformOptions.filter((option) => form.platforms.includes(option.value)).map((option) => option.label);
+  const selectedPlatformIds = (form.platformReleases || []).map((item) => item.platform).filter(Boolean);
+  const selectedPlatformLabels = platformOptions.filter((option) => selectedPlatformIds.includes(option.value)).map((option) => option.label);
+  const selectedPlatformReleases = (form.platformReleases || [])
+    .map((item) => ({
+      label: platformOptions.find((option) => option.value === item.platform)?.label || "",
+      releaseDate: item.releaseDate,
+    }))
+    .filter((item) => item.label || item.releaseDate);
   const selectedGenreLabels = genreOptions.filter((option) => form.genres.includes(option.value)).map((option) => option.label);
   const selectedTagLabels = tagOptions.filter((option) => form.tags.includes(option.value)).map((option) => option.label);
 
@@ -693,6 +719,7 @@ function GameForm({ mode = "create" }) {
                     galleryPreview={galleryPreview}
                     genres={selectedGenreLabels}
                     isSticky={false}
+                    platformReleases={selectedPlatformReleases}
                     platforms={selectedPlatformLabels}
                     reviewItems={form.reviewItems}
                     seoTags={selectedTagLabels}
@@ -723,6 +750,7 @@ function GameForm({ mode = "create" }) {
                 galleryPreview={galleryPreview}
                 genres={selectedGenreLabels}
                 isSticky={false}
+                platformReleases={selectedPlatformReleases}
                 platforms={selectedPlatformLabels}
                 reviewItems={form.reviewItems}
                 seoTags={selectedTagLabels}
