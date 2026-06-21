@@ -241,3 +241,120 @@
   html:not(.dark) a:hover .text-zinc-500 {
     color: #3f3f46 !important;
   }
+
+@font-face {
+  font-family: "Nozha";
+  src: url('/fonts/DigiNozha/DigiNozha2Bold.eot');
+  src: url('/fonts/DigiNozha/DigiNozha2Bold.eot?#iefix') format('embedded-opentype'),
+    url('/fonts/DigiNozha/DigiNozha2Bold.woff2') format('woff2'),
+    url('/fonts/DigiNozha/DigiNozha2Bold.woff') format('woff'),
+    url('/fonts/DigiNozha/DigiNozha2Bold.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Aviny";
+  src: url("/fonts/aviniy/Aviny.woff2") format("woff2"),
+    url("/fonts/aviniy/Aviny.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+}
+
+.wave {
+  opacity: 0.6;
+  position: absolute;
+  bottom: 40%;
+  left: 50%;
+  width: 6000px;
+  height: 6000px;
+  background-color: rgba(0, 135, 113, 0.08);
+  margin-left: -3000px;
+  transform-origin: 50% 48%;
+  border-radius: 46%;
+  pointer-events: none;
+  rotate: 125deg;
+}
+
+.wave2 {
+  opacity: 0.8;
+  transform: rotate(70deg);
+}
+
+.wave3 {
+  opacity: 0.6;
+  transform: rotate(80deg);
+}
+
+.dark .wave {
+  background: rgba(14, 73, 181, 0.2);
+}
+
+.profile-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid rgba(220, 233, 245, 1);
+  background: rgba(220, 233, 245, 0.8);
+}
+
+.dark .profile-container {
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.profile-pic {
+  width: 92%;
+  height: 92%;
+  object-fit: cover;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.shine-effect::before,
+.shine-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 20%;
+  height: 100%;
+  background: rgba(220, 233, 245, 0.4);
+  transform: skewX(-45deg);
+  border: 2px solid rgba(220, 233, 245, 0.8);
+  animation: shine 3s infinite;
+}
+
+.dark .shine-effect::before {
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+@keyframes shine {
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 200%;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+input,
+textarea,
+select {
+  border-radius: 1.5rem !important;
+}

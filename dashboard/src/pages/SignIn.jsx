@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { addAdmin } from "@/features/auth/authSlice";
 import MutationFeedback from "@/components/MutationFeedback";
+import ThemeToggle from "@/components/ThemeToggle";
+import AuthInput from "@/components/shared/AuthInput";
+import Email from "@/components/icons/Email";
+import OutlineEye from "@/components/icons/OutlineEye";
+import OutlineEyeInvisible from "@/components/icons/OutlineEyeInvisible";
+import Password from "@/components/icons/Password";
+import Send from "@/components/icons/Send";
 import { useSignInAdminMutation } from "@/services/auth/authApi";
 
 function SignIn() {
@@ -11,6 +18,7 @@ function SignIn() {
   const location = useLocation();
   const [signInAdmin, { data, isLoading, isSuccess, error, isError }] =
     useSignInAdminMutation();
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -35,11 +43,13 @@ function SignIn() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    try {
       await signInAdmin(form).unwrap();
+    } catch (_) {}
   };
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
+    <section className="relative flex h-screen w-screen items-center justify-center overflow-hidden p-4">
       <MutationFeedback
         state={{ data, isLoading, isSuccess, isError, error }}
         toastId="signin"
@@ -53,68 +63,91 @@ function SignIn() {
         }}
       />
 
-      <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10 sm:px-6 lg:px-8">
-        <section className="w-full rounded-3xl border border-zinc-900 bg-zinc-950 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] sm:p-8">
-          <div className="mb-8">
-            <p className="text-xs tracking-[0.45em] text-zinc-500">پنل ادمین</p>
-            <h2 className="mt-4 text-3xl font-semibold text-white">
-              ورود به داشبورد
-            </h2>
-            <p className="mt-3 text-sm text-zinc-400">
-              برای دسترسی به پنل مدیریت، ایمیل و رمز عبور خود را وارد کنید.
-            </p>
-          </div>
+      <div className="wave"></div>
+      <div className="wave wave2"></div>
+      <div className="wave wave3"></div>
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-sm text-zinc-300">ایمیل</span>
-              <input
-                className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
-                name="email"
-                onChange={handleChange}
-                placeholder="example@email.com"
-                required
-                type="email"
-                value={form.email}
-              />
-            </label>
+      <div className="z-50 flex w-full max-w-md flex-col gap-y-4 rounded-primary bg-white p-8 shadow-lg dark:bg-gray-900">
+        <div className="flex flex-row items-center gap-x-2">
+          <hr className="w-full dark:border-gray-600" />
+          <img
+            alt="logo"
+            className="max-w-full cursor-pointer"
+            height={40}
+            src="/logo.png"
+            width={141}
+          />
+          <hr className="w-full dark:border-gray-600" />
+        </div>
 
-            <label className="block">
-              <span className="mb-2 block text-sm text-zinc-300">رمز عبور</span>
-              <input
-                className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white"
-                name="password"
-                onChange={handleChange}
-                placeholder="رمز عبور خود را وارد کنید"
-                required
-                type="password"
-                value={form.password}
-              />
-            </label>
+        <form className="mt-2 flex flex-col gap-y-5" onSubmit={handleSubmit}>
+          <label className="flex flex-col gap-y-1" htmlFor="email">
+            <span className="text-sm">ایمیل خود را وارد کنید</span>
+            <AuthInput
+              autoComplete="email"
+              icon={Email}
+              id="email"
+              name="email"
+              onChange={handleChange}
+              placeholder="john@example.com"
+              required
+              type="email"
+              value={form.email}
+            />
+          </label>
 
-            <button
-              className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-400"
-              disabled={isLoading}
-              type="submit"
+          <label className="relative flex flex-col gap-y-1" htmlFor="password">
+            <span className="text-sm">رمز عبور خود را وارد کنید</span>
+            <AuthInput
+              autoComplete="current-password"
+              className="pl-10"
+              icon={Password}
+              id="password"
+              name="password"
+              onChange={handleChange}
+              placeholder="رمز عبور"
+              required
+              type={showPassword ? "text" : "password"}
+              value={form.password}
             >
-              {isLoading ? "در حال ورود..." : "ورود"}
-            </button>
-          </form>
+              <button
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500"
+                onClick={() => setShowPassword((prev) => !prev)}
+                type="button"
+              >
+                {showPassword ? <OutlineEye /> : <OutlineEyeInvisible />}
+              </button>
+            </AuthInput>
+          </label>
 
-          <p className="mt-6 text-sm text-zinc-400">
-            هنوز حساب کاربری ندارید؟{" "}
-            <Link
-              className="text-white underline underline-offset-4"
-              to="/signup"
-            >
-              ثبت‌نام کنید
-            </Link>
-          </p>
-        </section>
+          <button
+            className="group inline-flex transform items-center justify-center rounded-secondary border border-green-700 bg-green-600 px-4 py-2 text-white shadow-sm shadow-green-900/20 transition duration-300 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-green-500 dark:bg-green-600 dark:text-white dark:hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isLoading}
+            type="submit"
+          >
+            {isLoading ? (
+              <span>در حال ورود...</span>
+            ) : (
+              <>
+                <Send className="h-6 w-6 transform transition-transform duration-300 group-hover:translate-x-1 group-focus:translate-x-1" />
+                <span className="mr-2">ورود</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="flex flex-row items-center justify-center gap-x-2 text-xs">
+          <NavLink to="/signup">ثبت‌نام</NavLink>
+          <span className="h-4 border-l" />
+          <NavLink to="/forgot-password">فراموشی رمز عبور</NavLink>
+        </div>
+
+        <div className="flex flex-row items-center justify-center gap-x-2 text-xs">
+          <ThemeToggle />
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
 export default SignIn;
-

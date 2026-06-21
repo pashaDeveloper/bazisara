@@ -1,0 +1,269 @@
+
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+
+/* Additional styles */
+@import 'additional-styles/utility-patterns.css';
+
+@import 'tailwindcss/utilities';
+
+@font-face {
+    font-family: "Nozha";
+    src: url('/fonts/DigiNozha/DigiNozha2Bold.eot');
+    src: url('/fonts/DigiNozha/DigiNozha2Bold.eot?#iefix') format('embedded-opentype'),
+        url('/fonts/DigiNozha/DigiNozha2Bold.woff2') format('woff2'),
+        url('/fonts/DigiNozha/DigiNozha2Bold.woff') format('woff'),
+        url('/fonts/DigiNozha/DigiNozha2Bold.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+  
+  @font-face {
+    font-family: "Vazir";
+    src: url("/fonts/vazir/Vazir.woff2") format("woff2"),
+         url("/fonts/vazir/vazir.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+  /* تعریف فونت Aviny */
+  @font-face {
+    font-family: "Aviny";
+    src: url("/fonts/Aviny/Aviny.woff2") format("woff2"),
+         url("/fonts/Aviny/Aviny.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+  }
+
+  body {
+    font-family: 'Vazir'; 
+  }
+
+  body::-webkit-scrollbar {
+    display: none; /* مخفی کردن نوار اسکرول */
+  }
+  /* Width and height */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  /* Track */
+  ::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  
+  /* Thumb */
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(1 188 31 / 0.8);
+    border-radius: 10px;
+  }
+  
+  /* Thumb on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(1 188 31 / 0.5);
+  }
+  
+  /* Corner */
+  ::-webkit-scrollbar-corner {
+    background-color: #f1f1f1;
+  }
+  
+  /* Resizer */
+  ::-webkit-scrollbar-resizer {
+    background-color: #ddd;
+  }
+  
+  
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Vazir';
+}
+
+@layer base {
+  html {
+    font-family: 'Vazir';
+  }
+}
+
+input,
+textarea,
+select {
+  @apply 
+  focus:!ring-0 focus:!outline-0 
+  focus:!outline-offset-0 
+  dark:!border-blue-500
+  dark:!bg-[#0a2d4d] 
+  dark:focus:!border-blue-500
+  dark:focus:!bg-[#0a2d4d]
+}
+textarea {
+  @apply form-textarea rounded text-sm resize-none;
+}
+p,
+span {
+  @apply text-slate-500;
+}
+
+input {
+  @apply focus:ring-black focus:border-black focus:outline-black;
+}
+
+::selection {
+  @apply bg-black text-white;
+}
+
+[type="text"],
+[type="email"],
+[type="password"],
+[type="number"],
+[type="tel"],
+[type="search"] {
+  @apply form-input rounded text-sm;
+}
+
+input,
+textarea,
+select {
+  @apply focus:!ring-0 focus:!outline-0 focus:!outline-offset-0 focus:!border-[#6fd1f9];
+}
+
+textarea {
+  @apply form-textarea rounded text-sm resize-none;
+}
+
+select {
+  @apply form-select rounded text-sm resize-none;
+}
+
+.wave {
+  opacity: 0.6;
+  position: absolute;
+  bottom: 40%;
+  left: 50%;
+  width: 6000px;
+  height: 6000px;
+  background-color: rgba(0, 135, 113, 0.08);
+  margin-left: -3000px;
+  transform-origin: 50% 48%;
+  border-radius: 46%;
+  pointer-events: none;
+  rotate: 125deg;
+  
+}
+input[type=number].hide-arrow::-webkit-outer-spin-button,
+input[type=number].hide-arrow::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number].hide-arrow {
+  -moz-appearance: textfield;
+}
+
+
+.wave2 {
+  opacity: 0.8;
+  transform: rotate(70deg);
+}
+
+.wave3 {
+  opacity: 0.6;
+  transform: rotate(80deg);
+}
+
+.dark .wave {
+  background: rgba(14, 73, 181, 0.2);
+}
+
+.dark .wave {
+  background: rgba(14, 73, 181, 0.2);
+}
+
+.profile-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid rgba(220, 233, 245, 1)  ;
+  background: rgba(220, 233, 245, 0.8);
+}
+
+.dark .profile-container{
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.2);
+
+}
+
+.profile-pic {
+  width: 92%;
+  height: 92%;
+  object-fit: cover;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.shine-effect::before,
+.shine-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 20%;
+  height: 100%;
+  background: rgba(220, 233, 245, 0.4)  ;
+  transform: skewX(-45deg);
+  border: 2px solid rgba(220, 233, 245, 0.8);
+  animation: shine 3s infinite;
+}
+
+.dark .shine-effect::before {
+  background: rgba(255, 255, 255, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+
+}
+
+@keyframes shine {
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 200%; 
+  }
+}
+
+.delete-button {
+  @apply line-clamp-1 cursor-pointer rounded-full border border-red-500/5 bg-red-500/5 p-2 text-red-500 transition-colors hover:border-red-500/10 hover:bg-red-500/10 hover:!opacity-100 group-hover:opacity-70 ;
+}
+.edit-button {
+  @apply line-clamp-1 cursor-pointer rounded-full border border-green-500/5 bg-green-500/5 p-2 text-green-500 transition-colors hover:border-green-500/10 hover:bg-green-500/10 hover:!opacity-100 group-hover:opacity-70 ;
+}
+.apply-button {
+  @apply cursor-pointer    border border-white dark:border-blue-800 py-2  text-green-500 bg-green-800/10 dark:bg-blue-800/10 dark:text-blue-500   text-center flex justify-center items-center
+  transition-colors border-green-500/10 dark:border-blue-500/10 hover:bg-green-600/20 dark:hover:bg-blue-600/20  hover:!opacity-100 group-hover:opacity-70;
+}
+.custom-button {
+  @apply cursor-pointer rounded-full border border-green-500/5 dark:border-blue-500/5 bg-green-500/5 dark:bg-blue-500/5 p-2 text-green-500 dark:text-blue-500 transition-colors hover:border-green-500/10 dark:hover:border-blue-500/10 hover:bg-green-500/10 dark:hover:bg-blue-500/10 hover:!opacity-100 group-hover:opacity-70;
+}
+.reject-button {
+  @apply border  border-red-600  py-2  bg-red-500/10 text-red-500 dark:text-red-500   text-center flex justify-center items-center transition-colors border-red-500/10 hover:bg-red-500/20  hover:!opacity-100 group-hover:opacity-70;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none; 
+}

@@ -202,9 +202,10 @@ async function getPendingApprovals() {
 
 /* sign up an admin */
 exports.signUp = async (req, res) => {
-  const { body, file } = req;
+  const { body } = req;
   const {
     name,
+    fatherName,
     email,
     password,
     phone,
@@ -216,7 +217,7 @@ exports.signUp = async (req, res) => {
     postalCode
   } = body;
 
-  if (!name || !email || !password || !phone) {
+  if (!name || !fatherName || !email || !password || !phone) {
     return res.status(400).json({
       acknowledgement: false,
       message: "درخواست نادرست",
@@ -229,14 +230,18 @@ exports.signUp = async (req, res) => {
     $or: [{ email: email }, { phone: phone }]
   });
   if (existingAdmin) {
-    return {
-      success: false,
+    return res.status(409).json({
+      acknowledgement: false,
+      isSuccess: false,
       message:
         "کاربری با این ایمیل یا شماره تلفن قبلاً ثبت‌نام کرده است. لطفاً به صفحه ورود بروید.",
+      description:
+        "کاربری با این ایمیل یا شماره تلفن قبلاً ثبت‌نام کرده است. لطفاً به صفحه ورود بروید.",
       redirectToLogin: true
-    };
+    });
   }
 
+  let avatar;
   if (
     req.uploadedFiles &&
     req.uploadedFiles["avatar"] &&
@@ -249,22 +254,48 @@ exports.signUp = async (req, res) => {
     };
   } else {
     avatar = {
-      url: avatarUrl,
-      public_id: null
+      url: avatarUrl || "",
+      public_id: null,
+      storage: ""
     };
   }
+
+  if (!avatar.url) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "Avatar is required for admin sign-up",
+      isSuccess: false
+    });
+  }
+
   const adminCount = await Admin.countDocuments();
   const role = adminCount === 0 ? "owner" : "buyer";
   const status = adminCount === 0 ? "active" : "inactive";
+  const profileApproval =
+    adminCount === 0
+      ? {
+          approvedLevel: 3,
+          pendingLevel: 0,
+          approvedLevels: { level1: true, level2: true, level3: true },
+          approvedAt: new Date(),
+        }
+      : {
+          approvedLevel: 0,
+          pendingLevel: 1,
+          approvedLevels: { level1: false, level2: false, level3: false },
+        };
 
   const admin = new Admin({
     name: body.name,
+    fatherName: body.fatherName,
     email: body.email,
     password: body.password,
     phone: body.phone,
     role: role,
     status: status,
-    avatar
+    avatar,
+    profileApproval
   });
 
   await admin.save();
@@ -296,7 +327,10 @@ exports.signUp = async (req, res) => {
   res.status(201).json({
     acknowledgement: true,
     message: "تبریک ",
-    description: "ثبت نام شما با موفقیت انجام شد",
+    description:
+      adminCount === 0
+        ? "حساب مدیر کل با موفقیت ایجاد شد"
+        : "ثبت‌نام شما ثبت شد و برای تایید سطح ۱ به مدیر کل ارسال شد",
     isSuccess: true
   });
 
@@ -582,6 +616,12 @@ exports.approveApproval = async (req, res) => {
       rejectedAt: null,
       rejectedBy: null,
     };
+
+    if (pendingLevel === 1) {
+      admin.status = "active";
+      if (admin.role === "buyer") admin.role = "admin";
+    }
+
     await admin.save({ validateBeforeSave: false });
 
     const populatedAdmin = await populateAdmin(Admin.findById(admin._id).select("-password"));
