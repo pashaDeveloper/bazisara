@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         port: "8080",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "c299771.parspack.net",
+        pathname: "/**",
+      },
     ],
   },
 };

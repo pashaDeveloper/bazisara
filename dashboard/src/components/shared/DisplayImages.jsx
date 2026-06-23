@@ -20,10 +20,9 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
     <div className={`mt-4 flex flex-row gap-x-2 overflow-x-auto ${className}`.trim()}>
       {!hasMedia ? (
         <div
-          className={`profile-container relative mb-2 flex-shrink-0 overflow-hidden ${roundedClass} shine-effect`}
+          className={`relative mb-2 flex-shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 ${roundedClass} shine-effect`}
           style={{
             width: imageSize,
-          
             height: imageSize,
             minWidth: imageSize,
             minHeight: imageSize,
@@ -41,7 +40,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
           return (
             <div
               key={mediaKey}
-              className={`profile-container relative mb-2 flex-shrink-0 overflow-hidden ${roundedClass} ${
+              className={`relative mb-2 flex-shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 ${roundedClass} ${
                 !isLoaded ? "shine-effect" : ""
               }`}
               style={{
@@ -57,7 +56,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
 
               {isVideo ? (
                 <video
-                  className={`profile-pic ${roundedClass} object-cover transition-opacity duration-200 ${
+                  className={`h-full w-full ${roundedClass} object-cover transition-opacity duration-200 ${
                     isLoaded ? "opacity-100" : "opacity-0"
                   }`}
                   controls
@@ -73,7 +72,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
               ) : (
                 <img
                   alt="gallery"
-                  className={`profile-pic h-full w-full ${roundedClass} object-cover`}
+                  className={`h-full w-full ${roundedClass} object-cover`}
                   height={imageSize}
                   onLoad={() => markLoaded(mediaKey)}
                   src={item.url}

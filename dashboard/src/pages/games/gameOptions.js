@@ -9,14 +9,6 @@ export const platformOptions = [
   { label: "iOS", value: "iOS" },
 ];
 
-export const gameModeOptions = [
-  { label: "تک‌نفره", value: "single_player" },
-  { label: "چندنفره", value: "multiplayer" },
-  { label: "آنلاین", value: "online" },
-  { label: "Co-op", value: "co_op" },
-  { label: "PvP", value: "pvp" },
-];
-
 export const offlinePlayerOptions = [
   { label: "1-2 نفره", value: "offline_1_2" },
   { label: "1-3 نفره", value: "offline_1_3" },

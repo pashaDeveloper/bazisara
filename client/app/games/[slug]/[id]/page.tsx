@@ -52,7 +52,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     mediaUrl(game.cardDesktopCover) ||
     mediaUrl(game.gallery?.[0]);
   const description = stripHtml(game.description) || game.shortDescription || "";
-  const genres = game.genres?.map((item) => item.name).filter(Boolean).join("، ") || "";
+  const genres = game.showGenresInCategories ? "" : game.genres?.map((item) => item.name).filter(Boolean).join("، ") || "";
   const platforms = game.platforms?.map(entityLabel).filter(Boolean).join("، ") || "";
   const specs = [
     ["پلتفرم", platforms],
@@ -62,7 +62,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     ["رده سنی", game.ageRating],
     ["زمان تقریبی گیم‌پلی", game.gameplayTime],
     ["امتیاز متاکریتیک", game.metacriticScore],
-    ["ژانرها", genres],
+    ...(game.showGenresInCategories ? [] : [["ژانرها", genres]]),
   ];
   const seoTags = game.tags?.map((tag) => tag.name).filter(Boolean) || [];
   const reviewItems = game.reviewItems || [];

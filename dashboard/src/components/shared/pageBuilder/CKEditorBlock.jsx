@@ -20,7 +20,7 @@ const CKEditorBlock = ({ content, onChange }) => {
             'undo', 'redo'
           ],
           simpleUpload: {
-            uploadUrl: import.meta.env.VITE_BASE_URL + '/uploads/arvan/create',
+            uploadUrl: import.meta.env.VITE_BASE_URL + '/uploads/parspack/create',
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           }
         }}

@@ -1,9 +1,11 @@
 const uploadCloudinary = require("../middleware/cloudinaryUpload.middleware");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
+const uploadParspack = require("../middleware/parspackUpload.middleware");
 
 const storageUploaders = [
   { prefix: "/cloudinary", upload: uploadCloudinary },
   { prefix: "/arvan", upload: uploadArvan },
+  { prefix: "/parspack", upload: uploadParspack },
 ];
 
 const registerStoragePost = (router, path, middlewares, folder, fields, handler) => {

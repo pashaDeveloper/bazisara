@@ -10,14 +10,12 @@ import { useGetCategoriesQuery } from "../../services/category/categoryApi";
 import { useGetCompaniesQuery } from "../../services/companyApi";
 import { useGetGenresQuery } from "../../services/genreApi";
 import { useGetTagsQuery } from "../../services/tagApi";
-import { useCreateGameMutation, useGetGameQuery, useUpdateGameMutation } from "../../services/gameApi";
+import { useCreateGameMutation, useGetGameQuery, useGetGamesQuery, useUpdateGameMutation } from "../../services/gameApi";
 import {
   ageRatingOptions,
   editionOptions,
-  gameModeOptions,
   launcherOptions,
   offlinePlayerOptions,
-  onlinePlayerOptions,
 } from "./gameOptions";
 import { formatDate, normalizeOptionValue, toIdArray } from "./gameFormUtils";
 import { useGetPlatformsQuery } from "@/services/platformApi";
@@ -32,9 +30,9 @@ import {
   DlcEditionStep,
   MediaStep,
   PlatformSizesStep,
-  PlatformsStep,
   PlatformReleasesStep,
   PlayersStep,
+  RelatedGamesStep,
   RelationsStep,
   ReleaseStep,
   ReviewStep,
@@ -53,6 +51,7 @@ const initialForm = {
   reviewItems: [],
   category: "",
   genres: [],
+  showGenresInCategories: false,
   developers: [],
   publishers: [],
   tags: [],
@@ -63,6 +62,11 @@ const initialForm = {
   gameModes: [],
   offlinePlayers: [],
   onlinePlayers: [],
+  hasOnlineMode: false,
+  onlinePlayerCount: "",
+  hasMultiplayerMode: false,
+  multiplayerPlayerCount: "",
+  relatedGames: [],
   launcher: [],
   edition: "استاندارد",
   hasDubbing: false,
@@ -105,7 +109,6 @@ const normalizeUploadedMedia = (response, fallbackType = "video") => {
 const steps = [
   { key: "basic", title: "پایه" },
   { key: "relations", title: "ارتباطات" },
-  { key: "platforms", title: "مشخصات" },
   { key: "platformReleases", title: "انتشار پلتفرم‌ها" },
   { key: "players", title: "بازیکنان" },
   { key: "release", title: "انتشار" },
@@ -117,6 +120,7 @@ const steps = [
   { key: "description", title: "توضیح کامل" },
   { key: "media", title: "رسانه" },
   { key: "videos", title: "ویدیوها" },
+  { key: "relatedGames", title: "بازی‌های مشابه" },
 ];
 
 function toObjectArray(value, fallback = []) {
@@ -207,6 +211,7 @@ function GameForm({ mode = "create" }) {
   const { data: tagsData } = useGetTagsQuery({ page: 1, limit: 200 });
   const { data: platformsData } = useGetPlatformsQuery({ tree: true, limit: 500 });
   const { data: collectionsData } = useGetGameCollectionsQuery({ page: 1, limit: 300 });
+  const { data: relatedGamesData } = useGetGamesQuery({ page: 1, limit: 500 });
   const [uploadFile] = useUploadMutation();
   const [deleteUpload] = useDeleteUploadMutation();
   const [createGame, createState] = useCreateGameMutation();
@@ -238,6 +243,13 @@ function GameForm({ mode = "create" }) {
   const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id })), [tags]);
   const collectionOptions = useMemo(() => collections.map((item) => ({ label: item.title_fa, value: item._id })), [collections]);
   const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
+  const relatedGameOptions = useMemo(
+    () =>
+      (relatedGamesData?.data || [])
+        .filter((game) => game._id !== id)
+        .map((game) => ({ label: game.title, value: game._id })),
+    [id, relatedGamesData]
+  );
 
   useEffect(() => {
     const game = gameData?.data;
@@ -254,6 +266,7 @@ function GameForm({ mode = "create" }) {
       reviewItems: toLinkArray(game.reviewItems),
       category: game.category?._id || game.category || "",
       genres: toIdArray(game.genres),
+      showGenresInCategories: Boolean(game.showGenresInCategories),
       developers: toIdArray(game.developers),
       publishers: toIdArray(game.publishers),
       tags: toIdArray(game.tags),
@@ -264,6 +277,11 @@ function GameForm({ mode = "create" }) {
       gameModes: game.gameModes || [],
       offlinePlayers: game.offlinePlayers || [],
       onlinePlayers: game.onlinePlayers || [],
+      hasOnlineMode: Boolean(game.hasOnlineMode),
+      onlinePlayerCount: game.onlinePlayerCount || "",
+      hasMultiplayerMode: Boolean(game.hasMultiplayerMode),
+      multiplayerPlayerCount: game.multiplayerPlayerCount || "",
+      relatedGames: toIdArray(game.relatedGames),
       launcher: normalizeOptionValue(game.launcher, launcherOptions, []),
       edition: normalizeOptionValue(game.edition, editionOptions, "استاندارد"),
       dlcs: Array.isArray(game.dlcs)
@@ -278,6 +296,7 @@ function GameForm({ mode = "create" }) {
         ? game.extraEditions.map((item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             versionSize: String(item?.versionSize || "").trim(),
+            price: item?.price ?? "",
             image: item?.image?.url || item?.image || "",
           }))
         : [],
@@ -451,6 +470,7 @@ function GameForm({ mode = "create" }) {
       "gameModes",
       "offlinePlayers",
       "onlinePlayers",
+      "relatedGames",
       "socialLinks",
       "dlcs",
       "extraEditions",
@@ -503,6 +523,7 @@ function GameForm({ mode = "create" }) {
         const extraPayload = (value || []).map((item) => ({
           title: String(item?.title || "").trim(),
           versionSize: String(item?.versionSize || "").trim(),
+          price: item?.price ?? "",
           image: typeof item?.image === "string" ? item.image : item?.image?.url || "",
         }));
         formData.append("extraEditions", JSON.stringify(extraPayload));
@@ -591,16 +612,6 @@ function GameForm({ mode = "create" }) {
             tagOptions={tagOptions}
           />
         );
-      case "platforms":
-        return (
-          <PlatformsStep
-            form={form}
-            gameModeOptions={gameModeOptions}
-            launcherOptions={launcherOptions}
-            onChange={handleChange}
-            setArrayField={setArrayField}
-          />
-        );
       case "platformReleases":
         return <PlatformReleasesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
       case "players":
@@ -608,7 +619,7 @@ function GameForm({ mode = "create" }) {
           <PlayersStep
             form={form}
             offlinePlayerOptions={offlinePlayerOptions}
-            onlinePlayerOptions={onlinePlayerOptions}
+            onChange={handleChange}
             setArrayField={setArrayField}
           />
         );
@@ -639,6 +650,8 @@ function GameForm({ mode = "create" }) {
             trailerVideoPreview={trailerVideoPreview}
           />
         );
+      case "relatedGames":
+        return <RelatedGamesStep form={form} relatedGameOptions={relatedGameOptions} setArrayField={setArrayField} />;
       default:
         return null;
     }

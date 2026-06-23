@@ -43,6 +43,7 @@ export type Game = {
   }>;
   category?: NamedEntity | null;
   genres?: NamedEntity[];
+  showGenresInCategories?: boolean;
   developers?: NamedEntity[];
   publishers?: NamedEntity[];
   tags?: NamedEntity[];
@@ -53,6 +54,13 @@ export type Game = {
     size?: string;
   }>;
   gameModes?: string[];
+  offlinePlayers?: string[];
+  onlinePlayers?: string[];
+  hasOnlineMode?: boolean;
+  onlinePlayerCount?: string;
+  hasMultiplayerMode?: boolean;
+  multiplayerPlayerCount?: string;
+  relatedGames?: Game[];
   languages?: string[];
   regions?: string[];
   launcher?: string[];

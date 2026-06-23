@@ -13,16 +13,36 @@ type CatalogItem = (Article | Game) & {
 
 type CatalogKind = "game" | "article";
 
-function uniqueCategories(items: CatalogItem[]) {
+function uniqueCategories(items: CatalogItem[], kind: CatalogKind) {
   const seen = new Map<string, string>();
 
   items.forEach((item) => {
     const category = item.category;
     if (!category?._id || !category.name) return;
     if (!seen.has(category._id)) seen.set(category._id, category.name);
+
+    if (kind !== "game") return;
+    const game = item as Game;
+    if (!game.showGenresInCategories) return;
+    game.genres?.forEach((genre) => {
+      if (!genre._id || !genre.name) return;
+      const id = `genre:${genre._id}`;
+      if (!seen.has(id)) seen.set(id, genre.name);
+    });
   });
 
   return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+}
+
+function itemMatchesCategory(item: CatalogItem, kind: CatalogKind, selectedCategory: string) {
+  if (selectedCategory === "all") return true;
+  if (item.category?._id === selectedCategory) return true;
+  if (kind !== "game" || !selectedCategory.startsWith("genre:")) return false;
+
+  const game = item as Game;
+  if (!game.showGenresInCategories) return false;
+  const genreId = selectedCategory.replace(/^genre:/, "");
+  return Boolean(game.genres?.some((genre) => genre._id === genreId));
 }
 
 function cardSearchText(item: CatalogItem, kind: CatalogKind) {
@@ -48,11 +68,11 @@ export function CatalogBrowser({
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase("fa-IR"));
-  const categories = useMemo(() => uniqueCategories(items), [items]);
+  const categories = useMemo(() => uniqueCategories(items, kind), [items, kind]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      const categoryMatch = selectedCategory === "all" || item.category?._id === selectedCategory;
+      const categoryMatch = itemMatchesCategory(item, kind, selectedCategory);
       const searchMatch = deferredSearch
         ? cardSearchText(item, kind).toLocaleLowerCase("fa-IR").includes(deferredSearch)
         : true;
@@ -134,7 +154,7 @@ export function CatalogBrowser({
               >
                 <span>{category.name}</span>
                 <span className="text-xs opacity-80">
-                  {items.filter((item) => item.category?._id === category.id).length}
+                  {items.filter((item) => itemMatchesCategory(item, kind, category.id)).length}
                 </span>
               </button>
             ))}

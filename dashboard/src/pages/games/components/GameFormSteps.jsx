@@ -246,11 +246,10 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
               <div className="rounded-xl border border-zinc-800 bg-black p-3">
                 <span className="mb-3 block text-sm text-zinc-300">عکس DLC</span>
                 <ThumbnailUpload
-                  compact
-                  iconSize={18}
-                  showPreview={false}
                   name="dlcImages"
+                  imageSize={96}
                   preview={previews[index]}
+                  previewShape="square"
                   setThumbnail={(file) => updateItem(index, { image: file })}
                   setThumbnailPreview={(preview) =>
                     setPreviews((prev) => ({
@@ -278,7 +277,7 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
 }
 
 function EditionRowsEditor({ items = [], onChange, title }) {
-  const rows = items.length ? items : [{ title: "", versionSize: "", image: "" }];
+  const rows = items.length ? items : [{ title: "", versionSize: "", price: "", image: "" }];
   const [previews, setPreviews] = React.useState(
     rows.map((item) => (typeof item.image === "string" ? item.image : item.image?.url || ""))
   );
@@ -301,12 +300,13 @@ function EditionRowsEditor({ items = [], onChange, title }) {
         (item) =>
           String(item.title || "").trim() ||
           String(item.versionSize || "").trim() ||
+          String(item.price || "").trim() ||
           item.image
       )
     );
   };
 
-  const addItem = () => onChange?.([...rows, { title: "", versionSize: "", image: "" }]);
+  const addItem = () => onChange?.([...rows, { title: "", versionSize: "", price: "", image: "" }]);
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
@@ -339,15 +339,22 @@ function EditionRowsEditor({ items = [], onChange, title }) {
                 placeholder="مثلا 12 GB"
                 value={item.versionSize}
               />
+              <TextField
+                label="قیمت"
+                name={`${title}-price-${index}`}
+                onChange={(event) => updateItem(index, { price: event.target.value })}
+                placeholder="مثلا 250000"
+                type="number"
+                value={item.price}
+              />
             </div>
             <div className="rounded-xl border border-zinc-800 bg-black p-3">
               <span className="mb-3 block text-sm text-zinc-300">عکس نسخه</span>
               <ThumbnailUpload
-                compact
-                iconSize={18}
-                showPreview={false}
                 name="extraEditionImages"
+                imageSize={96}
                 preview={previews[index]}
+                previewShape="square"
                 setThumbnail={(file) => updateItem(index, { image: file })}
                 setThumbnailPreview={(preview) =>
                   setPreviews((prev) => ({
@@ -446,7 +453,7 @@ export function BasicStep({
       <TextField label="عنوان" name="title" onChange={onChange} value={form.title} />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-zinc-800 bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-300">تصویر کارت دسکتاپ</span>
+          <span className="mb-3 block text-sm text-zinc-300">تصویر کارت </span>
           <ThumbnailUpload
             name="cardDesktopCover"
             preview={cardDesktopCoverPreview}
@@ -495,26 +502,20 @@ export function RelationsStep({ categoryOptions, collectionOptions, companyOptio
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
-      <MultiSelectDropdown label="ژانرها" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
+      <div className="space-y-3">
+        <MultiSelectDropdown label="ژانرها" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
+        <StatusSwitch
+          checked={form.showGenresInCategories}
+          id="showGenresInCategories"
+          label="عدم نمایش ژانر"
+          name="showGenresInCategories"
+          onChange={onChange}
+        />
+      </div>
       <MultiSelectDropdown label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
       <MultiSelectDropdown label="ناشرها" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
       <MultiSelectDropdown label="تگ‌های سئو" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
       <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
-    </div>
-  );
-}
-
-export function PlatformsStep({
-  form,
-  gameModeOptions,
-  launcherOptions,
-  onChange,
-  setArrayField,
-}) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <MultiSelectDropdown label="حالت‌های بازی" onChange={(value) => setArrayField("gameModes", value)} options={gameModeOptions} value={form.gameModes} />
-      <MultiSelectDropdown label="سرویس / پلتفرم انتشار" onChange={(value) => setArrayField("launcher", value)} options={launcherOptions} value={form.launcher} />
     </div>
   );
 }
@@ -529,20 +530,65 @@ export function PlatformReleasesStep({ form, platformOptions, setArrayField }) {
   );
 }
 
-export function PlayersStep({ form, offlinePlayerOptions, onlinePlayerOptions, setArrayField }) {
+export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayField }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="space-y-4">
       <MultiSelectDropdown
         label="بازیکنان آفلاین"
         onChange={(value) => setArrayField("offlinePlayers", value)}
         options={offlinePlayerOptions}
         value={form.offlinePlayers}
       />
+      <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+          <StatusSwitch
+            checked={form.hasOnlineMode}
+            id="hasOnlineMode"
+            label="حالت آنلاین"
+            name="hasOnlineMode"
+            onChange={onChange}
+          />
+          {form.hasOnlineMode ? (
+            <TextField
+              label=""
+              name="onlinePlayerCount"
+              onChange={onChange}
+              placeholder="مثلا ۲ تا ۸ نفر"
+              value={form.onlinePlayerCount}
+            />
+          ) : null}
+        </div>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+          <StatusSwitch
+            checked={form.hasMultiplayerMode}
+            id="hasMultiplayerMode"
+            label="حالت مولتی"
+            name="hasMultiplayerMode"
+            onChange={onChange}
+          />
+          {form.hasMultiplayerMode ? (
+            <TextField
+              label=""
+              name="multiplayerPlayerCount"
+              onChange={onChange}
+              placeholder="مثلا ۲ تا ۴ نفر"
+              value={form.multiplayerPlayerCount}
+            />
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
+  return (
+    <div className="grid gap-4">
       <MultiSelectDropdown
-        label="بازیکنان آنلاین"
-        onChange={(value) => setArrayField("onlinePlayers", value)}
-        options={onlinePlayerOptions}
-        value={form.onlinePlayers}
+        label="بازی‌های مشابه"
+        onChange={(value) => setArrayField("relatedGames", value)}
+        options={relatedGameOptions}
+        value={form.relatedGames}
       />
     </div>
   );
@@ -719,4 +765,3 @@ export function VideosStep({
     </div>
   );
 }
-

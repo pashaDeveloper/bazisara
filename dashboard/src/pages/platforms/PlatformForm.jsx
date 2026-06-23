@@ -5,8 +5,9 @@ import ControlPanel from "../ControlPanel";
 import StepIndicator from "../categories/components/StepIndicator";
 import NavigationButton from "@/components/shared/button/NavigationButton";
 import SendButton from "@/components/shared/button/SendButton";
-import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
+import SkeletonImage from "@/components/shared/skeleton/SkeletonImage";
 import { SingleSelectDropdown } from "@/components/shared/Dropdown";
+import CloudUpload from "@/components/icons/CloudUpload";
 import { DatePickerField, TextField, TextareaField } from "../games/components/GameFormFields";
 import { useGetBrandsQuery } from "@/services/brandApi";
 import {
@@ -46,6 +47,47 @@ function makeSlug(value) {
     .replace(/^-|-$/g, "");
 }
 
+function PlatformImageField({ imagePreview, isEdit, setForm, setImagePreview }) {
+  const handleImageSelection = (event) => {
+    const file = event.target.files?.[0] || null;
+    setForm((prev) => ({ ...prev, image: file }));
+
+    if (!file) {
+      setImagePreview("");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+      <div className="profile-container shine-effect mb-4 flex h-40 w-40 justify-center overflow-hidden rounded-full border border-zinc-800 bg-black">
+        {imagePreview ? (
+          <img alt="platform" className="profile-pic h-full w-full rounded-full object-cover" src={imagePreview} />
+        ) : (
+          <SkeletonImage borderRadius="rounded-2xl" />
+        )}
+      </div>
+
+      <label htmlFor="platform-image-file" className="flex w-fit cursor-pointer flex-row gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition hover:bg-green-200 dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700 dark:hover:bg-blue-200">
+        <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+        {isEdit && imagePreview ? "تغییر تصویر پلتفرم*" : "انتخاب تصویر پلتفرم*"}
+        <input
+          accept="image/png, image/jpg, image/jpeg, image/webp"
+          className="hidden"
+          id="platform-image-file"
+          name="image"
+          onChange={handleImageSelection}
+          type="file"
+        />
+      </label>
+    </div>
+  );
+}
+
 function PlatformStepContent({
   currentKey,
   form,
@@ -79,13 +121,11 @@ function PlatformStepContent({
           <h2 className="text-sm font-bold text-white">تصویر پلتفرم</h2>
           <p className="mt-1 text-xs text-zinc-500">برای هر پلتفرم تصویر الزامی است و در ساختار فروشگاه نمایش داده می‌شود.</p>
         </div>
-        <ThumbnailUpload
-          imageSize={160}
-          name="image"
-          preview={imagePreview}
-          setThumbnail={(file) => setForm((prev) => ({ ...prev, image: file }))}
-          setThumbnailPreview={setImagePreview}
-          title={isEdit && imagePreview ? "تغییر تصویر" : "انتخاب تصویر"}
+        <PlatformImageField
+          imagePreview={imagePreview}
+          isEdit={isEdit}
+          setForm={setForm}
+          setImagePreview={setImagePreview}
         />
       </div>
     );

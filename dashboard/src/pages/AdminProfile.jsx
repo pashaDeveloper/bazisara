@@ -134,7 +134,7 @@ function FileField({ accept = "image/*", label, onChange, preview }) {
 function AvatarProfileField({ avatarPreview, onImageSelect }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="profile-container shine-effect mb-4 flex justify-center rounded-full">
+      <div className="profile-container profile-avatar-container shine-effect mb-4 flex justify-center rounded-full">
         {avatarPreview && !avatarPreview.includes("placehold.co") ? (
           <img
             alt="avatar"

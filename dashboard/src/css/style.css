@@ -292,14 +292,18 @@
 
 .profile-container {
   position: relative;
-  width: 150px;
-  height: 150px;
   overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
   border: 2px solid rgba(220, 233, 245, 1);
   background: rgba(220, 233, 245, 0.8);
+}
+
+.profile-avatar-container {
+  width: 150px;
+  height: 150px;
+  border-radius: 9999px;
 }
 
 .dark .profile-container {
@@ -311,7 +315,7 @@
   width: 92%;
   height: 92%;
   object-fit: cover;
-  border-radius: 50%;
+  border-radius: inherit;
   background: rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 1px rgba(255, 255, 255, 0.6);
 }

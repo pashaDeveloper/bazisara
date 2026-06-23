@@ -64,6 +64,7 @@ const extraEditionSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, default: "" },
     versionSize: { type: String, trim: true, default: "" },
+    price: { type: Number, default: null, min: [0, "Price cannot be negative"] },
     image: mediaSchema,
   },
   { _id: false }
@@ -122,6 +123,10 @@ const gameSchema = new mongoose.Schema(
         ref: "Genre",
       },
     ],
+    showGenresInCategories: {
+      type: Boolean,
+      default: false,
+    },
     developers: [
       {
         type: ObjectId,
@@ -147,6 +152,25 @@ const gameSchema = new mongoose.Schema(
     gameModes: [{ type: String, trim: true }],
     offlinePlayers: [{ type: String, trim: true }],
     onlinePlayers: [{ type: String, trim: true }],
+    hasOnlineMode: {
+      type: Boolean,
+      default: false,
+    },
+    onlinePlayerCount: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    hasMultiplayerMode: {
+      type: Boolean,
+      default: false,
+    },
+    multiplayerPlayerCount: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    relatedGames: [{ type: ObjectId, ref: "Game" }],
     launcher: [{ type: String, trim: true }],
     edition: {
       type: String,

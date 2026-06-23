@@ -23,7 +23,8 @@ const populateGame = (query) =>
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image")
-    .populate("collections", "title_fa title_en slug placement visibility");
+    .populate("collections", "title_fa title_en slug placement visibility")
+    .populate("relatedGames", "title slug cover cardDesktopCover");
 
 function makeSlug(value) {
   return String(value || "")
@@ -251,6 +252,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         : undefined,
     category: body.category !== undefined ? body.category || null : undefined,
     genres: body.genres !== undefined ? parseArray(body.genres) : undefined,
+    showGenresInCategories:
+      body.showGenresInCategories !== undefined ? parseBoolean(body.showGenresInCategories) : undefined,
     developers:
       body.developers !== undefined ? parseArray(body.developers) : undefined,
     publishers:
@@ -265,6 +268,16 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.offlinePlayers !== undefined ? parseArray(body.offlinePlayers) : undefined,
     onlinePlayers:
       body.onlinePlayers !== undefined ? parseArray(body.onlinePlayers) : undefined,
+    hasOnlineMode:
+      body.hasOnlineMode !== undefined ? parseBoolean(body.hasOnlineMode) : undefined,
+    onlinePlayerCount:
+      body.onlinePlayerCount !== undefined ? String(body.onlinePlayerCount).trim() : undefined,
+    hasMultiplayerMode:
+      body.hasMultiplayerMode !== undefined ? parseBoolean(body.hasMultiplayerMode) : undefined,
+    multiplayerPlayerCount:
+      body.multiplayerPlayerCount !== undefined ? String(body.multiplayerPlayerCount).trim() : undefined,
+    relatedGames:
+      body.relatedGames !== undefined ? parseArray(body.relatedGames) : undefined,
     launcher: body.launcher !== undefined ? parseArray(body.launcher) : undefined,
     edition: body.edition !== undefined ? String(body.edition).trim() : undefined,
     hasDubbing: body.hasDubbing !== undefined ? parseBoolean(body.hasDubbing) : undefined,
@@ -283,6 +296,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         ? parseObjectArray(body.extraEditions, (item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
+            price: typeof item === "string" ? null : toNumber(item?.price),
             image: typeof item === "string" ? "" : String(item?.image || "").trim(),
           }))
         : undefined,
@@ -408,6 +422,7 @@ async function validatePayload(payload) {
   }
   if (payload.tags !== undefined) await ensureExists(Tag, payload.tags, "Tag");
   if (payload.collections !== undefined) await ensureExists(GameCollection, payload.collections, "GameCollection");
+  if (payload.relatedGames !== undefined) await ensureExists(Game, payload.relatedGames, "Related game");
 }
 
 async function syncGameCollections(gameId, previousCollections = [], nextCollections = []) {

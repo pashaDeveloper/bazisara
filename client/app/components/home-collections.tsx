@@ -21,9 +21,25 @@ function uniqueCategories(items: Array<Article | Game>) {
     if (!seen.has(category._id)) {
       seen.set(category._id, { id: category._id, name: category.name });
     }
+
+    if (!("genres" in item) || !item.showGenresInCategories) return;
+    item.genres?.forEach((genre) => {
+      if (!genre._id || !genre.name) return;
+      const id = `genre:${genre._id}`;
+      if (!seen.has(id)) seen.set(id, { id, name: genre.name });
+    });
   });
 
   return Array.from(seen.values());
+}
+
+function itemMatchesCategory(item: Article | Game, selectedCategory: string) {
+  if (selectedCategory === "all") return true;
+  if (item.category?._id === selectedCategory) return true;
+  if (!("genres" in item) || !item.showGenresInCategories || !selectedCategory.startsWith("genre:")) return false;
+
+  const genreId = selectedCategory.replace(/^genre:/, "");
+  return Boolean(item.genres?.some((genre) => genre._id === genreId));
 }
 
 function ChipButton({
@@ -123,11 +139,7 @@ function FilteredSection<T extends Article | Game>({
 
   const filteredItems = useMemo(
     () =>
-      items.filter((item) =>
-        selectedCategory === "all"
-          ? true
-          : item.category?._id === selectedCategory,
-      ),
+      items.filter((item) => itemMatchesCategory(item, selectedCategory)),
     [items, selectedCategory],
   );
 

@@ -12,7 +12,7 @@ const AvatarStep = ({
   return (
     <>
       <div className="flex flex-col items-center">
-        <div className="profile-container shine-effect rounded-full flex justify-center mb-4">
+        <div className="profile-container profile-avatar-container shine-effect rounded-full flex justify-center mb-4">
           {avatarPreview ? (
             <img
               src={avatarPreview}

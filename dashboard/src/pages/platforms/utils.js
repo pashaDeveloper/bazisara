@@ -3,7 +3,7 @@ export function flattenPlatforms(items = [], depth = 0) {
     {
       ...item,
       depth,
-      label: `${"— ".repeat(depth)}${item.name_fa || item.name || item.name_en}`,
+      label: `${"- ".repeat(depth)}${item.name_fa || item.name || item.name_en}`,
       value: item._id,
     },
     ...flattenPlatforms(item.children || [], depth + 1),
@@ -16,4 +16,3 @@ export function toDateInput(value) {
   if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
 }
-
