@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "c299771.parspack.net",
+        hostname: "s3.ir-tbz-sh1.arvanstorage.ir",
         pathname: "/**",
       },
     ],

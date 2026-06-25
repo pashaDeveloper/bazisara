@@ -193,11 +193,11 @@ export function GameDetailPreview({
   return (
     <div
       className={`overflow-hidden border border-zinc-800 bg-zinc-950 ${
-        isMobile ? "no-scrollbar max-h-[720px] w-full max-w-[360px] overflow-y-auto" : `${isSticky ? "sticky top-24" : ""}`
+        isMobile ? "no-scrollbar aspect-[4/3] w-full max-w-[360px] overflow-y-auto" : `${isSticky ? "sticky top-24" : ""}`
       }`}
       dir="rtl"
     >
-      <div className={`relative bg-zinc-900 ${isMobile ? "h-52" : "h-64"}`}>
+      <div className={`relative bg-zinc-900 ${isMobile ? "h-40" : "h-64"}`}>
         {heroImage ? <img alt={title} className="h-full w-full object-cover" src={heroImage} /> : <SkeletonBlock className="h-full w-full rounded-none" />}
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
         <div

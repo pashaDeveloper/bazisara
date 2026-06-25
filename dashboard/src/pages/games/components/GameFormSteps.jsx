@@ -473,6 +473,7 @@ export function BasicStep({
         </div>
         <div className="rounded-xl border border-zinc-800 bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-300">تصویر جزئیات موبایل</span>
+          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1440 × 1080</p>
           <ThumbnailUpload
             name="cardMobileCover"
             preview={cardMobileCoverPreview}
@@ -483,6 +484,7 @@ export function BasicStep({
         </div>
         <div className="rounded-xl border border-zinc-800 bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-300">تصویر جزئیات دسکتاپ</span>
+          <p className="mb-3 text-xs text-zinc-500">خروجی برش: 1920 × 1080</p>
           <ThumbnailUpload
             name="desktopCover"
             preview={desktopCoverPreview}

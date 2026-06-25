@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import Cross from "@/components/icons/Cross";
 
-const OUTPUT_WIDTH = 1960;
+const OUTPUT_WIDTH = 1920;
 const OUTPUT_HEIGHT = 1080;
-const CROP_WIDTH = 1960;
+const CROP_WIDTH = 1920;
 const CROP_HEIGHT = 540;
 const CROP_ASPECT = CROP_WIDTH / CROP_HEIGHT;
 
@@ -139,7 +139,7 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        const croppedFile = new File([blob], `desktop-1960x1080-${file.name.replace(/\.[^.]+$/, "")}.webp`, {
+        const croppedFile = new File([blob], `desktop-1920x1080-${file.name.replace(/\.[^.]+$/, "")}.webp`, {
           type: "image/webp",
         });
         onCrop(croppedFile, URL.createObjectURL(blob));
@@ -213,8 +213,8 @@ export default function DesktopCoverCropper({ file, onCancel, onCrop }) {
 
           <div className="flex flex-col justify-between gap-4">
             <div className="space-y-3 text-sm leading-7 text-zinc-400">
-              <p>کادر انتخاب همیشه تمام عرض تصویر را می‌گیرد و نسبت آن 1960 در 540 است.</p>
-              <p>فقط جای عمودی کادر را تنظیم کنید؛ خروجی نهایی 1960 در 1080 ساخته می‌شود.</p>
+              <p>کادر انتخاب همیشه تمام عرض تصویر را می‌گیرد و نسبت آن 1920 در 540 است.</p>
+              <p>فقط جای عمودی کادر را تنظیم کنید؛ خروجی نهایی 1920 در 1080 ساخته می‌شود.</p>
             </div>
             <div className="grid gap-2">
               <button

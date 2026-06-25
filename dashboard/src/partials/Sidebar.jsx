@@ -103,12 +103,14 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       <div
         id="sidebar"
         ref={sidebar}
-        className={`no-scrollbar absolute right-0 top-0 z-50 flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white p-3 shadow-lg transition-transform duration-200 ease-in-out dark:border-gray-800 dark:bg-gray-900 lg:static lg:right-auto lg:top-auto lg:!flex lg:translate-x-0 lg:transition-none ${
+        dir="ltr"
+        className={`absolute right-0 top-0 z-50 flex h-screen w-64 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-l border-gray-200 bg-white p-3 shadow-lg transition-transform duration-200 ease-in-out [scrollbar-color:#16a34a_transparent] [scrollbar-width:thin] dark:border-gray-800 dark:bg-gray-900 dark:[scrollbar-color:#22c55e_transparent] lg:static lg:right-auto lg:top-auto lg:!flex lg:translate-x-0 lg:transition-none ${
           sidebarExpanded ? "lg:w-64" : "lg:w-20"
         } ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
+        <div className="flex min-h-full flex-col" dir="rtl">
         <div className={`mb-8 flex items-center gap-2 ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
           <NavLink
             end
@@ -151,7 +153,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </span>
               <span className={`block ${sidebarExpanded ? "lg:block" : "lg:hidden"}`}>مدیریت</span>
             </h3>
-            <ul className="mt-3 max-h-screen overflow-h-auto">
+            <ul className="mt-3">
               {sidebarItems.map((item, index) => (
                 <SidebarItem
                   key={`${item.title}-${index}`}
@@ -172,6 +174,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
               <Expand className={`transition-transform ${sidebarExpanded ? "rotate-180" : ""}`} />
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>

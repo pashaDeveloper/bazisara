@@ -425,35 +425,243 @@ function ProductCardPreview({ form, imagePreview }) {
   );
 }
 
-function ProductDetailPreview({ brandLabel, form, imagePreview, isSticky = true }) {
+function ProductDetailPreview({ brandLabel, form, imagePreview, isSticky = true, forceMobile = false }) {
   const previewVariant = form.variants?.[0] || form.variant;
   const previewPrice = calculateVariantPrice(previewVariant, form.basePrice || form.priceConfig.basePrice);
+  const available = form.statusProduct === "marketable";
+  const title = form.title || "عنوان محصول";
+  const englishTitle = form.title_en || `${brandLabel || "Bazisara"} ${form.product_type || "product"}`;
+  const summary = form.summary || "خلاصه محصول در اینجا نمایش داده می‌شود.";
+  const gallery = [imagePreview, ...toArray(form.galleryUrls)].filter(Boolean);
+  const ratingRate = Number(form.ratingRate || 4.6);
+  const ratingCount = Number(form.ratingCount || 128);
+  const questionsCount = Math.max(toArray(form.questions).length, 3);
+  const commentsCount = Math.max(toArray(form.comments).length, 12);
+  const variants = toArray(form.variants).length ? toArray(form.variants) : [form.variant];
+  const colorVariants = variants.filter((item) => item.color);
+  const specs = toArray(form.specifications).filter((item) => item.title || toArray(item.attributes).length);
+  const tabs = ["بررسی محصول", "مشخصات", "دیدگاه‌ها", "پرسش‌ها"];
+  const frameClass = forceMobile
+    ? "mx-auto aspect-[9/19.5] max-h-[76vh] max-w-[360px] overflow-hidden"
+    : "overflow-hidden";
+
   return (
-    <article className={`${isSticky ? "sticky top-24" : ""} w-full overflow-hidden rounded-[28px] bg-[#f6f8fb] text-right text-[#29467c] shadow-2xl shadow-black/20`} dir="rtl">
-      <div className="grid gap-6 p-5 lg:grid-cols-[1fr_1.1fr]">
-        <div className="rounded-3xl bg-white p-5">
-          <div className="aspect-square rounded-2xl bg-[#eef2f7]">
-            {imagePreview ? <img alt="" className="h-full w-full object-contain p-6" src={imagePreview} /> : null}
+    <article className={`${isSticky ? "sticky top-24" : ""} relative w-full ${frameClass} rounded-[28px] bg-[#fbfcfe] text-right text-[#29467c] shadow-2xl shadow-black/20`} dir="rtl">
+      <div className={forceMobile ? "hidden" : "hidden gap-6 p-5 lg:grid lg:grid-cols-[250px_minmax(0,1fr)_330px]"}>
+        <aside className="space-y-4">
+          <div className="rounded-[1.5rem] border border-[#e7ebf1] bg-white p-5 shadow-[0_25px_50px_-38px_rgba(15,23,42,.18)]">
+            <div className="text-sm font-black text-[#31467c]">فروشنده: بازی‌سرا</div>
+            <div className="mt-4 rounded-2xl border border-[#edf1f6] bg-[#fbfcff] p-4 text-sm font-bold text-[#59627a]">
+              <div className="flex items-center justify-between">
+                <span>{available ? "آماده ارسال" : "ناموجود"}</span>
+                <span className={available ? "text-[#20a365]" : "text-[#ef476f]"}>{available ? "موجود" : "غیرفعال"}</span>
+              </div>
+              <div className="mt-3 text-left text-2xl font-black text-[#2f3446]">
+                {formatPrice(previewPrice)} <span className="text-xs font-bold text-[#7f879c]">تومان</span>
+              </div>
+            </div>
+            <button className="mt-4 w-full rounded-2xl bg-[#ef476f] px-4 py-3 text-sm font-black text-white" type="button">
+              افزودن به سبد خرید
+            </button>
           </div>
-        </div>
-        <div className="space-y-5">
-          <div>
-            <p className="text-xs font-bold text-[#7f879c]">{brandLabel || "برند"} / {form.product_type}</p>
-            <h2 className="mt-2 text-xl font-black leading-9">{form.title || "عنوان محصول"}</h2>
-            <p className="mt-2 text-sm font-bold leading-7 text-[#5d6683]">{form.summary || "خلاصه محصول در اینجا نمایش داده می‌شود."}</p>
-          </div>
-          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#7f879c]">{form.statusProduct === "marketable" ? "آماده ارسال" : "ناموجود"}</span>
-              <span className="text-lg font-black text-[#2f3446]">{formatPrice(previewPrice)} تومان</span>
+          <div className="rounded-[1.5rem] border border-[#e7ebf1] bg-white p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-black text-[#31467c]">امتیاز شما :</h3>
+              <span className="text-xl font-black text-[#31467c]">{ratingRate.toLocaleString("fa-IR")}</span>
+            </div>
+            <div className="grid grid-cols-5 gap-1 text-center text-[11px] text-[#727d92]">
+              {["عالی", "خوب", "معمولی", "ضعیف", "بد"].map((item, index) => (
+                <div className={`rounded-xl px-1 py-3 ${index === 0 ? "bg-[#e7f7ec] text-[#1f8d4d]" : "bg-[#fbfcff]"}`} key={item}>
+                  <div className="text-lg">{index === 0 ? "♡" : "•"}</div>
+                  <div className="mt-1">{item}</div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="grid gap-2 text-xs font-bold text-[#5d6683]">
-            {toArray(form.specifications).slice(0, 2).map((spec, index) => (
-              <div className="rounded-2xl bg-white px-4 py-3" key={`preview-spec-${index}`}>
-                {spec.title || "مشخصات"}: {toArray(spec.attributes)[0]?.title || "ویژگی"}
+        </aside>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-bold text-[#7f879c]">{brandLabel || "برند"} / {form.product_type}</p>
+            <h2 className="mt-2 text-[1.8rem] font-black leading-[1.6] text-[#29467c]">{title}</h2>
+            <p className="mt-1.5 text-sm text-[#97a1b8]">{englishTitle}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 text-sm">
+            <div className="rounded-full border border-[#e9edf3] px-4 py-2 font-black text-[#21a365]">
+              ★ {ratingRate.toLocaleString("fa-IR")} <span className="font-bold text-[#7f8796]">({ratingCount.toLocaleString("fa-IR")} رای)</span>
+            </div>
+            <div className="rounded-full border border-[#e9edf3] px-4 py-2 font-bold text-[#59627a]">{commentsCount.toLocaleString("fa-IR")} دیدگاه</div>
+            <div className="rounded-full border border-[#e9edf3] px-4 py-2 font-bold text-[#59627a]">{questionsCount.toLocaleString("fa-IR")} سوال</div>
+          </div>
+          <div className="space-y-4 rounded-[1.35rem] border border-[#e8edf3] bg-white p-4 shadow-[0_24px_48px_-38px_rgba(15,23,42,.18)]">
+            <div>
+              <div className="text-lg font-black text-[#111827]">رنگ: {previewVariant.color || "پیش‌فرض"}</div>
+              <div className="mt-2.5 flex flex-wrap gap-2.5">
+                {(colorVariants.length ? colorVariants : variants).slice(0, 5).map((variant, index) => (
+                  <button className={`rounded-[0.85rem] border px-3.5 py-2 text-sm font-bold ${index === 0 ? "border-[#344054] text-[#111827]" : "border-[#e5eaf2] text-[#4b557a]"}`} key={`desktop-color-${index}`} type="button">
+                    {variant.color || variant.title || `تنوع ${index + 1}`}
+                  </button>
+                ))}
               </div>
+            </div>
+            <div>
+              <div className="text-lg font-black text-[#111827]">تنوع: {previewVariant.title || "تنوع اصلی"}</div>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {variants.slice(0, 4).map((variant, index) => (
+                  <button className={`rounded-[0.85rem] border px-3.5 py-2 text-sm font-bold ${index === 0 ? "border-[#344054] bg-white text-[#111827]" : "border-[#e5eaf2] bg-white text-[#4b557a]"}`} key={`desktop-variant-${index}`} type="button">
+                    {variant.title || `تنوع ${index + 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-[1rem] border border-[#e8edf3] bg-[#fbfcff] p-3.5">
+              <div className="text-sm font-bold text-[#2f3c61]">{form.technoPlus.title || "بیمه و خدمات تکمیلی"}</div>
+              <div className="mt-1.5 text-xs leading-6 text-[#7f879a]">{form.technoPlus.description || "امکان افزودن خدمات و بیمه از بخش انتشار محصول."}</div>
+              {form.technoPlus.price ? <div className="mt-1.5 text-base font-black text-[#2f3c61]">{formatPrice(form.technoPlus.price)} تومان</div> : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[1.9rem] border border-[#e7ebf1] bg-white p-5 shadow-[0_30px_60px_-40px_rgba(15,23,42,.24)]">
+          <div className="flex gap-3">
+            <div className="flex min-w-[72px] flex-col gap-3">
+              {(gallery.length ? gallery : [""]).slice(0, 4).map((item, index) => (
+                <button className={`relative h-[92px] rounded-[1rem] border ${index === 0 ? "border-[#cad5e7] bg-[#f8fafc]" : "border-[#edf1f6] bg-white"}`} key={`thumb-${index}`} type="button">
+                  {item ? <img alt={`${title} ${index + 1}`} className="h-full w-full object-contain p-2" src={item} /> : null}
+                </button>
+              ))}
+            </div>
+            <div className="relative flex-1 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fd_100%)]">
+              {gallery[0] ? (
+                <img alt={title} className="mx-auto h-full max-h-[520px] w-full object-contain p-10" src={gallery[0]} />
+              ) : (
+                <div className="flex aspect-square h-full min-h-[360px] items-center justify-center text-sm font-bold text-[#7f879c]">تصویر محصول</div>
+              )}
+              <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
+                {[0, 1, 2].map((index) => (
+                  <span className={`h-3 rounded-full ${index === 0 ? "w-10 bg-[#8b8f99]" : "w-3 bg-[#cfd4dd]"}`} key={index} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className={forceMobile ? "h-full overflow-y-auto bg-[#fbfcfe] pb-28" : "bg-[#fbfcfe] pb-28 lg:hidden"}>
+        <div className="sticky top-0 z-20 border-b border-[#e8ecf3] bg-white px-4 py-4">
+          <div className="flex items-center justify-between">
+            <button className="text-lg font-black text-[#495162]" type="button">←</button>
+            <div className="text-lg font-black text-[#111827]">کالای دیجیتال</div>
+            <div className="flex items-center gap-4 text-lg text-[#495162]">
+              <span>↗</span>
+              <span>☆</span>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {["نمودار قیمت", "مقایسه", "اشتراک", "پرسش"].map((item) => (
+              <button className="shrink-0 rounded-full border border-[#e7ebf1] px-5 py-2 text-sm font-bold text-[#4b557a]" key={item} type="button">
+                {item}
+              </button>
             ))}
+          </div>
+        </div>
+
+        <div className="px-4 pt-6">
+          <div className="rounded-[1.5rem] bg-white py-6">
+            <div className="relative mx-auto aspect-square w-full max-w-[420px]">
+              {gallery[0] ? (
+                <img alt={title} className="h-full w-full object-contain p-6" src={gallery[0]} />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] bg-[#eef2f7] text-sm font-bold text-[#7f879c]">تصویر محصول</div>
+              )}
+            </div>
+            <div className="mt-3 flex justify-center gap-2">
+              <span className="h-4 w-10 rounded-full bg-[#8b8f99]" />
+              <span className="h-4 w-4 rounded-full bg-[#d0d6df]" />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap flex-row-reverse items-center justify-start gap-2 text-sm text-[#7a8396]">
+            {[brandLabel || "برند", form.product_type || "محصولات", title].map((crumb, index, items) => (
+              <span className="flex flex-row-reverse items-center gap-2" key={`${crumb}-${index}`}>
+                <span>{crumb}</span>
+                {index < items.length - 1 ? <span>/</span> : null}
+              </span>
+            ))}
+          </div>
+          <h1 className="mt-4 text-[1.95rem] font-black leading-[1.7] text-[#29467c]">{title}</h1>
+          <p className="mt-2 text-[1.05rem] leading-7 text-[#9ba3ba]">{englishTitle}</p>
+
+          <div className="mt-5 flex flex-wrap gap-2 text-sm">
+            <div className="rounded-full border border-[#e9edf3] px-4 py-2 font-black text-[#20a365]">
+              ★ {ratingRate.toLocaleString("fa-IR")} <span className="font-bold text-[#7f8796]">({ratingCount.toLocaleString("fa-IR")} رای)</span>
+            </div>
+            <div className="rounded-full border border-[#e9edf3] px-4 py-2 font-bold text-[#59627a]">{commentsCount.toLocaleString("fa-IR")} دیدگاه</div>
+            <div className="rounded-full border border-[#e9edf3] px-4 py-2 font-bold text-[#59627a]">{questionsCount.toLocaleString("fa-IR")} سوال</div>
+          </div>
+
+          <div className="mt-8 rounded-[1.4rem] border border-[#e8edf3] bg-white p-4 shadow-[0_24px_48px_-38px_rgba(15,23,42,.18)]">
+            <div className="text-[1.15rem] font-black text-[#111827]">رنگ: {previewVariant.color || "پیش‌فرض"}</div>
+            <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+              {(colorVariants.length ? colorVariants : variants).slice(0, 6).map((variant, index) => (
+                <button className={`shrink-0 rounded-[1rem] border px-4 py-2.5 text-sm font-bold ${index === 0 ? "border-[#344054]" : "border-[#e7ebf1]"}`} key={`mobile-color-${index}`} type="button">
+                  {variant.color || variant.title || `تنوع ${index + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-7">
+            <div className="text-[1.15rem] font-black text-[#111827]">تنوع: {previewVariant.title || "تنوع اصلی"}</div>
+            <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+              {variants.slice(0, 6).map((variant, index) => (
+                <button className={`shrink-0 rounded-[1rem] border px-4 py-2.5 text-sm font-bold ${index === 0 ? "border-[#344054]" : "border-[#e7ebf1]"}`} key={`mobile-variant-${index}`} type="button">
+                  {variant.title || `تنوع ${index + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <section className="mt-8 rounded-[1.4rem] border border-[#e8edf3] bg-white p-4 shadow-[0_24px_48px_-38px_rgba(15,23,42,.18)]">
+            <div className="mb-3 text-[1.15rem] font-black text-[#111827]">بیمه</div>
+            <div className="rounded-[1rem] border border-[#e8edf3] bg-[#fbfcff] p-4">
+              <div className="text-base font-bold text-[#2f3c61]">{form.technoPlus.title || "تکنو پلاس"}</div>
+              <div className="mt-2 text-sm leading-7 text-[#7f879a]">{form.technoPlus.description || "خدمات تکمیلی محصول از همین فرم قابل تنظیم است."}</div>
+              {form.technoPlus.price ? <div className="mt-2 text-lg font-black text-[#2f3c61]">{formatPrice(form.technoPlus.price)} تومان</div> : null}
+            </div>
+          </section>
+
+          <section className="mt-8 border-y border-[#e8ecf3] bg-white">
+            <div className="flex flex-row-reverse justify-start gap-6 overflow-x-auto px-1 py-4 text-base font-bold text-[#6b7280]">
+              {tabs.map((tab, index) => (
+                <button className={`relative shrink-0 px-3 py-2 ${index === 0 ? "text-[#ef476f]" : ""}`} key={tab} type="button">
+                  {tab}
+                  {index === 0 ? <span className="absolute inset-x-0 -bottom-3 h-1 rounded-full bg-[#ef476f]" /> : null}
+                </button>
+              ))}
+            </div>
+          </section>
+          <div className="mt-5 rounded-[1.5rem] border border-[#e7ebf1] bg-white p-5 text-[1rem] leading-9 text-[#2f3d62]">{summary}</div>
+          {specs.length ? (
+            <div className="mt-5 space-y-2">
+              {specs.slice(0, 3).map((spec, index) => (
+                <div className="rounded-[1.2rem] border border-[#e7ebf1] bg-white px-4 py-3 text-sm font-bold text-[#5d6683]" key={`mobile-spec-${index}`}>
+                  {spec.title || "مشخصات"}: {toArray(spec.attributes)[0]?.title || "ویژگی"}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className={`${isSticky ? "absolute" : "fixed"} inset-x-0 bottom-0 z-30 border-t border-[#e6ebf1] bg-white px-4 py-3 shadow-[0_-12px_30px_-24px_rgba(15,23,42,.4)]`}>
+          <div className="mx-auto flex max-w-md items-center gap-3">
+            <button className="h-12 flex-1 rounded-2xl bg-[#ef476f] text-sm font-black text-white" type="button">
+              افزودن به سبد
+            </button>
+            <div className="min-w-[128px] text-left">
+              <div className="text-lg font-black text-[#2f3446]">{available ? formatPrice(previewPrice) : "ناموجود"}</div>
+              {available ? <div className="text-[11px] font-bold text-[#7f879c]">تومان</div> : null}
+            </div>
           </div>
         </div>
       </div>
@@ -838,8 +1046,8 @@ function ProductForm({ mode = "create" }) {
               <div className="sticky top-16 z-20 rounded-xl border border-gray-200 bg-white/95 p-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
                 <StepIndicator completedSteps={completedSteps} currentStep={currentStep + 1} invalidSteps={invalidSteps} onStepClick={goToStep} totalSteps={steps.length} />
               </div>
-              <div className="grid gap-5 xl:grid-cols-[minmax(460px,660px)_minmax(240px,280px)_minmax(520px,1fr)]" dir="ltr">
-                <div className="space-y-5 rounded-xl border border-zinc-800 bg-black p-4" dir="rtl">
+              <div className="grid gap-4 xl:grid-cols-[0.95fr_0.42fr_0.82fr]" dir="ltr">
+                <div className="space-y-4 rounded-xl border border-zinc-800 bg-black p-3" dir="rtl">
                   <div className="mb-1 flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-500">فرم تکمیل محصول</span>
                     <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] text-zinc-500">
@@ -869,7 +1077,7 @@ function ProductForm({ mode = "create" }) {
                       <span className="text-base leading-none">⛶</span>
                     </button>
                   </div>
-                  <ProductDetailPreview brandLabel={selectedBrandLabel} form={form} imagePreview={imagePreview} />
+                  <ProductDetailPreview brandLabel={selectedBrandLabel} forceMobile form={form} imagePreview={imagePreview} />
                 </div>
               </div>
             </>

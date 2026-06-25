@@ -3,7 +3,6 @@ const express = require("express");
 
 /* middleware imports */
 const uploadArvan = require("../middleware/arvanUpload.middleware");
-const uploadParspack = require("../middleware/parspackUpload.middleware");
 const verify = require("../middleware/verifyAdmin.middleware");
 
 /* internal import */
@@ -22,12 +21,6 @@ router.post(
   adminController.signUp
 );
 
-router.post(
-  "/parspack/sign-up",
-  uploadParspack("avatar").single("avatar"),
-  adminController.signUp
-);
-
 // sign in an admin
 router.post("/sign-in", adminController.signIn);
 
@@ -41,16 +34,6 @@ router.patch(
   "/profile",
   verify,
   uploadArvan("avatar").fields([
-    { name: "avatar", maxCount: 1 },
-    { name: "nationalCard", maxCount: 1 },
-  ]),
-  adminController.updateProfile
-);
-
-router.patch(
-  "/parspack/profile",
-  verify,
-  uploadParspack("avatar").fields([
     { name: "avatar", maxCount: 1 },
     { name: "nationalCard", maxCount: 1 },
   ]),
@@ -111,26 +94,10 @@ router.patch(
 );
 
 router.patch(
-  "/parspack/update-information",
-  verify,
-  authorize("owner", "superAdmin", "admin"),
-  uploadParspack("avatar").single("avatar"),
-  adminController.updateAdmin
-);
-
-router.patch(
   "/update-admin/:id",
   verify,
   authorize("owner", "superAdmin", "admin"),
   uploadArvan("avatar").single("avatar"),
-  adminController.updateAdminInfo
-);
-
-router.patch(
-  "/parspack/update-admin/:id",
-  verify,
-  authorize("owner", "superAdmin", "admin"),
-  uploadParspack("avatar").single("avatar"),
   adminController.updateAdminInfo
 );
 

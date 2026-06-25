@@ -6,7 +6,6 @@ const authorize = require("../middleware/authorize.middleware");
 const upload = require("../middleware/upload.middleware");
 const uploadCloudinary = require("../middleware/cloudinaryUpload.middleware");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
-const uploadParspack = require("../middleware/parspackUpload.middleware");
 
 const router = express.Router();
 const uploadAccess = [verify, authorize("owner", "superAdmin", "admin", "operator")];
@@ -18,21 +17,6 @@ const arvanS3Client = new S3Client({
   credentials: {
     accessKeyId: process.env.ARVAN_S3_ACCESS_KEY,
     secretAccessKey: process.env.ARVAN_S3_SECRET_KEY,
-  },
-});
-
-const normalizeEndpoint = (endpoint) => {
-  if (!endpoint) return endpoint;
-  return /^https?:\/\//i.test(endpoint) ? endpoint : `https://${endpoint}`;
-};
-
-const parspackS3Client = new S3Client({
-  endpoint: normalizeEndpoint(process.env.PARSPACK_S3_ENDPOINT),
-  region: process.env.PARSPACK_S3_REGION || "us-east-1",
-  forcePathStyle: process.env.PARSPACK_S3_FORCE_PATH_STYLE !== "false",
-  credentials: {
-    accessKeyId: process.env.PARSPACK_S3_ACCESS_KEY,
-    secretAccessKey: process.env.PARSPACK_S3_SECRET_KEY,
   },
 });
 
@@ -112,28 +96,6 @@ const deleteArvanHandler = async (req, res, next) => {
   }
 };
 
-const deleteParspackHandler = async (req, res, next) => {
-  try {
-    const publicId = requirePublicId(req, res);
-    if (!publicId) return;
-
-    await parspackS3Client.send(
-      new DeleteObjectCommand({
-        Bucket: process.env.PARSPACK_S3_BUCKET,
-        Key: publicId,
-      })
-    );
-
-    res.status(200).json({
-      acknowledgement: true,
-      message: "OK",
-      description: "File deleted successfully",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 router.post(
   "/cloudinary/create",
   ...uploadAccess,
@@ -151,19 +113,8 @@ router.post(
   createUploadHandler
 );
 
-router.post(
-  "/parspack/create",
-  ...uploadAccess,
-  uploadParspack("page-builder").fields([
-    { name: "file", maxCount: 1 },
-    { name: "upload", maxCount: 1 },
-  ]),
-  createUploadHandler
-);
-
 router.delete("/cloudinary/delete", ...uploadAccess, deleteCloudinaryHandler);
 router.delete("/arvan/delete", ...uploadAccess, deleteArvanHandler);
-router.delete("/parspack/delete", ...uploadAccess, deleteParspackHandler);
 
 router.post(
   "/create",
