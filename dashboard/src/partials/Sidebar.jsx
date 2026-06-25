@@ -80,7 +80,6 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { title: "کالکشن‌های بازی", icon: Products, path: "/game-collections" },
     { title: "بازی‌ها", icon: Products, path: "/games" },
     { title: "محصولات", icon: Products, path: "/products" },
-    { title: "مدل‌های وابسته محصول", icon: Products, path: "/product-dependencies" },
     { title: "شرکت‌های گارانتی", icon: Company, path: "/warranty-companies" },
     { title: "گارانتی‌ها", icon: Company, path: "/warranties" },
     { title: "شرکت‌های بیمه", icon: Company, path: "/insurance-companies" },

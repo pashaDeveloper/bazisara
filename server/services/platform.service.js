@@ -107,13 +107,6 @@ exports.createPlatform = async (req, res) => {
     });
   }
   const image = buildImage(req.uploadedFiles);
-  if (!image?.url) {
-    return res.status(400).json({
-      acknowledgement: false,
-      message: "Bad Request",
-      description: "تصویر پلتفرم الزامی است",
-    });
-  }
 
   const platform = await Platform.create({
     name_fa: nameFa,
@@ -124,7 +117,7 @@ exports.createPlatform = async (req, res) => {
     brand,
     description: String(req.body?.description || "").trim(),
     productionDate: normalizeDate(req.body?.productionDate),
-    image,
+    ...(image?.url ? { image } : {}),
     creator: req.admin?._id || null,
   });
 
@@ -255,13 +248,6 @@ exports.updatePlatform = async (req, res) => {
   }
   const image = buildImage(req.uploadedFiles);
   if (image?.url) platform.image = image;
-  if (!platform.image?.url) {
-    return res.status(400).json({
-      acknowledgement: false,
-      message: "Bad Request",
-      description: "تصویر پلتفرم الزامی است",
-    });
-  }
 
   await platform.save();
 

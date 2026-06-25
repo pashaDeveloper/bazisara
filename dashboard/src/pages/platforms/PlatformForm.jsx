@@ -74,7 +74,7 @@ function PlatformImageField({ imagePreview, isEdit, setForm, setImagePreview }) 
 
       <label htmlFor="platform-image-file" className="flex w-fit cursor-pointer flex-row gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition hover:bg-green-200 dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700 dark:hover:bg-blue-200">
         <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
-        {isEdit && imagePreview ? "تغییر تصویر پلتفرم*" : "انتخاب تصویر پلتفرم*"}
+        {isEdit && imagePreview ? "تغییر تصویر پلتفرم" : "انتخاب تصویر پلتفرم"}
         <input
           accept="image/png, image/jpg, image/jpeg, image/webp"
           className="hidden"
@@ -119,7 +119,7 @@ function PlatformStepContent({
       <div className="rounded-2xl border border-zinc-800 bg-black p-5">
         <div className="mb-4">
           <h2 className="text-sm font-bold text-white">تصویر پلتفرم</h2>
-          <p className="mt-1 text-xs text-zinc-500">برای هر پلتفرم تصویر الزامی است و در ساختار فروشگاه نمایش داده می‌شود.</p>
+          <p className="mt-1 text-xs text-zinc-500">تصویر پلتفرم اختیاری است و در صورت انتخاب در ساختار فروشگاه نمایش داده می‌شود.</p>
         </div>
         <PlatformImageField
           imagePreview={imagePreview}
@@ -207,10 +207,8 @@ function PlatformForm({ mode = "create" }) {
   const lastStepIndex = steps.length - 1;
   const isLastStep = currentStep === lastStepIndex;
   const currentKey = steps[currentStep].key;
-  const hasImage = Boolean(form.image || imagePreview);
   const canGoNext =
     (currentKey !== "identity" || (Boolean(form.name_fa.trim()) && Boolean(form.name_en.trim()))) &&
-    (currentKey !== "image" || hasImage) &&
     (currentKey !== "brand" || Boolean(form.brand));
 
   const completedSteps = steps.reduce((acc, step, index) => {
@@ -219,7 +217,6 @@ function PlatformForm({ mode = "create" }) {
     acc[stepNumber] =
       isPastStep &&
       (step.key !== "identity" || (Boolean(form.name_fa.trim()) && Boolean(form.name_en.trim()))) &&
-      (step.key !== "image" || hasImage) &&
       (step.key !== "brand" || Boolean(form.brand));
     return acc;
   }, {});
@@ -228,7 +225,6 @@ function PlatformForm({ mode = "create" }) {
     const stepNumber = index + 1;
     acc[stepNumber] =
       (step.key === "identity" && currentStep >= index && (!form.name_fa.trim() || !form.name_en.trim())) ||
-      (step.key === "image" && currentStep >= index && !hasImage) ||
       (step.key === "brand" && currentStep >= index && !form.brand);
     return acc;
   }, {});
@@ -245,10 +241,6 @@ function PlatformForm({ mode = "create" }) {
   const validateCurrentStep = () => {
     if (currentKey === "identity" && (!form.name_fa.trim() || !form.name_en.trim())) {
       toast.error("نام فارسی و انگلیسی پلتفرم را وارد کنید", { id: "platform-form" });
-      return false;
-    }
-    if (currentKey === "image" && !hasImage) {
-      toast.error("تصویر پلتفرم الزامی است", { id: "platform-form" });
       return false;
     }
     if (currentKey === "brand" && !form.brand) {
@@ -276,11 +268,6 @@ function PlatformForm({ mode = "create" }) {
     if (!form.name_fa.trim() || !form.name_en.trim()) {
       toast.error("نام فارسی و انگلیسی پلتفرم را وارد کنید", { id: "platform-form" });
       setCurrentStep(0);
-      return;
-    }
-    if (targetIndex > 1 && !hasImage) {
-      toast.error("تصویر پلتفرم الزامی است", { id: "platform-form" });
-      setCurrentStep(1);
       return;
     }
     if (targetIndex > 2 && !form.brand) {
@@ -316,11 +303,6 @@ function PlatformForm({ mode = "create" }) {
     if (!form.name_fa.trim() || !form.name_en.trim()) {
       toast.error("نام فارسی و انگلیسی پلتفرم را وارد کنید", { id: "platform-form" });
       setCurrentStep(0);
-      return;
-    }
-    if (!hasImage) {
-      toast.error("تصویر پلتفرم الزامی است", { id: "platform-form" });
-      setCurrentStep(1);
       return;
     }
     if (!form.brand) {

@@ -28,7 +28,6 @@ import GameForm from "./pages/games/GameForm";
 import GameCollections from "./pages/gameCollections";
 import GameCollectionForm from "./pages/gameCollections/GameCollectionForm";
 import Products from "./pages/products";
-import ProductDependencies from "./pages/products/ProductDependencies";
 import ProductForm from "./pages/products/ProductForm";
 import {
   InsuranceCompanies,
@@ -366,7 +365,6 @@ function App() {
             </Auth>
           }
         />
-        <Route path="/product-dependencies" element={<Auth><ProductDependencies /></Auth>} />
         <Route path="/warranty-companies" element={<Auth><WarrantyCompanies /></Auth>} />
         <Route path="/warranty-companies/create" element={<Auth><WarrantyCompanyForm /></Auth>} />
         <Route path="/warranty-companies/edit/:id" element={<Auth><WarrantyCompanyForm mode="edit" /></Auth>} />
@@ -440,4 +438,3 @@ function App() {
 }
 
 export default App;
-
