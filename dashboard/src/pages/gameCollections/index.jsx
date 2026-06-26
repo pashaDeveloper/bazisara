@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
 import DeleteModal from "@/components/shared/DeleteModal";
+import DisplayImages from "@/components/shared/DisplayImages";
 import Edit from "@/components/icons/Edit";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
@@ -101,7 +102,7 @@ function GameCollections() {
             <div>
               <p className="text-xs text-zinc-400">مدیریت صفحه اصلی</p>
               <h1 className="mt-1 text-2xl font-bold text-white">کالکشن‌های بازی</h1>
-              <p className="mt-2 max-w-2xl text-sm text-zinc-500">بازی‌ها می‌توانند در چند کالکشن مستقل از دسته‌بندی نمایش داده شوند.</p>
+              <p className="mt-2 max-w-2xl text-sm text-zinc-500">کالکشن‌های بازی را برای استفاده در فرم بازی و نمایش‌های سایت مدیریت کنید.</p>
             </div>
             <AddButton link="/game-collections/create" />
           </div>
@@ -123,7 +124,7 @@ function GameCollections() {
                   <th className="w-12 pb-3 text-center font-medium">جابجایی</th>
                   <th className="pb-3 font-medium">عنوان</th>
                   <th className="hidden pb-3 font-medium md:table-cell">جایگاه</th>
-                  <th className="hidden pb-3 font-medium lg:table-cell">بازی‌ها</th>
+                  <th className="hidden w-24 pb-3 font-medium lg:table-cell">تصویر</th>
                   <th className="w-28 pb-3 text-center font-medium">نمایش</th>
                   <th className="w-24 pb-3 text-center font-medium">عملیات</th>
                 </tr>
@@ -154,7 +155,17 @@ function GameCollections() {
                         <span className="mt-1 block truncate text-xs text-zinc-500">{item.slug}</span>
                       </td>
                       <td className="hidden py-4 text-zinc-400 md:table-cell">{item.placement || "-"}</td>
-                      <td className="hidden py-4 text-zinc-400 lg:table-cell">{item.games?.length || 0} بازی</td>
+                      <td className="hidden py-4 lg:table-cell">
+                        {item.image?.url ? (
+                          <DisplayImages
+                            galleryPreview={[{ url: item.image.url, type: "image" }]}
+                            imageSize={56}
+                            className="mt-0"
+                          />
+                        ) : (
+                          <span className="text-zinc-500">ندارد</span>
+                        )}
+                      </td>
                       <td className="py-4 text-center">
                         <div className="mx-auto flex justify-center" onClick={(event) => event.stopPropagation()}>
                           <StatusSwitch

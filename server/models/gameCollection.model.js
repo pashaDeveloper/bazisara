@@ -17,6 +17,21 @@ const gameCollectionSchema = new mongoose.Schema(
     title_en: { type: String, trim: true, default: "", maxLength: 140 },
     slug: { type: String, required: true, unique: true, trim: true, lowercase: true, maxLength: 160 },
     description: { type: String, trim: true, default: "" },
+    image: {
+      url: {
+        type: String,
+        default: "",
+      },
+      public_id: {
+        type: String,
+        default: "",
+      },
+      storage: {
+        type: String,
+        enum: ["", "cloudinary", "arvan", "local"],
+        default: "",
+      },
+    },
     placement: { type: String, trim: true, default: "homepage" },
     order: { type: Number, default: 0 },
     games: [collectionGameSchema],

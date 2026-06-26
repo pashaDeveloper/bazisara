@@ -80,6 +80,7 @@ app.use("/api/insurances", require("./routes/insurance.route"));
 app.use("/api/prices", require("./routes/price.route"));
 app.use("/api/shipping-methods", require("./routes/shippingMethod.route"));
 app.use("/api/tags", require("./routes/tag.route"));
+app.use("/api/game-keywords", require("./routes/gameKeyword.route"));
 app.use("/api/games", require("./routes/game.route"));
 app.use("/api/game-collections", require("./routes/gameCollection.route"));
 app.use("/api/products", require("./routes/product.route"));

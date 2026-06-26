@@ -50,6 +50,28 @@ const platformReleaseSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const searchTitleSchema = new mongoose.Schema(
+  {
+    title: { type: String, trim: true, default: "" },
+    slug: { type: String, trim: true, lowercase: true, default: "" },
+  },
+  { _id: false }
+);
+
+const gameFilterValueSchema = new mongoose.Schema(
+  {
+    priceMin: { type: Number, default: null },
+    priceMax: { type: Number, default: null },
+    sizeMinGb: { type: Number, default: null },
+    sizeMaxGb: { type: Number, default: null },
+    ageRatings: [{ type: String, trim: true }],
+    genres: [{ type: ObjectId, ref: "Genre" }],
+    gameModes: [{ type: String, trim: true }],
+    offlinePlayers: [{ type: String, trim: true }],
+  },
+  { _id: false }
+);
+
 const dlcSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, default: "" },
@@ -145,6 +167,10 @@ const gameSchema = new mongoose.Schema(
         ref: "Tag",
       },
     ],
+    gameKeywords: [{ type: ObjectId, ref: "GameKeyword" }],
+    filterDefinitions: [{ type: ObjectId, ref: "FilterDefinition" }],
+    searchTitles: [searchTitleSchema],
+    filterValues: gameFilterValueSchema,
     collections: [{ type: ObjectId, ref: "GameCollection" }],
     platforms: [{ type: ObjectId, ref: "Platform" }],
     platformReleases: [platformReleaseSchema],

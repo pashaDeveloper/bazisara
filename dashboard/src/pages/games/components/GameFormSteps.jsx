@@ -4,6 +4,7 @@ import SocialLinksInput from "@/components/shared/SocialLinksInput";
 import FormPageBuilder from "@/components/shared/input/FormPageBuilder";
 import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
 import StatusSwitch from "@/components/shared/button/StatusSwitch";
+import Edit from "@/components/icons/Edit";
 import Plus from "@/components/icons/Plus";
 import Trash from "@/components/icons/Trash";
 import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/Dropdown";
@@ -435,6 +436,61 @@ function LinkRowsEditor({ label, items = [], onChange }) {
   );
 }
 
+function SearchTitleRowsEditor({ items = [], onChange }) {
+  const rows = items.length ? items : [{ title: "", slug: "" }];
+
+  const updateItem = (index, patch) => {
+    const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
+    onChange?.(next.filter((item) => String(item.title || "").trim() || String(item.slug || "").trim()));
+  };
+
+  const addItem = () => onChange?.([...rows, { title: "", slug: "" }]);
+  const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
+
+  return (
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-zinc-300">عناوین جستجو</span>
+        <button
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
+          onClick={addItem}
+          type="button"
+        >
+          <Plus />
+        </button>
+      </div>
+      <div className="space-y-3">
+        {rows.map((item, index) => (
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`search-title-${index}`}>
+            <TextField
+              label="عنوان"
+              name={`search-title-${index}`}
+              onChange={(event) => updateItem(index, { title: event.target.value })}
+              placeholder="مثلا بازی اکشن پلی استیشن 5"
+              value={item.title}
+            />
+            <TextField
+              dir="ltr"
+              label="اسلاگ"
+              name={`search-title-slug-${index}`}
+              onChange={(event) => updateItem(index, { slug: event.target.value })}
+              placeholder="ps5-action-games"
+              value={item.slug}
+            />
+            <button
+              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              onClick={() => removeItem(index)}
+              type="button"
+            >
+              <Trash className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function BasicStep({
   cardDesktopCoverPreview,
   cardMobileCoverPreview,
@@ -500,7 +556,7 @@ export function BasicStep({
   );
 }
 
-export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, genreOptions, onChange, setArrayField, tagOptions }) {
+export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, gameKeywordOptions, genreOptions, onChange, setArrayField, tagOptions }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
@@ -517,6 +573,7 @@ export function RelationsStep({ categoryOptions, collectionOptions, companyOptio
       <MultiSelectDropdown label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
       <MultiSelectDropdown label="ناشرها" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
       <MultiSelectDropdown label="تگ‌های سئو" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
+      <MultiSelectDropdown label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
       <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
     </div>
   );
@@ -616,16 +673,103 @@ export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
 
 export function PlatformSizesStep({ form, platformOptions, setArrayField }) {
   return (
-    <ObjectRowsEditor
-      columns={[
-        { label: "پلتفرم", options: platformOptions },
-        { label: "نسخه", placeholder: "مثلا Standard / PS5" },
-        { label: "حجم", placeholder: "مثلا 78 GB" },
-      ]}
-      items={form.platformSizes}
-      onChange={(value) => setArrayField("platformSizes", value)}
-      title="حجم نسخه‌های پلتفرم"
-    />
+    <div className="space-y-4">
+      <ObjectRowsEditor
+        columns={[
+          { label: "پلتفرم", options: platformOptions },
+          { label: "نسخه", placeholder: "مثلا Standard / PS5" },
+          { label: "حجم", placeholder: "مثلا 78 GB" },
+        ]}
+        items={form.platformSizes}
+        onChange={(value) => setArrayField("platformSizes", value)}
+        title="حجم نسخه‌های پلتفرم"
+      />
+      <SearchTitleRowsEditor
+        items={form.searchTitles}
+        onChange={(value) => setArrayField("searchTitles", value)}
+      />
+    </div>
+  );
+}
+
+export function DiscoveryStep({
+  ageRatingOptions,
+  form,
+  gameModeOptions,
+  genreOptions,
+  offlinePlayerOptions,
+  setArrayField,
+  setForm,
+}) {
+  const updateFilterValues = (patch) => {
+    setForm((prev) => ({
+      ...prev,
+      filterValues: {
+        ...(prev.filterValues || {}),
+        ...patch,
+      },
+    }));
+  };
+
+  const filterValues = form.filterValues || {};
+
+  return (
+    <div className="grid gap-4">
+      <MultiSelectDropdown
+        label="ژانرهای فیلتر"
+        onChange={(value) => updateFilterValues({ genres: value })}
+        options={genreOptions}
+        value={filterValues.genres || []}
+      />
+      <MultiSelectDropdown
+        label="رده سنی فیلتر"
+        onChange={(value) => updateFilterValues({ ageRatings: value })}
+        options={ageRatingOptions}
+        value={filterValues.ageRatings || []}
+      />
+      <MultiSelectDropdown
+        label="حالت بازی"
+        onChange={(value) => updateFilterValues({ gameModes: value })}
+        options={gameModeOptions}
+        value={filterValues.gameModes || []}
+      />
+      <MultiSelectDropdown
+        label="بازیکنان آفلاین"
+        onChange={(value) => updateFilterValues({ offlinePlayers: value })}
+        options={offlinePlayerOptions}
+        value={filterValues.offlinePlayers || []}
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <TextField
+          label="حداقل قیمت"
+          name="filter-price-min"
+          onChange={(event) => updateFilterValues({ priceMin: event.target.value })}
+          type="number"
+          value={filterValues.priceMin ?? ""}
+        />
+        <TextField
+          label="حداکثر قیمت"
+          name="filter-price-max"
+          onChange={(event) => updateFilterValues({ priceMax: event.target.value })}
+          type="number"
+          value={filterValues.priceMax ?? ""}
+        />
+        <TextField
+          label="حداقل حجم GB"
+          name="filter-size-min"
+          onChange={(event) => updateFilterValues({ sizeMinGb: event.target.value })}
+          type="number"
+          value={filterValues.sizeMinGb ?? ""}
+        />
+        <TextField
+          label="حداکثر حجم GB"
+          name="filter-size-max"
+          onChange={(event) => updateFilterValues({ sizeMaxGb: event.target.value })}
+          type="number"
+          value={filterValues.sizeMaxGb ?? ""}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -704,6 +848,68 @@ export function DescriptionStep({ form, setForm }) {
 }
 
 export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
+  const [draggedId, setDraggedId] = React.useState(null);
+
+  const syncGallery = (updater) => {
+    setGalleryPreview((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setForm((form) => ({ ...form, gallery: next }));
+      return next;
+    });
+  };
+
+  const appendFiles = (files) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+
+    const nextItems = selectedFiles.map((file, index) => ({
+      id: `new-${Date.now()}-${index}-${file.name}`,
+      url: URL.createObjectURL(file),
+      type: "image",
+      kind: "new",
+      file,
+    }));
+
+    syncGallery((prev) => [...prev, ...nextItems]);
+  };
+
+  const replaceFile = (id, file) => {
+    if (!file) return;
+
+    syncGallery((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              id: `new-${Date.now()}-${file.name}`,
+              url: URL.createObjectURL(file),
+              type: "image",
+              kind: "new",
+              file,
+            }
+          : item
+      )
+    );
+  };
+
+  const removeItem = (id) => {
+    syncGallery((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const moveItem = (targetId) => {
+    if (!draggedId || draggedId === targetId) return;
+
+    syncGallery((prev) => {
+      const fromIndex = prev.findIndex((item) => item.id === draggedId);
+      const toIndex = prev.findIndex((item) => item.id === targetId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+
+      const next = [...prev];
+      const [movedItem] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, movedItem);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4">
@@ -713,13 +919,63 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
             multiple
             name="gallery"
             preview=""
-            setThumbnail={(files) => setForm((prev) => ({ ...prev, gallery: files || [] }))}
-            setThumbnailPreview={(preview) => {
-              if (preview) setGalleryPreview((prev) => [...prev, { url: preview, type: "image" }]);
-            }}
+            setThumbnail={appendFiles}
+            setThumbnailPreview={() => {}}
+            showPreview={false}
             title="انتخاب"
           />
-          {galleryPreview.length ? <DisplayImages galleryPreview={galleryPreview} imageSize={86} rounded="square" /> : null}
+          {galleryPreview.length ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {galleryPreview.map((item, index) => (
+                <div
+                  className={`group rounded-xl border border-zinc-800 bg-zinc-950 p-2 transition ${
+                    draggedId === item.id ? "opacity-60 ring-1 ring-white" : "hover:border-zinc-600"
+                  }`}
+                  draggable
+                  key={item.id || `${item.url}-${index}`}
+                  onDragEnd={() => setDraggedId(null)}
+                  onDragEnter={() => moveItem(item.id)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragStart={() => setDraggedId(item.id)}
+                >
+                  <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-800 bg-black">
+                    <img alt="gallery" className="h-full w-full object-cover" src={item.url} />
+                    <span className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[10px] text-white">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label
+                      aria-label="ویرایش تصویر"
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
+                      title="ویرایش"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <input
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => replaceFile(item.id, event.target.files?.[0])}
+                        type="file"
+                      />
+                    </label>
+                    <button
+                      aria-label="حذف تصویر"
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-800 text-red-300 transition hover:border-red-500 hover:text-red-200"
+                      onClick={() => removeItem(item.id)}
+                      title="حذف"
+                      type="button"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-500">
+              هنوز تصویری برای گالری انتخاب نشده است.
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -736,22 +992,24 @@ export function VideosStep({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-zinc-800 bg-black p-4">
-        <span className="mb-3 block text-sm text-zinc-300">تریلر</span>
-        <ThumbnailUpload
-          accept="video/*"
-          disabled={isTrailerVideoUploading}
-          imageSize={150}
-          name="trailerVideo"
-          poster={trailerThumbnailPreview}
-          preview={trailerVideoPreview}
-          previewShape="square"
-          setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
-          setThumbnailPreview={() => {}}
-          title="انتخاب"
-        />
-        {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
-        <div className="mt-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">تریلر</span>
+          <ThumbnailUpload
+            accept="video/*"
+            disabled={isTrailerVideoUploading}
+            imageSize={150}
+            name="trailerVideo"
+            poster={trailerThumbnailPreview}
+            preview={trailerVideoPreview}
+            previewShape="square"
+            setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
+            setThumbnailPreview={() => {}}
+            title="انتخاب"
+          />
+          {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
+        </div>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-300">تصویر تریلر</span>
           <ThumbnailUpload
             imageSize={150}

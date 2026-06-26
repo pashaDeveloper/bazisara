@@ -6,6 +6,8 @@ const Platform = require("../models/platform.model");
 const Company = require("../models/company.model");
 const Tag = require("../models/tag.model");
 const GameCollection = require("../models/gameCollection.model");
+const GameKeyword = require("../models/gameKeyword.model");
+const FilterDefinition = require("../models/filterDefinition.model");
 const {
   buildSearchQuery,
   buildPaginationMeta,
@@ -23,6 +25,9 @@ const populateGame = (query) =>
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image")
+    .populate("gameKeywords", "name title_en slug image")
+    .populate("filterDefinitions", "key label type options min max unit")
+    .populate("filterValues.genres", "name icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
     .populate("relatedGames", "title slug cover cardDesktopCover");
 
@@ -112,6 +117,45 @@ function parseObjectArray(value, shape) {
     .filter((item) => Object.values(item).some((part) => String(part || "").trim()));
 }
 
+function parseSearchTitles(value) {
+  return parseObjectArray(value, (item) => {
+    const title = String(item?.title || item?.name || "").trim();
+    return {
+      title,
+      slug: makeSlug(item?.slug || title),
+    };
+  }).filter((item) => item.title);
+}
+
+function parseFilterValues(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  let raw = value;
+  if (typeof value === "string") {
+    try {
+      raw = JSON.parse(value);
+    } catch (_) {
+      raw = {};
+    }
+  }
+
+  const numberOrNull = (item) => {
+    if (item === undefined || item === null || item === "") return null;
+    const number = Number(item);
+    return Number.isFinite(number) ? number : null;
+  };
+
+  return {
+    priceMin: numberOrNull(raw.priceMin),
+    priceMax: numberOrNull(raw.priceMax),
+    sizeMinGb: numberOrNull(raw.sizeMinGb),
+    sizeMaxGb: numberOrNull(raw.sizeMaxGb),
+    ageRatings: parseArray(raw.ageRatings),
+    genres: parseArray(raw.genres),
+    gameModes: parseArray(raw.gameModes),
+    offlinePlayers: parseArray(raw.offlinePlayers),
+  };
+}
+
 function parseDateValue(value) {
   if (!value) return null;
   const date = new Date(value);
@@ -180,6 +224,40 @@ function parseMediaValue(value, fallbackType = "image") {
     storage: String(raw.storage || "").trim(),
     type: raw.type === "video" || raw.resource_type === "video" ? "video" : fallbackType,
   };
+}
+
+function normalizeGalleryItems(value, uploadedFiles, currentGame = null) {
+  const files = Array.isArray(uploadedFiles?.gallery) ? uploadedFiles.gallery : [];
+
+  if (value === undefined) {
+    if (!files.length) return undefined;
+    return [
+      ...(currentGame?.gallery || []),
+      ...files.map(buildMedia).filter(Boolean),
+    ];
+  }
+
+  let items = [];
+  try {
+    items = typeof value === "string" ? JSON.parse(value) : value;
+  } catch (_) {
+    items = [];
+  }
+
+  if (!Array.isArray(items)) return [];
+
+  let fileIndex = 0;
+  return items
+    .map((item) => {
+      if (item?.kind === "new") {
+        const media = buildMedia(files[fileIndex]);
+        fileIndex += 1;
+        return media;
+      }
+
+      return parseMediaValue(item?.media || item, "image");
+    })
+    .filter(Boolean);
 }
 
 function limitText(value, maxLength) {
@@ -259,6 +337,14 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     publishers:
       body.publishers !== undefined ? parseArray(body.publishers) : undefined,
     tags: body.tags !== undefined ? parseArray(body.tags) : undefined,
+    gameKeywords:
+      body.gameKeywords !== undefined ? parseArray(body.gameKeywords) : undefined,
+    filterDefinitions:
+      body.filterDefinitions !== undefined ? parseArray(body.filterDefinitions) : undefined,
+    searchTitles:
+      body.searchTitles !== undefined ? parseSearchTitles(body.searchTitles) : undefined,
+    filterValues:
+      body.filterValues !== undefined ? parseFilterValues(body.filterValues) : undefined,
     collections: body.collections !== undefined ? parseArray(body.collections) : undefined,
     platforms:
       body.platforms !== undefined ? parseArray(body.platforms) : undefined,
@@ -358,13 +444,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   const mobileCover = buildMedia(uploadedFiles?.mobileCover?.[0]);
   if (mobileCover) payload.mobileCover = mobileCover;
 
-  const galleryFiles = uploadedFiles?.gallery || [];
-  if (galleryFiles.length) {
-    payload.gallery = [
-      ...(currentGame?.gallery || []),
-      ...galleryFiles.map(buildMedia).filter(Boolean),
-    ];
-  }
+  const gallery = normalizeGalleryItems(body.galleryItems, uploadedFiles, currentGame);
+  if (gallery !== undefined) payload.gallery = gallery;
 
   const trailerVideo = buildMedia(uploadedFiles?.trailerVideo?.[0]);
   if (trailerVideo) payload.trailerVideo = trailerVideo;
@@ -421,6 +502,9 @@ async function validatePayload(payload) {
     await ensureExists(Company, payload.publishers, "Publisher");
   }
   if (payload.tags !== undefined) await ensureExists(Tag, payload.tags, "Tag");
+  if (payload.gameKeywords !== undefined) await ensureExists(GameKeyword, payload.gameKeywords, "GameKeyword");
+  if (payload.filterDefinitions !== undefined) await ensureExists(FilterDefinition, payload.filterDefinitions, "FilterDefinition");
+  if (payload.filterValues?.genres !== undefined) await ensureExists(Genre, payload.filterValues.genres, "Filter value genre");
   if (payload.collections !== undefined) await ensureExists(GameCollection, payload.collections, "GameCollection");
   if (payload.relatedGames !== undefined) await ensureExists(Game, payload.relatedGames, "Related game");
 }
@@ -505,6 +589,7 @@ exports.getGames = async (req, res) => {
       "seoTitle",
       "seoDescription",
       "seoKeywords",
+      "searchTitles.title",
     ]),
   };
   const { limit, page, skip } = getPaginationOptions(req.query);

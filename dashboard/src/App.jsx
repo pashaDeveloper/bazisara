@@ -27,6 +27,8 @@ import Games from "./pages/games";
 import GameForm from "./pages/games/GameForm";
 import GameCollections from "./pages/gameCollections";
 import GameCollectionForm from "./pages/gameCollections/GameCollectionForm";
+import GameKeywords from "./pages/gameKeywords";
+import GameKeywordForm from "./pages/gameKeywords/GameKeywordForm";
 import Products from "./pages/products";
 import ProductForm from "./pages/products/ProductForm";
 import {
@@ -341,6 +343,9 @@ function App() {
         <Route path="/game-collections" element={<Auth><GameCollections /></Auth>} />
         <Route path="/game-collections/create" element={<Auth><GameCollectionForm /></Auth>} />
         <Route path="/game-collections/edit/:id" element={<Auth><GameCollectionForm mode="edit" /></Auth>} />
+        <Route path="/game-keywords" element={<Auth><GameKeywords /></Auth>} />
+        <Route path="/game-keywords/create" element={<Auth><GameKeywordForm /></Auth>} />
+        <Route path="/game-keywords/edit/:id" element={<Auth><GameKeywordForm mode="edit" /></Auth>} />
         <Route
           path="/products"
           element={

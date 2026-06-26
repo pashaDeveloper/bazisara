@@ -89,8 +89,21 @@ function normalizePayload(body, adminId) {
   );
 }
 
+function getUploadedImage(req) {
+  const file = req.uploadedFiles?.image?.[0];
+  if (!file) return undefined;
+
+  return {
+    url: file.url,
+    public_id: file.public_id,
+    storage: file.storage || "",
+  };
+}
+
 exports.createCollection = async (req, res) => {
   const payload = normalizePayload(req.body || {}, req.admin?._id);
+  const image = getUploadedImage(req);
+  if (image) payload.image = image;
   if (!payload.title_fa || !payload.slug) {
     return res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "عنوان و اسلاگ کالکشن الزامی است" });
   }
@@ -145,6 +158,8 @@ exports.updateCollection = async (req, res) => {
 
   const previousGameIds = collection.games.map((item) => item.game).filter(Boolean);
   const payload = normalizePayload(req.body || {}, req.admin?._id);
+  const image = getUploadedImage(req);
+  if (image) payload.image = image;
   if (payload.games !== undefined) await ensureGames(payload.games);
   Object.assign(collection, payload);
   await collection.save();

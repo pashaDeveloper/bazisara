@@ -14,12 +14,14 @@ import { useCreateGameMutation, useGetGameQuery, useGetGamesQuery, useUpdateGame
 import {
   ageRatingOptions,
   editionOptions,
+  gameModeOptions,
   launcherOptions,
   offlinePlayerOptions,
 } from "./gameOptions";
 import { formatDate, normalizeOptionValue, toIdArray } from "./gameFormUtils";
 import { useGetPlatformsQuery } from "@/services/platformApi";
 import { useGetGameCollectionsQuery } from "@/services/gameCollectionApi";
+import { useGetGameKeywordsQuery } from "@/services/gameKeywordApi";
 import { useDeleteUploadMutation, useUploadMutation } from "@/services/upload/uploadApi";
 import { flattenPlatforms } from "../platforms/utils";
 import DesktopCoverCropper from "./components/DesktopCoverCropper";
@@ -31,10 +33,10 @@ import {
   MediaStep,
   PlatformSizesStep,
   PlatformReleasesStep,
+  DiscoveryStep,
   PlayersStep,
   RelatedGamesStep,
   RelationsStep,
-  ReleaseStep,
   ReviewStep,
   SocialStep,
   SummaryStep,
@@ -55,6 +57,18 @@ const initialForm = {
   developers: [],
   publishers: [],
   tags: [],
+  gameKeywords: [],
+  searchTitles: [],
+  filterValues: {
+    priceMin: "",
+    priceMax: "",
+    sizeMinGb: "",
+    sizeMaxGb: "",
+    ageRatings: [],
+    genres: [],
+    gameModes: [],
+    offlinePlayers: [],
+  },
   collections: [],
   platforms: [],
   platformReleases: [],
@@ -111,7 +125,6 @@ const steps = [
   { key: "relations", title: "ارتباطات" },
   { key: "platformReleases", title: "انتشار پلتفرم‌ها" },
   { key: "players", title: "بازیکنان" },
-  { key: "release", title: "انتشار" },
   { key: "sizes", title: "حجم پلتفرم‌ها" },
   { key: "dlcEdition", title: "DLC / Edition" },
   { key: "social", title: "شبکه‌ها" },
@@ -121,6 +134,7 @@ const steps = [
   { key: "media", title: "رسانه" },
   { key: "videos", title: "ویدیوها" },
   { key: "relatedGames", title: "بازی‌های مشابه" },
+  { key: "discovery", title: "ارتباط و فیلتر" },
 ];
 
 function toObjectArray(value, fallback = []) {
@@ -141,6 +155,16 @@ function toObjectArray(value, fallback = []) {
   } catch (_) {}
 
   return fallback;
+}
+
+function toSearchTitleArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => ({
+      title: String(item?.title || item?.name || "").trim(),
+      slug: String(item?.slug || "").trim(),
+    }))
+    .filter((item) => item.title || item.slug);
 }
 
 function toPlatformReleaseArray(value, fallbackPlatforms = [], fallbackReleaseDate = "") {
@@ -209,6 +233,7 @@ function GameForm({ mode = "create" }) {
   const { data: genresData } = useGetGenresQuery({ page: 1, limit: 200 });
   const { data: companiesData } = useGetCompaniesQuery({ page: 1, limit: 200 });
   const { data: tagsData } = useGetTagsQuery({ page: 1, limit: 200 });
+  const { data: gameKeywordsData } = useGetGameKeywordsQuery({ page: 1, limit: 300 });
   const { data: platformsData } = useGetPlatformsQuery({ tree: true, limit: 500 });
   const { data: collectionsData } = useGetGameCollectionsQuery({ page: 1, limit: 300 });
   const { data: relatedGamesData } = useGetGamesQuery({ page: 1, limit: 500 });
@@ -221,6 +246,7 @@ function GameForm({ mode = "create" }) {
   const genres = genresData?.data || [];
   const companies = companiesData?.data || [];
   const tags = tagsData?.data || [];
+  const gameKeywords = gameKeywordsData?.data || [];
   const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
   const collections = collectionsData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
@@ -241,6 +267,10 @@ function GameForm({ mode = "create" }) {
   const genreOptions = useMemo(() => genres.map((item) => ({ label: item.name, value: item._id })), [genres]);
   const companyOptions = useMemo(() => companies.map((item) => ({ label: item.name, value: item._id })), [companies]);
   const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id })), [tags]);
+  const gameKeywordOptions = useMemo(
+    () => gameKeywords.map((item) => ({ label: item.title_en ? `${item.name} / ${item.title_en}` : item.name, value: item._id })),
+    [gameKeywords]
+  );
   const collectionOptions = useMemo(() => collections.map((item) => ({ label: item.title_fa, value: item._id })), [collections]);
   const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
   const relatedGameOptions = useMemo(
@@ -254,6 +284,15 @@ function GameForm({ mode = "create" }) {
   useEffect(() => {
     const game = gameData?.data;
     if (!game) return;
+
+    const existingGallery = (game.gallery || []).map((item, index) => ({
+      id: `existing-${item.public_id || item.url || index}`,
+      url: item.url,
+      public_id: item.public_id || "",
+      storage: item.storage || "",
+      type: item.type || "image",
+      kind: "existing",
+    }));
 
     setForm({
       ...initialForm,
@@ -270,6 +309,18 @@ function GameForm({ mode = "create" }) {
       developers: toIdArray(game.developers),
       publishers: toIdArray(game.publishers),
       tags: toIdArray(game.tags),
+      gameKeywords: toIdArray(game.gameKeywords),
+      searchTitles: toSearchTitleArray(game.searchTitles),
+      filterValues: {
+        priceMin: game.filterValues?.priceMin ?? "",
+        priceMax: game.filterValues?.priceMax ?? "",
+        sizeMinGb: game.filterValues?.sizeMinGb ?? "",
+        sizeMaxGb: game.filterValues?.sizeMaxGb ?? "",
+        ageRatings: game.filterValues?.ageRatings || [],
+        genres: toIdArray(game.filterValues?.genres),
+        gameModes: game.filterValues?.gameModes || [],
+        offlinePlayers: game.filterValues?.offlinePlayers || [],
+      },
       collections: toIdArray(game.collections),
       platforms: toIdArray(game.platforms),
       platformReleases: toPlatformReleaseArray(game.platformReleases, game.platforms, game.releaseDate),
@@ -316,13 +367,13 @@ function GameForm({ mode = "create" }) {
       cardDesktopCover: null,
       cardMobileCover: null,
       desktopCover: null,
-      gallery: [],
+      gallery: existingGallery,
     });
     setCoverPreview(game.cover?.url || "");
     setCardDesktopCoverPreview(game.cardDesktopCover?.url || game.cover?.url || "");
     setCardMobileCoverPreview(game.cardMobileCover?.url || game.cover?.url || "");
     setDesktopCoverPreview(game.desktopCover?.url || "");
-    setGalleryPreview((game.gallery || []).map((item) => ({ url: item.url, type: item.type })));
+    setGalleryPreview(existingGallery);
     setTrailerVideoPreview(game.trailerVideo?.url || "");
     setTrailerThumbnailPreview(game.trailerThumbnail?.url || "");
   }, [gameData]);
@@ -463,6 +514,8 @@ function GameForm({ mode = "create" }) {
       "developers",
       "publishers",
       "tags",
+      "gameKeywords",
+      "searchTitles",
       "collections",
       "platforms",
       "platformReleases",
@@ -491,9 +544,37 @@ function GameForm({ mode = "create" }) {
         return;
       }
       if (key === "gallery") {
-        (Array.isArray(value) ? value : []).forEach((file) => {
-          if (file instanceof File) formData.append("gallery", file);
+        const galleryItems = [];
+        (Array.isArray(value) ? value : []).forEach((item) => {
+          if (item instanceof File) {
+            formData.append("gallery", item);
+            galleryItems.push({ kind: "new" });
+            return;
+          }
+
+          if (item?.file instanceof File) {
+            formData.append("gallery", item.file);
+            galleryItems.push({ kind: "new" });
+            return;
+          }
+
+          if (item?.url) {
+            galleryItems.push({
+              kind: "existing",
+              media: {
+                url: item.url,
+                public_id: item.public_id || "",
+                storage: item.storage || "",
+                type: item.type || "image",
+              },
+            });
+          }
         });
+        formData.append("galleryItems", JSON.stringify(galleryItems));
+        return;
+      }
+      if (key === "filterValues") {
+        formData.append("filterValues", JSON.stringify(value || {}));
         return;
       }
       if (key === "trailerVideo" || key === "trailerThumbnail") {
@@ -606,6 +687,7 @@ function GameForm({ mode = "create" }) {
             companyOptions={companyOptions}
             collectionOptions={collectionOptions}
             form={form}
+            gameKeywordOptions={gameKeywordOptions}
             genreOptions={genreOptions}
             onChange={handleChange}
             setArrayField={setArrayField}
@@ -623,8 +705,6 @@ function GameForm({ mode = "create" }) {
             setArrayField={setArrayField}
           />
         );
-      case "release":
-        return <ReleaseStep ageRatingOptions={ageRatingOptions} form={form} onChange={handleChange} setForm={setForm} />;
       case "sizes":
         return <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
       case "dlcEdition":
@@ -652,6 +732,18 @@ function GameForm({ mode = "create" }) {
         );
       case "relatedGames":
         return <RelatedGamesStep form={form} relatedGameOptions={relatedGameOptions} setArrayField={setArrayField} />;
+      case "discovery":
+        return (
+          <DiscoveryStep
+            ageRatingOptions={ageRatingOptions}
+            form={form}
+            gameModeOptions={gameModeOptions}
+            genreOptions={genreOptions}
+            offlinePlayerOptions={offlinePlayerOptions}
+            setArrayField={setArrayField}
+            setForm={setForm}
+          />
+        );
       default:
         return null;
     }

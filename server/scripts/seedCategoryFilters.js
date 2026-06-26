@@ -68,6 +68,55 @@ const commonGameFilters = [
   { key: "has_discount", sortOrder: 100 },
 ];
 
+const commonFoodFilters = [
+  { key: "price", sortOrder: 10, min: 0, max: 20000000, unit: "تومان" },
+  { key: "food_brand", sortOrder: 20 },
+  { key: "origin_city", sortOrder: 30 },
+  { key: "package_weight", sortOrder: 40, min: 50, max: 5000, unit: "گرم" },
+  { key: "package_type", sortOrder: 50 },
+  { key: "usage", sortOrder: 60 },
+  { key: "is_organic", sortOrder: 70 },
+  { key: "has_discount", sortOrder: 80 },
+];
+
+const noghlFilters = [
+  { key: "price", sortOrder: 10, min: 0, max: 10000000, unit: "تومان" },
+  { key: "flavor", sortOrder: 20 },
+  { key: "nut_type", sortOrder: 30 },
+  { key: "sweetness_level", sortOrder: 40 },
+  { key: "package_weight", sortOrder: 50, min: 50, max: 5000, unit: "گرم" },
+  { key: "package_type", sortOrder: 60 },
+  { key: "origin_city", sortOrder: 70 },
+  { key: "usage", sortOrder: 80 },
+  { key: "has_discount", sortOrder: 90 },
+];
+
+const halvaFilters = [
+  { key: "price", sortOrder: 10, min: 0, max: 15000000, unit: "تومان" },
+  { key: "halva_type", sortOrder: 20 },
+  { key: "flavor", sortOrder: 30 },
+  { key: "nut_type", sortOrder: 40 },
+  { key: "texture", sortOrder: 50 },
+  { key: "sugar_type", sortOrder: 60 },
+  { key: "package_weight", sortOrder: 70, min: 100, max: 5000, unit: "گرم" },
+  { key: "package_type", sortOrder: 80 },
+  { key: "origin_city", sortOrder: 90 },
+  { key: "usage", sortOrder: 100 },
+  { key: "has_discount", sortOrder: 110 },
+];
+
+const distillateFilters = [
+  { key: "price", sortOrder: 10, min: 0, max: 10000000, unit: "تومان" },
+  { key: "distillate_type", sortOrder: 20 },
+  { key: "volume", sortOrder: 30, min: 100, max: 5000, unit: "میلی‌لیتر" },
+  { key: "concentration", sortOrder: 40 },
+  { key: "package_type", sortOrder: 50 },
+  { key: "origin_city", sortOrder: 60 },
+  { key: "usage", sortOrder: 70 },
+  { key: "is_organic", sortOrder: 80 },
+  { key: "has_discount", sortOrder: 90 },
+];
+
 const categoryFilters = [
   { category: "بازی‌ها", filters: commonGameFilters },
   {
@@ -139,6 +188,19 @@ const categoryFilters = [
       { key: "release_year", sortOrder: 30, min: 2000, max: 2026, unit: "سال" },
     ],
   },
+  { category: "خوراکی و سوغات", filters: commonFoodFilters },
+  { category: "نقل", filters: noghlFilters },
+  { category: "نقل ساده", filters: noghlFilters },
+  { category: "نقل مغزدار", filters: noghlFilters },
+  { category: "نقل طعم‌دار", filters: noghlFilters },
+  { category: "حلوا", filters: halvaFilters },
+  { category: "حلوا سنتی", filters: halvaFilters },
+  { category: "حلوا ارده", filters: halvaFilters },
+  { category: "حلوا مجلسی", filters: halvaFilters },
+  { category: "عرقیات گیاهی", filters: distillateFilters },
+  { category: "عرقیات آرام‌بخش", filters: distillateFilters },
+  { category: "عرقیات گوارشی", filters: distillateFilters },
+  { category: "گلاب و عرق گل", filters: distillateFilters },
 ];
 
 const genreCategoryNames = [

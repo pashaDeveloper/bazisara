@@ -10,6 +10,7 @@ export const platformOptions = [
 ];
 
 export const offlinePlayerOptions = [
+  { label: "تک نفره", value: "offline_1" },
   { label: "1-2 نفره", value: "offline_1_2" },
   { label: "1-3 نفره", value: "offline_1_3" },
   { label: "1-4 نفره", value: "offline_1_4" },
@@ -19,6 +20,16 @@ export const offlinePlayerOptions = [
 export const onlinePlayerOptions = [
   { label: "بازیکنان آنلاین مولتی", value: "online_multi" },
   { label: "بازیکنان آنلاین کوآپ", value: "online_coop" },
+];
+
+export const gameModeOptions = [
+  { label: "داستانی", value: "story" },
+  { label: "کوآپ", value: "coop" },
+  { label: "مولتی‌پلیر", value: "multiplayer" },
+  { label: "آفلاین", value: "offline" },
+  { label: "آنلاین", value: "online" },
+  { label: "رقابتی", value: "competitive" },
+  { label: "جهان‌باز", value: "open_world" },
 ];
 
 export const dlcTypeOptions = [
