@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import DisplayImages from "@/components/shared/DisplayImages";
+import CloudUpload from "@/components/icons/CloudUpload";
 import SocialLinksInput from "@/components/shared/SocialLinksInput";
 import FormPageBuilder from "@/components/shared/input/FormPageBuilder";
 import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
@@ -174,22 +174,24 @@ function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
   );
 }
 
+function InlineImageUploadButton({ name, onChange, title }) {
+  return (
+    <label className="mt-6 inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+      <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+      <span>{title}</span>
+      <input
+        accept="image/*"
+        className="hidden"
+        name={name}
+        onChange={(event) => onChange?.(event.target.files?.[0] || null)}
+        type="file"
+      />
+    </label>
+  );
+}
+
 function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
   const rows = items.length ? items : [{ title: "", type: "", image: "", versionSize: "" }];
-  const [previews, setPreviews] = React.useState(
-    rows.map((item) => (typeof item.image === "string" ? item.image : item.image?.url || ""))
-  );
-
-  React.useEffect(() => {
-    setPreviews(
-      rows.map((item, index) => {
-        if (typeof item.image === "string") return item.image;
-        if (item.image?.url) return item.image.url;
-        return previews[index] || "";
-      })
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
 
   const updateItem = (index, patch) => {
     const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
@@ -222,7 +224,7 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
       <div className="space-y-4">
         {rows.map((item, index) => (
           <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
               <TextField
                 label="عنوان DLC"
                 name={`${title}-title-${index}`}
@@ -237,8 +239,6 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
                 options={typeOptions}
                 value={item.type}
               />
-            </div>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end">
               <TextField
                 label="حجم نسخه"
                 name={`${title}-versionSize-${index}`}
@@ -246,32 +246,19 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
                 placeholder="مثلا 12 GB"
                 value={item.versionSize}
               />
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3">
-                <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">عکس DLC</span>
-                <ThumbnailUpload
-                  name="dlcImages"
-                  imageSize={96}
-                  preview={previews[index]}
-                  previewShape="square"
-                  setThumbnail={(file) => updateItem(index, { image: file })}
-                  setThumbnailPreview={(preview) =>
-                    setPreviews((prev) => ({
-                      ...prev,
-                      [index]: preview,
-                    }))
-                  }
-                  title=""
-                  accept="image/*"
-                />
-              </div>
+              <InlineImageUploadButton
+                name={`dlcImages-${index}`}
+                onChange={(file) => updateItem(index, { image: file })}
+                title="انتخاب عکس DLC"
+              />
+              <button
+                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+                onClick={() => removeItem(index)}
+                type="button"
+              >
+                <Trash className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
-              onClick={() => removeItem(index)}
-              type="button"
-            >
-              <Trash className="h-4 w-4" />
-            </button>
           </div>
         ))}
       </div>
@@ -281,20 +268,6 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
 
 function EditionRowsEditor({ items = [], onChange, title }) {
   const rows = items.length ? items : [{ title: "", versionSize: "", price: "", image: "" }];
-  const [previews, setPreviews] = React.useState(
-    rows.map((item) => (typeof item.image === "string" ? item.image : item.image?.url || ""))
-  );
-
-  React.useEffect(() => {
-    setPreviews(
-      rows.map((item, index) => {
-        if (typeof item.image === "string") return item.image;
-        if (item.image?.url) return item.image.url;
-        return previews[index] || "";
-      })
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
 
   const updateItem = (index, patch) => {
     const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
@@ -327,7 +300,7 @@ function EditionRowsEditor({ items = [], onChange, title }) {
       <div className="space-y-3">
         {rows.map((item, index) => (
           <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
               <TextField
                 label="عنوان"
                 name={`${title}-title-${index}`}
@@ -350,32 +323,19 @@ function EditionRowsEditor({ items = [], onChange, title }) {
                 type="number"
                 value={item.price}
               />
-            </div>
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3">
-              <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">عکس نسخه</span>
-              <ThumbnailUpload
-                name="extraEditionImages"
-                imageSize={96}
-                preview={previews[index]}
-                previewShape="square"
-                setThumbnail={(file) => updateItem(index, { image: file })}
-                setThumbnailPreview={(preview) =>
-                  setPreviews((prev) => ({
-                    ...prev,
-                    [index]: preview,
-                  }))
-                }
-                title=""
-                accept="image/*"
+              <InlineImageUploadButton
+                name={`extraEditionImages-${index}`}
+                onChange={(file) => updateItem(index, { image: file })}
+                title="انتخاب عکس نسخه"
               />
+              <button
+                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+                onClick={() => removeItem(index)}
+                type="button"
+              >
+                <Trash className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
-              onClick={() => removeItem(index)}
-              type="button"
-            >
-              <Trash className="h-4 w-4" />
-            </button>
           </div>
         ))}
       </div>
@@ -576,7 +536,8 @@ export function GameMediaStep({
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">آیکون *</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت *</span>
+          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1024 × 1024</p>
           <ThumbnailUpload
             name="cardDesktopCover"
             preview={cardDesktopCoverPreview}
@@ -683,11 +644,12 @@ export function PlatformReleasesStep({ form, platformOptions, setArrayField }) {
 export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayField }) {
   return (
     <div className="space-y-4">
-      <MultiSelectDropdown
+      <SingleSelectDropdown
         label="بازیکنان آفلاین"
-        onChange={(value) => setArrayField("offlinePlayers", value)}
+        name="offlinePlayers"
+        onChange={(event) => setArrayField("offlinePlayers", event.target.value ? [event.target.value] : [])}
         options={offlinePlayerOptions}
-        value={form.offlinePlayers}
+        value={form.offlinePlayers?.[0] || ""}
       />
       <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">

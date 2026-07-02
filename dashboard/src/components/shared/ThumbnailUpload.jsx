@@ -77,7 +77,7 @@ function ThumbnailUpload({
         <input
           {...inputRegistration}
           accept={accept}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          className="hidden"
           disabled={disabled}
           id={name}
           multiple={multiple}

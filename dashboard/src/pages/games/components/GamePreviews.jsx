@@ -8,17 +8,26 @@ export function SkeletonBlock({ className = "" }) {
 export function GameCardPreview({ coverPreview, form }) {
   const title = form.title.trim();
 
+  if (!coverPreview) {
+    return (
+      <div className="sticky top-24 flex justify-center space-y-4" dir="rtl">
+        <div className="space-y-3" dir="ltr" style={{ width: 280 }}>
+          <div
+            className="animate-pulse rounded-xl border border-zinc-300 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800"
+            style={{ width: 280, height: 280 }}
+          />
+          <div className="h-5 w-4/5 animate-pulse rounded-md bg-zinc-300 dark:bg-zinc-700" />
+          <div className="h-5 w-1/2 animate-pulse rounded-md bg-zinc-300 dark:bg-zinc-700" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="sticky top-24 flex justify-center space-y-4" dir="rtl">
-      <div className="w-full max-w-[230px] space-y-2" dir="ltr">
-        <div className="aspect-square overflow-hidden rounded-xl bg-zinc-900">
-          {coverPreview ? (
-            <img alt={title} className="h-full w-full object-cover" src={coverPreview} />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-900">
-              <div className="h-20 w-20 animate-pulse rounded-2xl bg-zinc-700/60" />
-            </div>
-          )}
+      <div className="w-full max-w-[280px] space-y-2" dir="ltr">
+        <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
+          <img alt={title} className="h-full w-full object-cover" src={coverPreview} />
         </div>
         {title ? (
           <h3 className="line-clamp-2 text-left text-md font-bold leading-5 text-white">{title}</h3>
