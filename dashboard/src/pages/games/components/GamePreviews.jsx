@@ -23,6 +23,9 @@ export function GameCardPreview({ coverPreview, form }) {
         ) : (
           <SkeletonBlock className="h-4 w-2/3" />
         )}
+        {form.isPs5ProEnhanced ? (
+          <span className="inline-flex rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-bold text-white">PS5 Pro</span>
+        ) : null}
       </div>
     </div>
   );
@@ -80,6 +83,7 @@ export function GameDetailPreview({
     ["رده سنی", form.ageRating],
     ["زمان تقریبی گیم‌پلی", form.gameplayTime],
     ["امتیاز متاکریتیک", form.metacriticScore],
+    ["بهینه برای PS5 Pro", form.isPs5ProEnhanced ? "بله" : ""],
     ["ژانرها", genres.join("، ")],
   ];
 
@@ -107,7 +111,7 @@ export function GameDetailPreview({
         return (
           <div className="space-y-3">
             {form.shortDescription ? <p className="text-sm leading-7 text-zinc-300">{form.shortDescription}</p> : null}
-            {description ? <p className="line-clamp-5 text-sm leading-7 text-zinc-300">{description}</p> : <SkeletonBlock className="h-4 w-full" />}
+            {description ? <p className="line-clamp-3 text-sm leading-7 text-zinc-300">{description}</p> : <SkeletonBlock className="h-4 w-full" />}
             {seoTags.length ? (
               <div className="flex flex-wrap gap-2">
                 {seoTags.map((tag) => (

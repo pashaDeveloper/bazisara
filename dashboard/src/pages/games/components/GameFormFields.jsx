@@ -14,9 +14,9 @@ function clamp(value, min, max) {
 export function TextField({ label, name, onChange, placeholder, type = "text", value, dir }) {
   return (
     <label className="space-y-2">
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
       <input
-        className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition focus:border-white"
+        className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
         dir={dir}
         name={name}
         onChange={onChange}
@@ -31,9 +31,9 @@ export function TextField({ label, name, onChange, placeholder, type = "text", v
 export function TextareaField({ label, name, onChange, rows = 4, value }) {
   return (
     <label className="space-y-2">
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
       <textarea
-        className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none transition focus:border-white"
+        className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
         name={name}
         onChange={onChange}
         rows={rows}
@@ -53,7 +53,7 @@ function WheelColumn({ disabled = false, items, label, onSelect, value }) {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-zinc-800 bg-black ${
+      className={`relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black ${
         disabled ? "opacity-45" : ""
       }`}
     >
@@ -69,7 +69,7 @@ function WheelColumn({ disabled = false, items, label, onSelect, value }) {
             return (
               <button
                 className={`flex h-10 w-full items-center justify-center rounded-xl text-sm transition ${
-                  isSelected ? "bg-white text-black" : "text-zinc-300 hover:bg-zinc-900"
+                  isSelected ? "bg-white text-black" : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-900"
                 }`}
                 disabled={disabled}
                 key={item.value}
@@ -181,10 +181,10 @@ export function DatePickerField({ label, onChange, value }) {
 
   return (
     <div className="space-y-2">
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
       <div className="relative">
         <input
-          className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 pr-11 text-sm text-white outline-none transition focus:border-white"
+          className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 pr-11 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
           inputMode="numeric"
           placeholder="YYYY-MM-DD"
           value={textValue}
@@ -194,18 +194,18 @@ export function DatePickerField({ label, onChange, value }) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="absolute inset-y-0 right-0 flex h-full items-center justify-center rounded-r-xl border-l border-zinc-800 bg-zinc-900 px-3 text-zinc-400 transition hover:text-white"
+              className="absolute inset-y-0 right-0 flex h-full items-center justify-center rounded-r-xl border-l border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 px-3 text-zinc-600 dark:text-zinc-400 transition hover:text-zinc-950 dark:text-white"
               aria-label="باز کردن تقویم"
             >
               <Calendar className="h-4 w-4" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-[360px] border-zinc-800 bg-zinc-950 p-3">
+          <PopoverContent align="start" className="w-[360px] border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3">
             <div className="space-y-3" dir="rtl">
-              <div className="grid grid-cols-3 gap-2 rounded-2xl border border-zinc-800 bg-black p-2 text-center text-[11px] text-zinc-500">
-                <div className={pickerStep === "year" ? "text-white" : ""}>سال</div>
-                <div className={pickerStep === "month" ? "text-white" : ""}>ماه</div>
-                <div className={pickerStep === "day" ? "text-white" : ""}>روز</div>
+              <div className="grid grid-cols-3 gap-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-2 text-center text-[11px] text-zinc-500">
+                <div className={pickerStep === "year" ? "text-zinc-950 dark:text-white" : ""}>سال</div>
+                <div className={pickerStep === "month" ? "text-zinc-950 dark:text-white" : ""}>ماه</div>
+                <div className={pickerStep === "day" ? "text-zinc-950 dark:text-white" : ""}>روز</div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -231,12 +231,12 @@ export function DatePickerField({ label, onChange, value }) {
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-black px-3 py-2 text-xs text-zinc-400">
+              <div className="flex items-center justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">
                 <span>
                   مرحله بعدی: {pickerStep === "year" ? "ماه" : pickerStep === "month" ? "روز" : "ثبت"}
                 </span>
                 <button
-                  className="rounded-lg border border-zinc-800 px-3 py-1.5 text-zinc-300 transition hover:border-white hover:text-white"
+                  className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-zinc-700 dark:text-zinc-300 transition hover:border-white hover:text-zinc-950 dark:text-white"
                   onClick={() => setIsOpen(false)}
                   type="button"
                 >

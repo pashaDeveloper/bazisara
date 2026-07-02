@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
+import Cross from "@/components/icons/Cross";
+import NavigationButton from "@/components/shared/button/NavigationButton";
 import SendButton from "@/components/shared/button/SendButton";
+import StepIndicator from "../categories/components/StepIndicator";
 import { useGetCategoriesQuery } from "../../services/category/categoryApi";
 import { useGetCompaniesQuery } from "../../services/companyApi";
 import { useGetGenresQuery } from "../../services/genreApi";
@@ -11,6 +14,7 @@ import { useCreateGameMutation, useGetGameQuery, useGetGamesQuery, useUpdateGame
 import {
   ageRatingOptions,
   editionOptions,
+  gameModeOptions,
   launcherOptions,
   offlinePlayerOptions,
 } from "./gameOptions";
@@ -24,23 +28,23 @@ import DesktopCoverCropper from "./components/DesktopCoverCropper";
 import { GameCardPreview, GameDetailPreview } from "./components/GamePreviews";
 import {
   BasicStep,
-  DlcStep,
-  EditionsStep,
-  GameMediaStep,
-  PatchStep,
+  DescriptionStep,
+  DlcEditionStep,
+  MediaStep,
   PlatformSizesStep,
+  PlatformReleasesStep,
+  DiscoveryStep,
   PlayersStep,
-  ReleaseStep,
   RelatedGamesStep,
   RelationsStep,
   ReviewStep,
-  SeoTagsStep,
   SocialStep,
+  SummaryStep,
+  VideosStep,
 } from "./components/GameFormSteps";
 
 const initialForm = {
   title: "",
-  slug: "",
   shortDescription: "",
   description: "",
   reviewSiteTitle: "",
@@ -55,6 +59,16 @@ const initialForm = {
   tags: [],
   gameKeywords: [],
   searchTitles: [],
+  filterValues: {
+    priceMin: "",
+    priceMax: "",
+    sizeMinGb: "",
+    sizeMaxGb: "",
+    ageRatings: [],
+    genres: [],
+    gameModes: [],
+    offlinePlayers: [],
+  },
   collections: [],
   platforms: [],
   platformReleases: [],
@@ -73,13 +87,11 @@ const initialForm = {
   hasSubtitle: false,
   dlcs: [],
   extraEditions: [],
-  releaseDate: "",
   officialWebsite: "",
   ageRating: "",
   gameplayTime: "",
   metacriticScore: "",
   isFeatured: false,
-  isPs5ProEnhanced: false,
   socialLinks: [],
   trailerVideo: null,
   trailerThumbnail: null,
@@ -108,55 +120,22 @@ const normalizeUploadedMedia = (response, fallbackType = "video") => {
   };
 };
 
-const formSections = [
-  { key: "basic", title: "مشخصات اولیه بازی" },
-  { key: "media", title: "عکس و فیلم" },
-  { key: "specs", title: "مشخصات بازی" },
-  { key: "sizes", title: "حجم بازی" },
-  { key: "dlc", title: "محتویات اضافی (DLC)" },
-  { key: "editions", title: "نسخه‌های بازی" },
+const steps = [
+  { key: "basic", title: "پایه" },
+  { key: "relations", title: "ارتباطات" },
+  { key: "platformReleases", title: "انتشار پلتفرم‌ها" },
+  { key: "players", title: "بازیکنان" },
+  { key: "sizes", title: "حجم پلتفرم‌ها" },
+  { key: "dlcEdition", title: "DLC / Edition" },
+  { key: "social", title: "شبکه‌ها" },
+  { key: "summary", title: "خلاصه" },
+  { key: "review", title: "نقد و بررسی" },
+  { key: "description", title: "توضیح کامل" },
+  { key: "media", title: "رسانه" },
+  { key: "videos", title: "ویدیوها" },
   { key: "relatedGames", title: "بازی‌های مشابه" },
-  { key: "patch", title: "پچ آنلاک" },
-  { key: "review", title: "نقد و بررسی بازی توسط رسانه‌ها" },
-  { key: "seo", title: "تگ‌های سئو" },
-  { key: "social", title: "شبکه‌های اجتماعی" },
+  { key: "discovery", title: "ارتباط و فیلتر" },
 ];
-
-const previewTabs = [
-  { key: "form", label: "فرم" },
-  { key: "card", label: "کارت" },
-  { key: "mobile", label: "موبایل" },
-  { key: "desktop", label: "دسکتاپ" },
-];
-
-function makeGameSlug(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^\u0600-\u06ff\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function GameFormSection({ children, index, title }) {
-  return (
-    <section className="relative grid gap-4 pr-12 md:grid-cols-[190px_minmax(0,1fr)] md:gap-8 md:pr-0" dir="rtl">
-      <div>
-        <div className="sticky top-28 flex items-center gap-3">
-          <h2 className="min-w-0 flex-1 text-right text-sm font-bold leading-6 text-zinc-700 dark:text-zinc-200">{title}</h2>
-          <span className="hidden h-px w-8 shrink-0 bg-emerald-500 dark:bg-blue-500 md:block" />
-          <span className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-500 bg-white text-sm font-bold text-emerald-600 shadow-sm dark:border-blue-500 dark:bg-zinc-900 dark:text-blue-300">
-            {index + 1}
-          </span>
-        </div>
-      </div>
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/70 dark:shadow-none md:p-5" dir="rtl">
-        {children}
-      </div>
-    </section>
-  );
-}
 
 function toObjectArray(value, fallback = []) {
   if (!value) return fallback;
@@ -229,6 +208,7 @@ function GameForm({ mode = "create" }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = mode === "edit";
+  const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
   const [coverPreview, setCoverPreview] = useState("");
   const [cardDesktopCoverPreview, setCardDesktopCoverPreview] = useState("");
@@ -238,9 +218,7 @@ function GameForm({ mode = "create" }) {
   const [galleryPreview, setGalleryPreview] = useState([]);
   const [trailerVideoPreview, setTrailerVideoPreview] = useState("");
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
-  const [patchImagePreview, setPatchImagePreview] = useState("");
-  const [activePreviewTab, setActivePreviewTab] = useState("form");
-  const [isSlugTouched, setIsSlugTouched] = useState(false);
+  const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
   const [videoUploadState, setVideoUploadState] = useState({
     trailerVideo: false,
   });
@@ -273,8 +251,17 @@ function GameForm({ mode = "create" }) {
   const collections = collectionsData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
   const isUploadingVideo = videoUploadState.trailerVideo;
+  const isLastStep = currentStep === steps.length - 1;
   const titleIsValid = Boolean(form.title.trim());
   const categoryIsValid = Boolean(form.category);
+  const canGoNext =
+    steps[currentStep].key === "basic"
+      ? titleIsValid
+      : steps[currentStep].key === "relations"
+        ? categoryIsValid
+        : steps[currentStep].key === "videos"
+          ? !isUploadingVideo
+          : true;
 
   const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.name, value: item._id })), [categories]);
   const genreOptions = useMemo(() => genres.map((item) => ({ label: item.name, value: item._id })), [genres]);
@@ -310,7 +297,6 @@ function GameForm({ mode = "create" }) {
     setForm({
       ...initialForm,
       title: game.title || "",
-      slug: game.slug || "",
       shortDescription: game.shortDescription || "",
       description: game.description || "",
       reviewSiteTitle: game.reviewSiteTitle || "",
@@ -325,6 +311,16 @@ function GameForm({ mode = "create" }) {
       tags: toIdArray(game.tags),
       gameKeywords: toIdArray(game.gameKeywords),
       searchTitles: toSearchTitleArray(game.searchTitles),
+      filterValues: {
+        priceMin: game.filterValues?.priceMin ?? "",
+        priceMax: game.filterValues?.priceMax ?? "",
+        sizeMinGb: game.filterValues?.sizeMinGb ?? "",
+        sizeMaxGb: game.filterValues?.sizeMaxGb ?? "",
+        ageRatings: game.filterValues?.ageRatings || [],
+        genres: toIdArray(game.filterValues?.genres),
+        gameModes: game.filterValues?.gameModes || [],
+        offlinePlayers: game.filterValues?.offlinePlayers || [],
+      },
       collections: toIdArray(game.collections),
       platforms: toIdArray(game.platforms),
       platformReleases: toPlatformReleaseArray(game.platformReleases, game.platforms, game.releaseDate),
@@ -357,13 +353,11 @@ function GameForm({ mode = "create" }) {
         : [],
       hasDubbing: Boolean(game.hasDubbing),
       hasSubtitle: Boolean(game.hasSubtitle),
-      releaseDate: formatDate(game.releaseDate),
       officialWebsite: game.officialWebsite || "",
       ageRating: normalizeOptionValue(game.ageRating, ageRatingOptions),
       gameplayTime: game.gameplayTime || "",
       metacriticScore: game.metacriticScore ?? "",
       isFeatured: Boolean(game.isFeatured),
-      isPs5ProEnhanced: Boolean(game.isPs5ProEnhanced),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
       trailerThumbnail: null,
@@ -382,23 +376,21 @@ function GameForm({ mode = "create" }) {
     setGalleryPreview(existingGallery);
     setTrailerVideoPreview(game.trailerVideo?.url || "");
     setTrailerThumbnailPreview(game.trailerThumbnail?.url || "");
-    setPatchImagePreview(game.patchImage?.url || "");
-    setIsSlugTouched(Boolean(game.slug));
   }, [gameData]);
+
+  const completedSteps = steps.reduce((acc, step, index) => {
+    acc[index + 1] = index < currentStep;
+    return acc;
+  }, {});
+
+  const invalidSteps = {
+    1: currentStep >= 0 && !titleIsValid,
+    2: currentStep >= 1 && !categoryIsValid,
+  };
 
   const handleChange = (event) => {
     const { checked, name, type, value } = event.target;
-    if (name === "slug") {
-      setIsSlugTouched(true);
-      setForm((prev) => ({ ...prev, slug: makeGameSlug(value) }));
-      return;
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-      ...(name === "title" && !isSlugTouched ? { slug: makeGameSlug(value) } : {}),
-    }));
+    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
   const setArrayField = (name, value) => {
@@ -478,6 +470,43 @@ function GameForm({ mode = "create" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const goToStep = (step) => {
+    const targetIndex = step - 1;
+
+    if (steps[currentStep].key === "videos" && targetIndex !== currentStep && isUploadingVideo) {
+      toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
+      return;
+    }
+
+    if (targetIndex > 0 && !titleIsValid) {
+      toast.error("عنوان بازی را وارد کنید", { id: "game-step" });
+      setCurrentStep(0);
+      return;
+    }
+
+    if (targetIndex > 1 && !categoryIsValid) {
+      toast.error("دسته‌بندی بازی را انتخاب کنید", { id: "game-step" });
+      setCurrentStep(1);
+      return;
+    }
+
+    setCurrentStep(targetIndex);
+  };
+
+  const goToNextStep = () => {
+    if (steps[currentStep].key === "videos" && isUploadingVideo) {
+      toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
+      return;
+    }
+
+    if (!canGoNext) {
+      toast.error(steps[currentStep].key === "basic" ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "game-step" });
+      return;
+    }
+
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+  };
+
   const buildFormData = () => {
     const formData = new FormData();
     const arrayFields = [
@@ -502,12 +531,7 @@ function GameForm({ mode = "create" }) {
     ];
 
     const derivedPlatforms = [
-      ...new Set(
-        [
-          ...(form.platformReleases || []).map((item) => item.platform),
-          ...(form.platformSizes || []).map((item) => item.platform),
-        ].filter(Boolean)
-      ),
+      ...new Set((form.platformReleases || []).map((item) => item.platform).filter(Boolean)),
     ];
     const normalizedForm = {
       ...form,
@@ -547,6 +571,10 @@ function GameForm({ mode = "create" }) {
           }
         });
         formData.append("galleryItems", JSON.stringify(galleryItems));
+        return;
+      }
+      if (key === "filterValues") {
+        formData.append("filterValues", JSON.stringify(value || {}));
         return;
       }
       if (key === "trailerVideo" || key === "trailerThumbnail") {
@@ -600,6 +628,11 @@ function GameForm({ mode = "create" }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (!isLastStep) {
+      goToNextStep();
+      return;
+    }
+
     if (isUploadingVideo) {
       toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
       return;
@@ -607,6 +640,7 @@ function GameForm({ mode = "create" }) {
 
     if (!titleIsValid || !categoryIsValid) {
       toast.error(!titleIsValid ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "save-game" });
+      setCurrentStep(!titleIsValid ? 0 : 1);
       return;
     }
 
@@ -628,85 +662,88 @@ function GameForm({ mode = "create" }) {
     }
   };
 
-  const renderSection = (sectionKey) => {
-    switch (sectionKey) {
+  const renderStep = () => {
+    switch (steps[currentStep].key) {
       case "basic":
         return (
           <BasicStep
-            form={form}
-            onChange={handleChange}
-            setArrayField={setArrayField}
-            setForm={setForm}
-          />
-        );
-      case "media":
-        return (
-          <GameMediaStep
             cardDesktopCoverPreview={cardDesktopCoverPreview}
             cardMobileCoverPreview={cardMobileCoverPreview}
             coverPreview={coverPreview}
             desktopCoverPreview={desktopCoverPreview}
-            galleryPreview={galleryPreview}
-            isTrailerVideoUploading={videoUploadState.trailerVideo}
-            onVideoUpload={handleVideoUpload}
+            form={form}
+            onChange={handleChange}
             setCardDesktopCoverPreview={setCardDesktopCoverPreview}
             setCardMobileCoverPreview={setCardMobileCoverPreview}
             setCoverPreview={setCoverPreview}
             setDesktopCoverCropFile={setDesktopCoverCropFile}
             setForm={setForm}
-            setGalleryPreview={setGalleryPreview}
+          />
+        );
+      case "relations":
+        return (
+          <RelationsStep
+            categoryOptions={categoryOptions}
+            companyOptions={companyOptions}
+            collectionOptions={collectionOptions}
+            form={form}
+            gameKeywordOptions={gameKeywordOptions}
+            genreOptions={genreOptions}
+            onChange={handleChange}
+            setArrayField={setArrayField}
+            tagOptions={tagOptions}
+          />
+        );
+      case "platformReleases":
+        return <PlatformReleasesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
+      case "players":
+        return (
+          <PlayersStep
+            form={form}
+            offlinePlayerOptions={offlinePlayerOptions}
+            onChange={handleChange}
+            setArrayField={setArrayField}
+          />
+        );
+      case "sizes":
+        return <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
+      case "dlcEdition":
+        return <DlcEditionStep form={form} onChange={handleChange} setArrayField={setArrayField} />;
+      case "social":
+        return <SocialStep form={form} setArrayField={setArrayField} />;
+      case "summary":
+        return <SummaryStep form={form} onChange={handleChange} />;
+      case "review":
+        return <ReviewStep form={form} onChange={handleChange} setArrayField={setArrayField} />;
+      case "description":
+        return <DescriptionStep form={form} setForm={setForm} />;
+      case "media":
+        return <MediaStep galleryPreview={galleryPreview} setForm={setForm} setGalleryPreview={setGalleryPreview} />;
+      case "videos":
+        return (
+          <VideosStep
+            isTrailerVideoUploading={videoUploadState.trailerVideo}
+            onVideoUpload={handleVideoUpload}
+            setForm={setForm}
             setTrailerThumbnailPreview={setTrailerThumbnailPreview}
             trailerThumbnailPreview={trailerThumbnailPreview}
             trailerVideoPreview={trailerVideoPreview}
           />
         );
-      case "specs":
-        return (
-          <div className="space-y-5">
-            <RelationsStep
-              categoryOptions={categoryOptions}
-              companyOptions={companyOptions}
-              collectionOptions={collectionOptions}
-              form={form}
-              gameKeywordOptions={gameKeywordOptions}
-              genreOptions={genreOptions}
-              onChange={handleChange}
-              setArrayField={setArrayField}
-              tagOptions={tagOptions}
-            />
-            <PlayersStep
-              form={form}
-              offlinePlayerOptions={offlinePlayerOptions}
-              onChange={handleChange}
-              setArrayField={setArrayField}
-            />
-            <ReleaseStep ageRatingOptions={ageRatingOptions} form={form} onChange={handleChange} setForm={setForm} />
-          </div>
-        );
-      case "sizes":
-        return <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
-      case "dlc":
-        return <DlcStep form={form} setArrayField={setArrayField} />;
-      case "editions":
-        return <EditionsStep form={form} setArrayField={setArrayField} />;
-      case "patch":
-        return (
-          <PatchStep
-            form={form}
-            onChange={handleChange}
-            patchImagePreview={patchImagePreview}
-            setForm={setForm}
-            setPatchImagePreview={setPatchImagePreview}
-          />
-        );
       case "relatedGames":
         return <RelatedGamesStep form={form} relatedGameOptions={relatedGameOptions} setArrayField={setArrayField} />;
-      case "review":
-        return <ReviewStep form={form} onChange={handleChange} setArrayField={setArrayField} />;
-      case "seo":
-        return <SeoTagsStep form={form} setArrayField={setArrayField} tagOptions={tagOptions} />;
-      case "social":
-        return <SocialStep form={form} setArrayField={setArrayField} />;
+      case "discovery":
+        return (
+          <DiscoveryStep
+            ageRatingOptions={ageRatingOptions}
+            form={form}
+            gameModeOptions={gameModeOptions}
+            genreOptions={genreOptions}
+            offlinePlayerOptions={offlinePlayerOptions}
+            setArrayField={setArrayField}
+            setForm={setForm}
+          />
+        );
       default:
         return null;
     }
@@ -723,110 +760,109 @@ function GameForm({ mode = "create" }) {
   const selectedGenreLabels = genreOptions.filter((option) => form.genres.includes(option.value)).map((option) => option.label);
   const selectedTagLabels = tagOptions.filter((option) => form.tags.includes(option.value)).map((option) => option.label);
 
-  const renderPreview = () => {
-    if (activePreviewTab === "card") {
-      return (
-        <div className="flex justify-center">
-          <GameCardPreview coverPreview={cardDesktopCoverPreview || coverPreview} form={form} genres={selectedGenreLabels} platforms={selectedPlatformLabels} />
-        </div>
-      );
-    }
-
-    return (
-      <GameDetailPreview
-        cardMobileCoverPreview={cardMobileCoverPreview}
-        coverPreview={coverPreview}
-        desktopCoverPreview={desktopCoverPreview}
-        form={form}
-        galleryPreview={galleryPreview}
-        genres={selectedGenreLabels}
-        isSticky={false}
-        platformReleases={selectedPlatformReleases}
-        platforms={selectedPlatformLabels}
-        reviewItems={form.reviewItems}
-        seoTags={selectedTagLabels}
-        variant={activePreviewTab === "mobile" ? "mobile" : "desktop"}
-      />
-    );
-  };
-
   return (
     <ControlPanel>
       <section className="mx-auto max-w-[1800px] space-y-6">
-        <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-black/80 dark:shadow-none">
+        <div className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/80 p-5">
           <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">مدیریت محتوای بازی‌ها</p>
-            <h1 className="mt-1 text-2xl font-bold text-zinc-950 dark:text-white">{isEdit ? "ویرایش بازی" : "افزودن بازی"}</h1>
+            <p className="text-xs text-zinc-400">مدیریت محتوای بازی‌ها</p>
+            <h1 className="mt-1 text-2xl font-bold text-white">{isEdit ? "ویرایش بازی" : "افزودن بازی"}</h1>
           </div>
-          <Link className="rounded-xl border border-zinc-200 px-4 py-2 text-sm text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-950 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-white dark:hover:text-white" to="/games">
+          <Link className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white" to="/games">
             بازگشت به لیست
           </Link>
         </div>
 
-        <form className="space-y-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-950" onSubmit={handleSubmit}>
+        <form className="space-y-5 rounded-2xl border border-zinc-700 bg-zinc-950 p-5" onSubmit={handleSubmit}>
           {isLoadingGame ? (
-            <div className="rounded-xl border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-black">در حال دریافت...</div>
+            <div className="rounded-xl border border-zinc-800 bg-black px-4 py-8 text-center text-sm text-zinc-500">در حال دریافت...</div>
           ) : (
             <>
-              <div className="space-y-5" dir="rtl">
-                <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-black dark:shadow-none">
-                  <div className="mb-4 flex flex-wrap items-center justify-start gap-3">
-                    <span className="text-xs font-bold text-zinc-500">پیش‌نمایش</span>
-                    <div className="order-first inline-flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-800 dark:bg-zinc-950">
-                      {previewTabs.map((tab) => {
-                        const isActive = activePreviewTab === tab.key;
-
-                        return (
-                          <button
-                            className={`min-w-20 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                              isActive ? "bg-emerald-500 text-white dark:bg-blue-500" : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
-                            }`}
-                            key={tab.key}
-                            onClick={() => setActivePreviewTab(tab.key)}
-                            type="button"
-                          >
-                            {tab.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {activePreviewTab !== "form" ? (
-                    <div className="flex justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                      <div className={activePreviewTab === "desktop" ? "w-full max-w-5xl" : "w-full max-w-[390px]"}>
-                        {renderPreview()}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                {activePreviewTab === "form" ? (
-                <div className="relative space-y-10 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-black dark:shadow-none md:p-6" dir="rtl">
+              <div className="sticky top-16 z-20 rounded-xl border border-gray-200 bg-white/95 p-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+                <StepIndicator completedSteps={completedSteps} currentStep={currentStep + 1} invalidSteps={invalidSteps} onStepClick={goToStep} totalSteps={steps.length} />
+              </div>
+              <div className="grid gap-5 xl:grid-cols-[minmax(460px,660px)_minmax(260px,340px)_minmax(420px,1fr)]" dir="ltr">
+                <div className="space-y-5 rounded-xl border border-zinc-800 bg-black p-4" dir="rtl">
                   <div className="mb-1 flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-500">فرم اطلاعات بازی</span>
                     <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] text-zinc-500">
-                      {formSections.length} بخش
+                      {currentStep + 1} / {steps.length}
                     </span>
                   </div>
-                  <div className="pointer-events-none absolute bottom-8 right-[34px] top-8 w-px bg-emerald-500 dark:bg-blue-500 md:right-[196px]" />
-                  {formSections.map((section, index) => (
-                    <GameFormSection index={index} key={section.key} title={section.title}>
-                      {renderSection(section.key)}
-                    </GameFormSection>
-                  ))}
-                  <div className="sticky bottom-4 z-20 flex justify-end border-t border-zinc-200 bg-white/90 pt-4 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
-                    <SendButton
-                      isLoading={isSaving || isUploadingVideo}
-                      label={isEdit ? "ذخیره بازی" : "ثبت بازی"}
-                      loadingLabel={isUploadingVideo ? "در حال آپلود ویدئو..." : "در حال ذخیره..."}
-                    />
+                  {renderStep()}
+                  <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
+                    {isLastStep ? (
+                      <SendButton
+                        isLoading={isSaving || isUploadingVideo}
+                        label={isEdit ? "ذخیره بازی" : "ثبت بازی"}
+                        loadingLabel={isUploadingVideo ? "در حال آپلود ویدئو..." : "در حال ذخیره..."}
+                      />
+                    ) : (
+                      <NavigationButton direction="next" disabled={!canGoNext || isSaving} onClick={goToNextStep} />
+                    )}
+                    <NavigationButton direction="prev" disabled={currentStep === 0 || isSaving} onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))} />
                   </div>
                 </div>
-                ) : null}
+
+                <GameCardPreview coverPreview={cardDesktopCoverPreview || coverPreview} form={form} genres={selectedGenreLabels} platforms={selectedPlatformLabels} />
+
+                <div className="sticky top-24 flex flex-col items-center space-y-3 self-start" dir="rtl">
+                  <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black px-3 py-2">
+                    <button
+                      className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-xs text-zinc-300 transition hover:border-white hover:text-white"
+                      onClick={() => setIsDesktopPreviewOpen(true)}
+                      type="button"
+                    >
+                      <span className="text-base leading-none">?</span>
+                    </button>
+                  </div>
+                  <GameDetailPreview
+                    cardMobileCoverPreview={cardMobileCoverPreview}
+                    coverPreview={coverPreview}
+                    desktopCoverPreview={desktopCoverPreview}
+                    form={form}
+                    galleryPreview={galleryPreview}
+                    genres={selectedGenreLabels}
+                    isSticky={false}
+                    platformReleases={selectedPlatformReleases}
+                    platforms={selectedPlatformLabels}
+                    reviewItems={form.reviewItems}
+                    seoTags={selectedTagLabels}
+                    variant="mobile"
+                  />
+                </div>
               </div>
             </>
           )}
         </form>
+
+        {isDesktopPreviewOpen ? (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur" dir="rtl">
+            <button
+              aria-label="بستن پیش‌نمایش دسکتاپ"
+              className="fixed left-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 bg-black/70 text-white backdrop-blur transition hover:border-white"
+              onClick={() => setIsDesktopPreviewOpen(false)}
+              type="button"
+            >
+              <Cross />
+            </button>
+            <div className="mx-auto w-full max-w-7xl px-4 pb-8">
+              <GameDetailPreview
+                cardMobileCoverPreview={cardMobileCoverPreview}
+                coverPreview={coverPreview}
+                desktopCoverPreview={desktopCoverPreview}
+                form={form}
+                galleryPreview={galleryPreview}
+                genres={selectedGenreLabels}
+                isSticky={false}
+                platformReleases={selectedPlatformReleases}
+                platforms={selectedPlatformLabels}
+                reviewItems={form.reviewItems}
+                seoTags={selectedTagLabels}
+              />
+            </div>
+          </div>
+        ) : null}
 
         <DesktopCoverCropper
           file={desktopCoverCropFile}

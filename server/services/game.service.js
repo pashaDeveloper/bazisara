@@ -306,9 +306,10 @@ async function ensureExists(Model, ids, label) {
 
 function normalizePayload(body, uploadedFiles, currentGame) {
   const title = body.title !== undefined ? String(body.title).trim() : undefined;
+  const slug = body.slug !== undefined ? String(body.slug).trim() : undefined;
   const payload = {
     title,
-    slug: title !== undefined ? "" : undefined,
+    slug: slug !== undefined ? slug : title !== undefined ? "" : undefined,
     shortDescription:
       body.shortDescription !== undefined
         ? String(body.shortDescription).trim()
@@ -427,6 +428,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
+    isPs5ProEnhanced:
+      body.isPs5ProEnhanced !== undefined ? parseBoolean(body.isPs5ProEnhanced) : undefined,
   };
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
@@ -545,7 +548,7 @@ exports.createGame = async (req, res) => {
     });
   }
 
-  payload.slug = await makeUniqueSlug(payload.title);
+  payload.slug = await makeUniqueSlug(payload.slug || payload.title);
 
   await validatePayload(payload);
 
@@ -664,8 +667,8 @@ exports.updateGame = async (req, res) => {
 
   const payload = normalizePayload(req.body, req.uploadedFiles, game);
   const previousCollections = game.collections || [];
-  if (payload.title !== undefined) {
-    payload.slug = await makeUniqueSlug(payload.title, id);
+  if (payload.title !== undefined || payload.slug !== undefined) {
+    payload.slug = await makeUniqueSlug(payload.slug || payload.title || game.title, id);
   }
   await validatePayload(payload);
   Object.assign(game, payload);

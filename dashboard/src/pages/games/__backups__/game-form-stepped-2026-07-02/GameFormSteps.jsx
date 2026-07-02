@@ -23,11 +23,11 @@ function TextListEditor({ label, items = [], onChange, placeholder = "مورد �
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+        <span className="text-sm text-zinc-300">{label}</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -38,13 +38,13 @@ function TextListEditor({ label, items = [], onChange, placeholder = "مورد �
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_40px]" key={`${label}-${index}`}>
             <input
-              className="h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
+              className="h-12 w-full rounded-xl border border-zinc-800 bg-black px-3 text-sm text-white outline-none transition focus:border-white"
               onChange={(event) => updateItem(index, event.target.value)}
               placeholder={placeholder}
               value={item}
             />
             <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -71,11 +71,11 @@ function ObjectRowsEditor({ columns, items = [], onChange, title }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">{title}</span>
+        <span className="text-sm text-zinc-300">{title}</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -107,7 +107,7 @@ function ObjectRowsEditor({ columns, items = [], onChange, title }) {
               value={item.size}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -132,11 +132,11 @@ function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">تاریخ انتشار پلتفرم‌ها</span>
+        <span className="text-sm text-zinc-300">تاریخ انتشار پلتفرم‌ها</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -159,7 +159,7 @@ function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
               value={item.releaseDate}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -206,11 +206,11 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">{title}</span>
+        <span className="text-sm text-zinc-300">{title}</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -219,7 +219,7 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
       </div>
       <div className="space-y-4">
         {rows.map((item, index) => (
-          <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
+          <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4" key={`${title}-${index}`}>
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <TextField
                 label="عنوان DLC"
@@ -244,8 +244,8 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
                 placeholder="مثلا 12 GB"
                 value={item.versionSize}
               />
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3">
-                <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">عکس DLC</span>
+              <div className="rounded-xl border border-zinc-800 bg-black p-3">
+                <span className="mb-3 block text-sm text-zinc-300">عکس DLC</span>
                 <ThumbnailUpload
                   name="dlcImages"
                   imageSize={96}
@@ -264,7 +264,7 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
               </div>
             </div>
             <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -311,11 +311,11 @@ function EditionRowsEditor({ items = [], onChange, title }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">{title}</span>
+        <span className="text-sm text-zinc-300">{title}</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -324,7 +324,7 @@ function EditionRowsEditor({ items = [], onChange, title }) {
       </div>
       <div className="space-y-3">
         {rows.map((item, index) => (
-          <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
+          <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4" key={`${title}-${index}`}>
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <TextField
                 label="عنوان"
@@ -349,8 +349,8 @@ function EditionRowsEditor({ items = [], onChange, title }) {
                 value={item.price}
               />
             </div>
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3">
-              <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">عکس نسخه</span>
+            <div className="rounded-xl border border-zinc-800 bg-black p-3">
+              <span className="mb-3 block text-sm text-zinc-300">عکس نسخه</span>
               <ThumbnailUpload
                 name="extraEditionImages"
                 imageSize={96}
@@ -368,7 +368,7 @@ function EditionRowsEditor({ items = [], onChange, title }) {
               />
             </div>
             <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -393,11 +393,11 @@ function LinkRowsEditor({ label, items = [], onChange }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+        <span className="text-sm text-zinc-300">{label}</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -423,7 +423,7 @@ function LinkRowsEditor({ label, items = [], onChange }) {
               value={item.link}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -436,7 +436,7 @@ function LinkRowsEditor({ label, items = [], onChange }) {
   );
 }
 
-function LegacySearchTitleRowsEditor({ items = [], onChange }) {
+function SearchTitleRowsEditor({ items = [], onChange }) {
   const rows = items.length ? items : [{ title: "", slug: "" }];
 
   const updateItem = (index, patch) => {
@@ -448,11 +448,11 @@ function LegacySearchTitleRowsEditor({ items = [], onChange }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">عناوین جستجو</span>
+        <span className="text-sm text-zinc-300">عناوین جستجو</span>
         <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 text-zinc-200 transition hover:border-white hover:text-white"
           onClick={addItem}
           type="button"
         >
@@ -478,7 +478,7 @@ function LegacySearchTitleRowsEditor({ items = [], onChange }) {
               value={item.slug}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -487,35 +487,6 @@ function LegacySearchTitleRowsEditor({ items = [], onChange }) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function SearchTitleRowsEditor({ items = [], onChange }) {
-  const value = items.map((item) => item?.title || "").filter(Boolean).join("\n");
-
-  const handleChange = (event) => {
-    const next = event.target.value
-      .split(/\r?\n/)
-      .map((title) => title.trim())
-      .filter(Boolean)
-      .map((title) => ({ title, slug: "" }));
-
-    onChange?.(next);
-  };
-
-  return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">عناوین جستجو</span>
-        <span className="text-xs text-zinc-500">Enter</span>
-      </div>
-      <textarea
-        className="min-h-28 w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm leading-7 text-zinc-950 outline-none transition placeholder:text-zinc-500 focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-        onChange={handleChange}
-        placeholder="هر عنوان را در یک خط جداگانه بنویسید"
-        value={value}
-      />
     </div>
   );
 }
@@ -531,50 +502,14 @@ export function BasicStep({
   setDesktopCoverCropFile,
   form,
   onChange,
-  setArrayField,
   setForm,
 }) {
   return (
     <div className="grid gap-4">
-      <TextField label="نام بازی *" name="title" onChange={onChange} value={form.title} />
-      <SearchTitleRowsEditor
-        items={form.searchTitles}
-        onChange={(value) => setArrayField("searchTitles", value)}
-      />
-      <TextField dir="ltr" label="لینک بازی" name="slug" onChange={onChange} value={form.slug} />
-      <DatePickerField
-        label="تاریخ انتشار"
-        onChange={(value) => setForm((prev) => ({ ...prev, releaseDate: value }))}
-        value={form.releaseDate}
-      />
-      <TextareaField label="معرفی و خلاصه داستان" name="shortDescription" onChange={onChange} rows={3} value={form.shortDescription} />
-    </div>
-  );
-}
-
-export function GameMediaStep({
-  cardDesktopCoverPreview,
-  cardMobileCoverPreview,
-  coverPreview,
-  desktopCoverPreview,
-  galleryPreview,
-  isTrailerVideoUploading,
-  onVideoUpload,
-  setCardDesktopCoverPreview,
-  setCardMobileCoverPreview,
-  setCoverPreview,
-  setDesktopCoverCropFile,
-  setForm,
-  setGalleryPreview,
-  setTrailerThumbnailPreview,
-  trailerThumbnailPreview,
-  trailerVideoPreview,
-}) {
-  return (
-    <div className="space-y-4">
+      <TextField label="عنوان" name="title" onChange={onChange} value={form.title} />
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">آیکون *</span>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">تصویر کارت </span>
           <ThumbnailUpload
             name="cardDesktopCover"
             preview={cardDesktopCoverPreview}
@@ -592,8 +527,8 @@ export function GameMediaStep({
             title="انتخاب"
           />
         </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر جزئیات موبایل</span>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">تصویر جزئیات موبایل</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1440 × 1080</p>
           <ThumbnailUpload
             name="cardMobileCover"
@@ -603,8 +538,8 @@ export function GameMediaStep({
             title="انتخاب"
           />
         </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر جزئیات دسکتاپ</span>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">تصویر جزئیات دسکتاپ</span>
           <p className="mb-3 text-xs text-zinc-500">خروجی برش: 1920 × 1080</p>
           <ThumbnailUpload
             name="desktopCover"
@@ -617,22 +552,14 @@ export function GameMediaStep({
           />
         </div>
       </div>
-      <MediaStep galleryPreview={galleryPreview} setForm={setForm} setGalleryPreview={setGalleryPreview} />
-      <VideosStep
-        isTrailerVideoUploading={isTrailerVideoUploading}
-        onVideoUpload={onVideoUpload}
-        setForm={setForm}
-        setTrailerThumbnailPreview={setTrailerThumbnailPreview}
-        trailerThumbnailPreview={trailerThumbnailPreview}
-        trailerVideoPreview={trailerVideoPreview}
-      />
     </div>
   );
 }
 
-export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, gameKeywordOptions, genreOptions, onChange, setArrayField }) {
+export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, gameKeywordOptions, genreOptions, onChange, setArrayField, tagOptions }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
+      <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
       <div className="space-y-3">
         <MultiSelectDropdown label="ژانرها" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
         <StatusSwitch
@@ -643,11 +570,11 @@ export function RelationsStep({ categoryOptions, collectionOptions, companyOptio
           onChange={onChange}
         />
       </div>
-      <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
-      <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
-      <MultiSelectDropdown label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
       <MultiSelectDropdown label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
       <MultiSelectDropdown label="ناشرها" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
+      <MultiSelectDropdown label="تگ‌های سئو" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
+      <MultiSelectDropdown label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
+      <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
     </div>
   );
 }
@@ -671,7 +598,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
         options={offlinePlayerOptions}
         value={form.offlinePlayers}
       />
-      <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+      <div className="space-y-3 rounded-xl border border-zinc-800 bg-black p-4">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
           <StatusSwitch
             checked={form.hasOnlineMode}
@@ -736,10 +663,7 @@ export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
       <div className="md:col-span-3">
         <StatusSwitch checked={form.isFeatured} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
       </div>
-      <div className="md:col-span-3">
-        <StatusSwitch checked={form.isPs5ProEnhanced} id="isPs5ProEnhanced" label="بهینه برای PS5 Pro" name="isPs5ProEnhanced" onChange={onChange} />
-      </div>
-      <div className="md:col-span-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4 space-y-3">
+      <div className="md:col-span-3 rounded-xl border border-zinc-800 bg-black p-4 space-y-3">
         <StatusSwitch checked={form.hasDubbing} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
         <StatusSwitch checked={form.hasSubtitle} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />
       </div>
@@ -759,6 +683,10 @@ export function PlatformSizesStep({ form, platformOptions, setArrayField }) {
         items={form.platformSizes}
         onChange={(value) => setArrayField("platformSizes", value)}
         title="حجم نسخه‌های پلتفرم"
+      />
+      <SearchTitleRowsEditor
+        items={form.searchTitles}
+        onChange={(value) => setArrayField("searchTitles", value)}
       />
     </div>
   );
@@ -863,44 +791,12 @@ export function DlcEditionStep({ form, setArrayField }) {
   );
 }
 
-export function DlcStep({ form, setArrayField }) {
-  return (
-    <DlcRowsEditor
-      title="DLC ها"
-      items={form.dlcs}
-      onChange={(value) => setArrayField("dlcs", value)}
-      typeOptions={dlcTypeOptions}
-    />
-  );
-}
-
-export function EditionsStep({ form, setArrayField }) {
-  return (
-    <EditionRowsEditor
-      title="نسخه‌های بازی"
-      items={form.extraEditions}
-      onChange={(value) => setArrayField("extraEditions", value)}
-    />
-  );
-}
-
-export function SeoTagsStep({ form, setArrayField, tagOptions }) {
-  return (
-    <MultiSelectDropdown
-      label="تگ‌های سئو"
-      onChange={(value) => setArrayField("tags", value)}
-      options={tagOptions}
-      value={form.tags}
-    />
-  );
-}
-
 export function PatchStep({ form, onChange, patchImagePreview, setForm, setPatchImagePreview }) {
   return (
     <div className="grid gap-4">
       <TextField label="عنوان پچ" name="patchTitle" onChange={onChange} value={form.patchTitle} />
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-        <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">عکس پچ</span>
+      <div className="rounded-xl border border-zinc-800 bg-black p-4">
+        <span className="mb-3 block text-sm text-zinc-300">عکس پچ</span>
         <ThumbnailUpload
           name="patchImage"
           preview={patchImagePreview}
@@ -1017,8 +913,8 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4">
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">گالری</span>
           <ThumbnailUpload
             multiple
             name="gallery"
@@ -1032,7 +928,7 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {galleryPreview.map((item, index) => (
                 <div
-                  className={`group rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-2 transition ${
+                  className={`group rounded-xl border border-zinc-800 bg-zinc-950 p-2 transition ${
                     draggedId === item.id ? "opacity-60 ring-1 ring-white" : "hover:border-zinc-600"
                   }`}
                   draggable
@@ -1042,16 +938,16 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
                   onDragOver={(event) => event.preventDefault()}
                   onDragStart={() => setDraggedId(item.id)}
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black">
+                  <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-800 bg-black">
                     <img alt="gallery" className="h-full w-full object-cover" src={item.url} />
-                    <span className="absolute right-2 top-2 rounded-md bg-white dark:bg-black/70 px-2 py-1 text-[10px] text-zinc-950 dark:text-white">
+                    <span className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[10px] text-white">
                       {index + 1}
                     </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <label
                       aria-label="ویرایش تصویر"
-                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 transition hover:border-white hover:text-zinc-950 dark:text-white"
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
                       title="ویرایش"
                     >
                       <Edit className="h-4 w-4" />
@@ -1064,7 +960,7 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
                     </label>
                     <button
                       aria-label="حذف تصویر"
-                      className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 text-red-300 transition hover:border-red-500 hover:text-red-200"
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-800 text-red-300 transition hover:border-red-500 hover:text-red-200"
                       onClick={() => removeItem(item.id)}
                       title="حذف"
                       type="button"
@@ -1076,7 +972,7 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center text-sm text-zinc-500">
+            <div className="mt-4 rounded-xl border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-500">
               هنوز تصویری برای گالری انتخاب نشده است.
             </div>
           )}
@@ -1097,8 +993,8 @@ export function VideosStep({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تریلر</span>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">تریلر</span>
           <ThumbnailUpload
             accept="video/*"
             disabled={isTrailerVideoUploading}
@@ -1113,8 +1009,8 @@ export function VideosStep({
           />
           {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
         </div>
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر تریلر</span>
+        <div className="rounded-xl border border-zinc-800 bg-black p-4">
+          <span className="mb-3 block text-sm text-zinc-300">تصویر تریلر</span>
           <ThumbnailUpload
             imageSize={150}
             name="trailerThumbnail"

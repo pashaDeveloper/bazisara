@@ -31,12 +31,17 @@ export function GameCard({ game }: { game: Game }) {
       className="group block w-full space-y-2 transition hover:-translate-y-1"
       dir="ltr"
     >
-      <div className="aspect-square overflow-hidden rounded-xl bg-zinc-900">
+      <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
         {image ? (
           <img alt={game.title} className="h-full w-full object-cover" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}
+        {game.isPs5ProEnhanced ? (
+          <span className="absolute right-2 top-2 rounded-lg bg-blue-600 px-2 py-1 text-[10px] font-bold text-white shadow">
+            PS5 Pro
+          </span>
+        ) : null}
       </div>
       {game.title ? (
         <h2 className="line-clamp-2 text-left text-md font-bold leading-5 text-zinc-950">

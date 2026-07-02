@@ -291,6 +291,10 @@ const gameSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isPs5ProEnhanced: {
+      type: Boolean,
+      default: false,
+    },
     views: {
       type: Number,
       default: 0,
