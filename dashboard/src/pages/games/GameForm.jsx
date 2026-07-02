@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -27,7 +27,6 @@ import {
   DlcStep,
   EditionsStep,
   GameMediaStep,
-  PatchStep,
   PlatformSizesStep,
   PlayersStep,
   ReleaseStep,
@@ -116,7 +115,6 @@ const formSections = [
   { key: "dlc", title: "محتویات اضافی (DLC)" },
   { key: "editions", title: "نسخه‌های بازی" },
   { key: "relatedGames", title: "بازی‌های مشابه" },
-  { key: "patch", title: "پچ آنلاک" },
   { key: "review", title: "نقد و بررسی بازی توسط رسانه‌ها" },
   { key: "seo", title: "تگ‌های سئو" },
   { key: "social", title: "شبکه‌های اجتماعی" },
@@ -238,7 +236,6 @@ function GameForm({ mode = "create" }) {
   const [galleryPreview, setGalleryPreview] = useState([]);
   const [trailerVideoPreview, setTrailerVideoPreview] = useState("");
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
-  const [patchImagePreview, setPatchImagePreview] = useState("");
   const [activePreviewTab, setActivePreviewTab] = useState("form");
   const [isSlugTouched, setIsSlugTouched] = useState(false);
   const [videoUploadState, setVideoUploadState] = useState({
@@ -382,7 +379,6 @@ function GameForm({ mode = "create" }) {
     setGalleryPreview(existingGallery);
     setTrailerVideoPreview(game.trailerVideo?.url || "");
     setTrailerThumbnailPreview(game.trailerThumbnail?.url || "");
-    setPatchImagePreview(game.patchImage?.url || "");
     setIsSlugTouched(Boolean(game.slug));
   }, [gameData]);
 
@@ -689,16 +685,6 @@ function GameForm({ mode = "create" }) {
         return <DlcStep form={form} setArrayField={setArrayField} />;
       case "editions":
         return <EditionsStep form={form} setArrayField={setArrayField} />;
-      case "patch":
-        return (
-          <PatchStep
-            form={form}
-            onChange={handleChange}
-            patchImagePreview={patchImagePreview}
-            setForm={setForm}
-            setPatchImagePreview={setPatchImagePreview}
-          />
-        );
       case "relatedGames":
         return <RelatedGamesStep form={form} relatedGameOptions={relatedGameOptions} setArrayField={setArrayField} />;
       case "review":

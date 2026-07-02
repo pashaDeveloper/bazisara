@@ -1,10 +1,12 @@
-import React from "react";
+﻿import React from "react";
 import DisplayImages from "@/components/shared/DisplayImages";
 import SocialLinksInput from "@/components/shared/SocialLinksInput";
 import FormPageBuilder from "@/components/shared/input/FormPageBuilder";
 import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
 import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import Edit from "@/components/icons/Edit";
+import OutlineEye from "@/components/icons/OutlineEye";
+import OutlineEyeInvisible from "@/components/icons/OutlineEyeInvisible";
 import Plus from "@/components/icons/Plus";
 import Trash from "@/components/icons/Trash";
 import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/Dropdown";
@@ -631,17 +633,33 @@ export function GameMediaStep({
 }
 
 export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, gameKeywordOptions, genreOptions, onChange, setArrayField }) {
+  const toggleGenresVisibility = () => {
+    onChange?.({
+      target: {
+        checked: !form.showGenresInCategories,
+        name: "showGenresInCategories",
+        type: "checkbox",
+      },
+    });
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_48px]">
         <MultiSelectDropdown label="ژانرها" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
-        <StatusSwitch
-          checked={form.showGenresInCategories}
-          id="showGenresInCategories"
-          label="عدم نمایش ژانر"
-          name="showGenresInCategories"
-          onChange={onChange}
-        />
+        <button
+          aria-label={form.showGenresInCategories ? "نمایش ژانر در دسته‌بندی" : "عدم نمایش ژانر در دسته‌بندی"}
+          className={`mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border transition ${
+            form.showGenresInCategories
+              ? "border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300"
+              : "border-zinc-200 bg-white text-zinc-600 hover:border-emerald-500 hover:text-emerald-600 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:border-blue-500 dark:hover:text-blue-300"
+          }`}
+          onClick={toggleGenresVisibility}
+          title={form.showGenresInCategories ? "ژانر در دسته‌بندی مخفی است" : "ژانر در دسته‌بندی نمایش داده می‌شود"}
+          type="button"
+        >
+          {form.showGenresInCategories ? <OutlineEyeInvisible className="h-5 w-5" /> : <OutlineEye className="h-5 w-5" />}
+        </button>
       </div>
       <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
       <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
