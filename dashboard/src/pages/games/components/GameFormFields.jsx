@@ -11,7 +11,7 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function TextField({ label, name, onChange, placeholder, type = "text", value, dir }) {
+export function TextField({ label, name, onChange, placeholder, type = "text", value, dir, ...props }) {
   return (
     <label className="space-y-2">
       <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
@@ -23,6 +23,7 @@ export function TextField({ label, name, onChange, placeholder, type = "text", v
         placeholder={placeholder}
         type={type}
         value={value}
+        {...props}
       />
     </label>
   );
@@ -147,13 +148,21 @@ export function DatePickerField({ label, onChange, value }) {
   };
 
   const formatDateInput = (input) => {
-    const digits = normalizeDigits(input)
-      .replace(/[^0-9]/g, "")
-      .slice(0, 8);
+    const normalized = normalizeDigits(input).trim();
+    const separatedParts = normalized.split(/[/-]/).filter(Boolean);
 
-    if (digits.length <= 4) return digits;
-    if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+    if (separatedParts.length === 3) {
+      const [month, day, year] = separatedParts.map((part) => part.replace(/[^0-9]/g, ""));
+      if (month && day && year) {
+        return `${month.padStart(2, "0").slice(0, 2)}-${day.padStart(2, "0").slice(0, 2)}-${year.slice(0, 4)}`;
+      }
+    }
+
+    const digits = normalized.replace(/[^0-9]/g, "").slice(0, 8);
+
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
   };
 
   const handleInputChange = (event) => {
@@ -186,7 +195,7 @@ export function DatePickerField({ label, onChange, value }) {
         <input
           className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 pr-11 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
           inputMode="numeric"
-          placeholder="YYYY-MM-DD"
+          placeholder="MM-DD-YYYY"
           value={textValue}
           onChange={handleInputChange}
         />

@@ -34,9 +34,6 @@ export function GameCardPreview({ coverPreview, form }) {
         ) : (
           <SkeletonBlock className="h-4 w-2/3" />
         )}
-        {form.isPs5ProEnhanced ? (
-          <span className="inline-flex rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-bold text-white">PS5 Pro</span>
-        ) : null}
       </div>
     </div>
   );
@@ -94,7 +91,6 @@ export function GameDetailPreview({
     ["رده سنی", form.ageRating],
     ["زمان تقریبی گیم‌پلی", form.gameplayTime],
     ["امتیاز متاکریتیک", form.metacriticScore],
-    ["بهینه برای PS5 Pro", form.isPs5ProEnhanced ? "بله" : ""],
     ["ژانرها", genres.join("، ")],
   ];
 

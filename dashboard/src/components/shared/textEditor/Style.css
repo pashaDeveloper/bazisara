@@ -183,3 +183,36 @@ html.dark .page-builder .preview-content a {
   color: inherit;
 }
 
+.game-summary-editor,
+.game-summary-editor .ck,
+.game-summary-editor .ck.ck-editor,
+.game-summary-editor .ck-editor__top,
+.game-summary-editor .ck-editor__main,
+.game-summary-editor .ck.ck-toolbar,
+.game-summary-editor .ck.ck-sticky-panel,
+.game-summary-editor .ck.ck-sticky-panel__content {
+  max-width: 100%;
+}
+
+.game-summary-editor .ck.ck-editor {
+  width: 100%;
+}
+
+.game-summary-editor .ck.ck-toolbar {
+  flex-wrap: wrap;
+  overflow-x: auto;
+}
+
+.game-summary-editor .ck-content {
+  min-height: 180px;
+  height: 220px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.game-summary-editor .ck.ck-editor__main > .ck-editor__editable {
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+}
+

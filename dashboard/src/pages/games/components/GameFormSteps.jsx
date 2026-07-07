@@ -2,6 +2,7 @@
 import CloudUpload from "@/components/icons/CloudUpload";
 import SocialLinksInput from "@/components/shared/SocialLinksInput";
 import FormPageBuilder from "@/components/shared/input/FormPageBuilder";
+import MyEditor from "@/components/shared/textEditor/TextEditor";
 import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
 import StatusSwitch from "@/components/shared/button/StatusSwitch";
 import Edit from "@/components/icons/Edit";
@@ -12,6 +13,7 @@ import Trash from "@/components/icons/Trash";
 import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/Dropdown";
 import { DatePickerField, TextField, TextareaField } from "./GameFormFields";
 import { dlcTypeOptions } from "../gameOptions";
+import { makeGameSlug } from "../gameFormUtils";
 
 function TextListEditor({ label, items = [], onChange, placeholder = "مورد جدید" }) {
   const rows = items.length ? items : [""];
@@ -398,16 +400,74 @@ function LinkRowsEditor({ label, items = [], onChange }) {
   );
 }
 
-function LegacySearchTitleRowsEditor({ items = [], onChange }) {
+function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitleSlug }) {
   const rows = items.length ? items : [{ title: "", slug: "" }];
+  const autoSlugsRef = React.useRef({});
+  const translationTimersRef = React.useRef({});
 
   const updateItem = (index, patch) => {
     const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
     onChange?.(next.filter((item) => String(item.title || "").trim() || String(item.slug || "").trim()));
   };
 
+  const scheduleTranslatedSlug = (index, title) => {
+    if (!translateSearchTitleSlug) return;
+    window.clearTimeout(translationTimersRef.current[index]);
+
+    const trimmedTitle = String(title || "").trim();
+    if (!trimmedTitle) return;
+
+    translationTimersRef.current[index] = window.setTimeout(async () => {
+      try {
+        const response = await translateSearchTitleSlug(trimmedTitle).unwrap();
+        const translatedSlug = response?.data?.slug || "";
+        if (!translatedSlug) return;
+
+        const titleInput = document.querySelector(`[name="search-title-${index}"]`);
+        const slugInput = document.querySelector(`[name="search-title-slug-${index}"]`);
+        if (titleInput?.value !== trimmedTitle) return;
+
+        const currentSlug = String(slugInput?.value || "");
+        const previousAutoSlug = autoSlugsRef.current[index] || "";
+        if (currentSlug && currentSlug !== previousAutoSlug) return;
+
+        autoSlugsRef.current[index] = translatedSlug;
+        updateItem(index, { title: trimmedTitle, slug: translatedSlug });
+      } catch (_) {}
+    }, 500);
+  };
+
+  const updateTitle = (index, title) => {
+    const currentItem = rows[index] || {};
+    const currentSlug = String(currentItem.slug || "");
+    const previousAutoSlug = autoSlugsRef.current[index] || makeGameSlug(currentItem.title);
+    updateItem(index, {
+      title,
+      ...(currentSlug && currentSlug !== previousAutoSlug ? {} : { slug: "" }),
+    });
+    scheduleTranslatedSlug(index, title);
+  };
+
   const addItem = () => onChange?.([...rows, { title: "", slug: "" }]);
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
+  const focusNextTitle = (index) => {
+    window.setTimeout(() => {
+      document.querySelector(`[name="search-title-${index + 1}"]`)?.focus();
+    }, 0);
+  };
+
+  const handleInputKeyDown = (event, index) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+
+    if (rows[index + 1]) {
+      focusNextTitle(index);
+      return;
+    }
+
+    onChange?.([...rows, { title: "", slug: "" }]);
+    focusNextTitle(index);
+  };
 
   return (
     <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
@@ -427,7 +487,8 @@ function LegacySearchTitleRowsEditor({ items = [], onChange }) {
             <TextField
               label="عنوان"
               name={`search-title-${index}`}
-              onChange={(event) => updateItem(index, { title: event.target.value })}
+              onChange={(event) => updateTitle(index, event.target.value)}
+              onKeyDown={(event) => handleInputKeyDown(event, index)}
               placeholder="مثلا بازی اکشن پلی استیشن 5"
               value={item.title}
             />
@@ -436,6 +497,7 @@ function LegacySearchTitleRowsEditor({ items = [], onChange }) {
               label="اسلاگ"
               name={`search-title-slug-${index}`}
               onChange={(event) => updateItem(index, { slug: event.target.value })}
+              onKeyDown={(event) => handleInputKeyDown(event, index)}
               placeholder="ps5-action-games"
               value={item.slug}
             />
@@ -453,35 +515,6 @@ function LegacySearchTitleRowsEditor({ items = [], onChange }) {
   );
 }
 
-function SearchTitleRowsEditor({ items = [], onChange }) {
-  const value = items.map((item) => item?.title || "").filter(Boolean).join("\n");
-
-  const handleChange = (event) => {
-    const next = event.target.value
-      .split(/\r?\n/)
-      .map((title) => title.trim())
-      .filter(Boolean)
-      .map((title) => ({ title, slug: "" }));
-
-    onChange?.(next);
-  };
-
-  return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">عناوین جستجو</span>
-        <span className="text-xs text-zinc-500">Enter</span>
-      </div>
-      <textarea
-        className="min-h-28 w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm leading-7 text-zinc-950 outline-none transition placeholder:text-zinc-500 focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-        onChange={handleChange}
-        placeholder="هر عنوان را در یک خط جداگانه بنویسید"
-        value={value}
-      />
-    </div>
-  );
-}
-
 export function BasicStep({
   cardDesktopCoverPreview,
   cardMobileCoverPreview,
@@ -495,13 +528,15 @@ export function BasicStep({
   onChange,
   setArrayField,
   setForm,
+  translateSearchTitleSlug,
 }) {
   return (
     <div className="grid gap-4">
       <TextField label="نام بازی *" name="title" onChange={onChange} value={form.title} />
-      <SearchTitleRowsEditor
+      <LegacySearchTitleRowsEditor
         items={form.searchTitles}
         onChange={(value) => setArrayField("searchTitles", value)}
+        translateSearchTitleSlug={translateSearchTitleSlug}
       />
       <TextField dir="ltr" label="لینک بازی" name="slug" onChange={onChange} value={form.slug} />
       <DatePickerField
@@ -509,7 +544,15 @@ export function BasicStep({
         onChange={(value) => setForm((prev) => ({ ...prev, releaseDate: value }))}
         value={form.releaseDate}
       />
-      <TextareaField label="معرفی و خلاصه داستان" name="shortDescription" onChange={onChange} rows={3} value={form.shortDescription} />
+      <div className="min-w-0 space-y-2">
+        <span className="text-sm text-zinc-700 dark:text-zinc-300">معرفی و خلاصه داستان</span>
+        <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+          <MyEditor
+            value={form.shortDescription}
+            onChange={(value) => setForm((prev) => ({ ...prev, shortDescription: value }))}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -716,12 +759,23 @@ export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
       <div className="md:col-span-3">
         <StatusSwitch checked={form.isFeatured} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
       </div>
-      <div className="md:col-span-3">
-        <StatusSwitch checked={form.isPs5ProEnhanced} id="isPs5ProEnhanced" label="بهینه برای PS5 Pro" name="isPs5ProEnhanced" onChange={onChange} />
-      </div>
       <div className="md:col-span-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4 space-y-3">
         <StatusSwitch checked={form.hasDubbing} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
         <StatusSwitch checked={form.hasSubtitle} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />
+        <StatusSwitch
+          checked={form.hasFreePersianSubtitle}
+          id="hasFreePersianSubtitle"
+          label="زیرنویس فارسی رایگان دارد؟"
+          name="hasFreePersianSubtitle"
+          onChange={onChange}
+        />
+        <StatusSwitch
+          checked={form.hasPaidPersianSubtitle}
+          id="hasPaidPersianSubtitle"
+          label="زیرنویس فارسی غیررایگان دارد؟"
+          name="hasPaidPersianSubtitle"
+          onChange={onChange}
+        />
       </div>
     </div>
   );

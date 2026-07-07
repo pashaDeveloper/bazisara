@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const translate = require("google-translate-api-x");
 const Game = require("../models/game.model");
 const Category = require("../models/category.model");
 const Genre = require("../models/genre.model");
@@ -39,6 +40,38 @@ function makeSlug(value) {
     .replace(/[^a-z0-9\u0600-\u06ff-]+/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function makeEnglishSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function hasPersianLetters(value) {
+  return /[\u0600-\u06ff]/.test(String(value || ""));
+}
+
+async function translateTitleToEnglishSlug(value) {
+  const source = String(value || "").trim();
+  if (!source) return "";
+
+  const directSlug = makeEnglishSlug(source);
+  if (directSlug && !hasPersianLetters(source)) return directSlug;
+
+  try {
+    const translated = await translate(source, { from: "fa", to: "en" });
+    const translatedText = Array.isArray(translated) ? translated[0]?.text : translated?.text;
+    const translatedSlug = makeEnglishSlug(translatedText);
+    if (translatedSlug) return translatedSlug;
+  } catch (_) {}
+
+  return directSlug || makeSlug(source);
 }
 
 async function makeUniqueSlug(title, currentId = null) {
@@ -369,6 +402,10 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     edition: body.edition !== undefined ? String(body.edition).trim() : undefined,
     hasDubbing: body.hasDubbing !== undefined ? parseBoolean(body.hasDubbing) : undefined,
     hasSubtitle: body.hasSubtitle !== undefined ? parseBoolean(body.hasSubtitle) : undefined,
+    hasFreePersianSubtitle:
+      body.hasFreePersianSubtitle !== undefined ? parseBoolean(body.hasFreePersianSubtitle) : undefined,
+    hasPaidPersianSubtitle:
+      body.hasPaidPersianSubtitle !== undefined ? parseBoolean(body.hasPaidPersianSubtitle) : undefined,
     dlcs:
       body.dlcs !== undefined
         ? parseObjectArray(body.dlcs, (item) => ({
@@ -428,8 +465,6 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
-    isPs5ProEnhanced:
-      body.isPs5ProEnhanced !== undefined ? parseBoolean(body.isPs5ProEnhanced) : undefined,
   };
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
@@ -531,6 +566,26 @@ async function syncGameCollections(gameId, previousCollections = [], nextCollect
     );
   }
 }
+
+exports.translateSearchTitleSlug = async (req, res) => {
+  const title = String(req.body?.title || "").trim();
+
+  if (!title) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان برای ترجمه الزامی است",
+    });
+  }
+
+  const slug = await translateTitleToEnglishSlug(title);
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    data: { slug },
+  });
+};
 
 exports.createGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles);

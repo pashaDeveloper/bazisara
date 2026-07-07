@@ -37,11 +37,6 @@ export function GameCard({ game }: { game: Game }) {
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}
-        {game.isPs5ProEnhanced ? (
-          <span className="absolute right-2 top-2 rounded-lg bg-blue-600 px-2 py-1 text-[10px] font-bold text-white shadow">
-            PS5 Pro
-          </span>
-        ) : null}
       </div>
       {game.title ? (
         <h2 className="line-clamp-2 text-left text-md font-bold leading-5 text-zinc-950">

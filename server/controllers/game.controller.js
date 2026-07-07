@@ -8,6 +8,14 @@ exports.createGame = async (req, res, next) => {
   }
 };
 
+exports.translateSearchTitleSlug = async (req, res, next) => {
+  try {
+    await gameService.translateSearchTitleSlug(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getGames = async (req, res, next) => {
   try {
     await gameService.getGames(req, res);

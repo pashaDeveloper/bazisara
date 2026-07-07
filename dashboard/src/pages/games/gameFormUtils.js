@@ -4,19 +4,34 @@ export function toIdArray(value) {
 
 export function formatDate(value) {
   if (!value) return "";
-  return new Date(value).toISOString().slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return formatDateForInput(date);
+}
+
+export function makeGameSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\u0600-\u06ff\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export function formatDateForInput(date) {
-  const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const year = date.getFullYear();
+  return `${month}-${day}-${year}`;
 }
 
 export function parseInputDate(value) {
   if (!value) return undefined;
-  const [year, month, day] = value.split("-").map(Number);
+  const parts = String(value).split(/[/-]/).map(Number);
+  if (parts.length !== 3) return undefined;
+  const [first, second, third] = parts;
+  const [year, month, day] = first > 31 ? [first, second, third] : [third, first, second];
   if (!year || !month || !day) return undefined;
   return new Date(year, month - 1, day);
 }

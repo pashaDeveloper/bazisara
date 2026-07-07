@@ -43,16 +43,26 @@ export const dlcTypeOptions = [
 ];
 
 export const ageRatingOptions = [
-  { label: "Everyone - مناسب همه", value: "مناسب همه", legacyValues: ["Everyone"] },
-  { label: "Everyone 10+ - مناسب بالای ۱۰ سال", value: "مناسب بالای ۱۰ سال", legacyValues: ["Everyone 10+"] },
-  { label: "Teen - مناسب نوجوانان", value: "مناسب نوجوانان", legacyValues: ["Teen"] },
-  { label: "Mature 17+ - مناسب بالای ۱۷ سال", value: "مناسب بالای ۱۷ سال", legacyValues: ["Mature 17+"] },
-  { label: "Adults Only 18+ - مناسب بالای ۱۸ سال", value: "مناسب بالای ۱۸ سال", legacyValues: ["Adults Only 18+", "+18"] },
-  { label: "PEGI 3 - پگی ۳", value: "پگی ۳", legacyValues: ["PEGI 3"] },
-  { label: "PEGI 7 - پگی ۷", value: "پگی ۷", legacyValues: ["PEGI 7"] },
-  { label: "PEGI 12 - پگی ۱۲", value: "پگی ۱۲", legacyValues: ["PEGI 12"] },
-  { label: "PEGI 16 - پگی ۱۶", value: "پگی ۱۶", legacyValues: ["PEGI 16"] },
-  { label: "PEGI 18 - پگی ۱۸", value: "پگی ۱۸", legacyValues: ["PEGI 18", "+18 / PEGI 18"] },
+  {
+    label: "همه سنین",
+    value: "همه سنین",
+    legacyValues: ["Everyone", "مناسب همه", "PEGI 3", "پگی ۳"],
+  },
+  {
+    label: "بچگانه",
+    value: "بچگانه",
+    legacyValues: ["Everyone 10+", "مناسب بالای ۱۰ سال", "PEGI 7", "پگی ۷"],
+  },
+  {
+    label: "نوجوانان",
+    value: "نوجوانان",
+    legacyValues: ["Teen", "مناسب نوجوانان", "PEGI 12", "PEGI 16", "پگی ۱۲", "پگی ۱۶"],
+  },
+  {
+    label: "بزرگسالان",
+    value: "بزرگسالان",
+    legacyValues: ["Mature 17+", "Adults Only 18+", "+18", "+18 / PEGI 18", "PEGI 18", "مناسب بالای ۱۷ سال", "مناسب بالای ۱۸ سال", "پگی ۱۸"],
+  },
 ];
 
 export const launcherOptions = [

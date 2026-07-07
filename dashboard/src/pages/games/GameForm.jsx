@@ -7,14 +7,20 @@ import { useGetCategoriesQuery } from "../../services/category/categoryApi";
 import { useGetCompaniesQuery } from "../../services/companyApi";
 import { useGetGenresQuery } from "../../services/genreApi";
 import { useGetTagsQuery } from "../../services/tagApi";
-import { useCreateGameMutation, useGetGameQuery, useGetGamesQuery, useUpdateGameMutation } from "../../services/gameApi";
+import {
+  useCreateGameMutation,
+  useGetGameQuery,
+  useGetGamesQuery,
+  useTranslateGameSearchTitleSlugMutation,
+  useUpdateGameMutation,
+} from "../../services/gameApi";
 import {
   ageRatingOptions,
   editionOptions,
   launcherOptions,
   offlinePlayerOptions,
 } from "./gameOptions";
-import { formatDate, normalizeOptionValue, toIdArray } from "./gameFormUtils";
+import { formatDate, makeGameSlug, normalizeOptionValue, toIdArray } from "./gameFormUtils";
 import { useGetPlatformsQuery } from "@/services/platformApi";
 import { useGetGameCollectionsQuery } from "@/services/gameCollectionApi";
 import { useGetGameKeywordsQuery } from "@/services/gameKeywordApi";
@@ -70,6 +76,8 @@ const initialForm = {
   edition: "استاندارد",
   hasDubbing: false,
   hasSubtitle: false,
+  hasFreePersianSubtitle: false,
+  hasPaidPersianSubtitle: false,
   dlcs: [],
   extraEditions: [],
   releaseDate: "",
@@ -78,7 +86,6 @@ const initialForm = {
   gameplayTime: "",
   metacriticScore: "",
   isFeatured: false,
-  isPs5ProEnhanced: false,
   socialLinks: [],
   trailerVideo: null,
   trailerThumbnail: null,
@@ -127,23 +134,12 @@ const previewTabs = [
   { key: "desktop", label: "دسکتاپ" },
 ];
 
-function makeGameSlug(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^\u0600-\u06ff\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 function GameFormSection({ children, index, title }) {
   return (
-    <section className="relative grid gap-4 pr-12 md:grid-cols-[190px_minmax(0,1fr)] md:gap-8 md:pr-0" dir="rtl">
+    <section className="relative grid gap-4 pr-12 md:grid-cols-[190px_minmax(0,1fr)] md:gap-3 md:pr-0" dir="rtl">
       <div>
         <div className="sticky top-28 flex items-center gap-3">
           <h2 className="min-w-0 flex-1 text-right text-sm font-bold leading-6 text-zinc-700 dark:text-zinc-200">{title}</h2>
-          <span className="hidden h-px w-8 shrink-0 bg-emerald-500 dark:bg-blue-500 md:block" />
           <span className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-500 bg-white text-sm font-bold text-emerald-600 shadow-sm dark:border-blue-500 dark:bg-zinc-900 dark:text-blue-300">
             {index + 1}
           </span>
@@ -260,6 +256,7 @@ function GameForm({ mode = "create" }) {
   const [deleteUpload] = useDeleteUploadMutation();
   const [createGame, createState] = useCreateGameMutation();
   const [updateGame, updateState] = useUpdateGameMutation();
+  const [translateSearchTitleSlug] = useTranslateGameSearchTitleSlugMutation();
 
   const categories = categoriesData?.data || [];
   const genres = genresData?.data || [];
@@ -354,13 +351,14 @@ function GameForm({ mode = "create" }) {
         : [],
       hasDubbing: Boolean(game.hasDubbing),
       hasSubtitle: Boolean(game.hasSubtitle),
+      hasFreePersianSubtitle: Boolean(game.hasFreePersianSubtitle),
+      hasPaidPersianSubtitle: Boolean(game.hasPaidPersianSubtitle),
       releaseDate: formatDate(game.releaseDate),
       officialWebsite: game.officialWebsite || "",
       ageRating: normalizeOptionValue(game.ageRating, ageRatingOptions),
       gameplayTime: game.gameplayTime || "",
       metacriticScore: game.metacriticScore ?? "",
       isFeatured: Boolean(game.isFeatured),
-      isPs5ProEnhanced: Boolean(game.isPs5ProEnhanced),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
       trailerThumbnail: null,
@@ -633,6 +631,7 @@ function GameForm({ mode = "create" }) {
             onChange={handleChange}
             setArrayField={setArrayField}
             setForm={setForm}
+            translateSearchTitleSlug={translateSearchTitleSlug}
           />
         );
       case "media":
@@ -829,4 +828,3 @@ function GameForm({ mode = "create" }) {
 }
 
 export default GameForm;
-

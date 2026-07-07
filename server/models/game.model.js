@@ -211,6 +211,14 @@ const gameSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    hasFreePersianSubtitle: {
+      type: Boolean,
+      default: false,
+    },
+    hasPaidPersianSubtitle: {
+      type: Boolean,
+      default: false,
+    },
     dlcs: [dlcSchema],
     extraEditions: [extraEditionSchema],
     releaseDate: {
@@ -288,10 +296,6 @@ const gameSchema = new mongoose.Schema(
       },
     ],
     isFeatured: {
-      type: Boolean,
-      default: false,
-    },
-    isPs5ProEnhanced: {
       type: Boolean,
       default: false,
     },

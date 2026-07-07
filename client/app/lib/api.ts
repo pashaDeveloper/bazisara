@@ -76,7 +76,6 @@ export type Game = {
   mobileCover?: Media;
   gallery?: Media[];
   isFeatured?: boolean;
-  isPs5ProEnhanced?: boolean;
   views?: number;
   likes?: number;
   commentsCount?: number;

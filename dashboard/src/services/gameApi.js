@@ -40,6 +40,13 @@ export const gameApi = bazisaraApi.injectEndpoints({
       }),
       invalidatesTags: ["Game"],
     }),
+    translateGameSearchTitleSlug: builder.mutation({
+      query: (title) => ({
+        url: "/games/search-title-slug",
+        method: "POST",
+        body: { title },
+      }),
+    }),
   }),
 });
 
@@ -49,5 +56,6 @@ export const {
   useGetGameQuery,
   useUpdateGameMutation,
   useDeleteGameMutation,
+  useTranslateGameSearchTitleSlugMutation,
 } = gameApi;
 
