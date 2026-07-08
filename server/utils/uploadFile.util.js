@@ -2,6 +2,16 @@ const crypto = require("crypto");
 const path = require("path");
 const sharp = require("sharp");
 
+const imageContentTypes = {
+  avif: "image/avif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+const compressibleImageExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
+
 const getDateFolder = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -13,19 +23,47 @@ const getBaseFolder = (customFolder) => {
   return customFolder ? `${customFolder}/${getDateFolder()}` : getDateFolder();
 };
 
-const prepareFile = async (file) => {
-  const originalExtension = path.extname(file.originalname).replace(".", "").toLowerCase();
-  let extension = originalExtension || "bin";
-  let fileBuffer = file.buffer;
-  let contentType = file.mimetype;
+const getOriginalExtension = (file) => {
+  const filenameExtension = path.extname(file.originalname).replace(".", "").toLowerCase();
 
-  if (["jpg", "jpeg", "png"].includes(extension)) {
-    fileBuffer = await sharp(file.buffer)
-      .toFormat("webp", {
-        quality: 80,
-        lossless: extension === "png",
-      })
-      .toBuffer();
+  if (filenameExtension) return filenameExtension;
+  if (file.mimetype === "image/jpeg") return "jpg";
+  if (file.mimetype === "image/png") return "png";
+  if (file.mimetype === "image/webp") return "webp";
+  if (file.mimetype === "image/avif") return "avif";
+
+  return "bin";
+};
+
+const compressImageLosslessly = async (file, extension) => {
+  if (!compressibleImageExtensions.has(extension)) {
+    return null;
+  }
+
+  const metadata = await sharp(file.buffer, { animated: true }).metadata();
+  if (metadata.pages && metadata.pages > 1) {
+    return null;
+  }
+
+  return sharp(file.buffer)
+    .rotate()
+    .webp({
+      lossless: true,
+      effort: 6,
+    })
+    .toBuffer();
+};
+
+const prepareFile = async (file) => {
+  const originalExtension = getOriginalExtension(file);
+  let extension = originalExtension;
+  let fileBuffer = file.buffer;
+  let contentType = file.mimetype || imageContentTypes[extension] || "application/octet-stream";
+
+  const compressedBuffer = await compressImageLosslessly(file, extension);
+
+  if (compressedBuffer && compressedBuffer.length < file.buffer.length) {
+    fileBuffer = compressedBuffer;
     extension = "webp";
     contentType = "image/webp";
   }

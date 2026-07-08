@@ -539,11 +539,6 @@ export function BasicStep({
         translateSearchTitleSlug={translateSearchTitleSlug}
       />
       <TextField dir="ltr" label="لینک بازی" name="slug" onChange={onChange} value={form.slug} />
-      <DatePickerField
-        label="تاریخ انتشار"
-        onChange={(value) => setForm((prev) => ({ ...prev, releaseDate: value }))}
-        value={form.releaseDate}
-      />
       <div className="min-w-0 space-y-2">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">معرفی و خلاصه داستان</span>
         <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">

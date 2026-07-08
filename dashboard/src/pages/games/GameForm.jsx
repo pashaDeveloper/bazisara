@@ -33,6 +33,7 @@ import {
   DlcStep,
   EditionsStep,
   GameMediaStep,
+  PlatformReleasesStep,
   PlatformSizesStep,
   PlayersStep,
   ReleaseStep,
@@ -80,7 +81,6 @@ const initialForm = {
   hasPaidPersianSubtitle: false,
   dlcs: [],
   extraEditions: [],
-  releaseDate: "",
   officialWebsite: "",
   ageRating: "",
   gameplayTime: "",
@@ -118,7 +118,7 @@ const formSections = [
   { key: "basic", title: "مشخصات اولیه بازی" },
   { key: "media", title: "عکس و فیلم" },
   { key: "specs", title: "مشخصات بازی" },
-  { key: "sizes", title: "حجم بازی" },
+  { key: "sizes", title: "پلتفرم، تاریخ انتشار و حجم بازی" },
   { key: "dlc", title: "محتویات اضافی (DLC)" },
   { key: "editions", title: "نسخه‌های بازی" },
   { key: "relatedGames", title: "بازی‌های مشابه" },
@@ -353,7 +353,6 @@ function GameForm({ mode = "create" }) {
       hasSubtitle: Boolean(game.hasSubtitle),
       hasFreePersianSubtitle: Boolean(game.hasFreePersianSubtitle),
       hasPaidPersianSubtitle: Boolean(game.hasPaidPersianSubtitle),
-      releaseDate: formatDate(game.releaseDate),
       officialWebsite: game.officialWebsite || "",
       ageRating: normalizeOptionValue(game.ageRating, ageRatingOptions),
       gameplayTime: game.gameplayTime || "",
@@ -679,7 +678,12 @@ function GameForm({ mode = "create" }) {
           </div>
         );
       case "sizes":
-        return <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />;
+        return (
+          <div className="space-y-4">
+            <PlatformReleasesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />
+            <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />
+          </div>
+        );
       case "dlc":
         return <DlcStep form={form} setArrayField={setArrayField} />;
       case "editions":

@@ -1,8 +1,6 @@
-const uploadCloudinary = require("../middleware/cloudinaryUpload.middleware");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
 
 const storageUploaders = [
-  { prefix: "/cloudinary", upload: uploadCloudinary },
   { prefix: "/arvan", upload: uploadArvan },
 ];
 

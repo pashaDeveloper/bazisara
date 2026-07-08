@@ -1,5 +1,5 @@
-const uploadLocal = require("./localUpload.middleware");
+const uploadArvan = require("./arvanUpload.middleware");
 
-const upload = (customFolder = null) => uploadLocal(customFolder);
+const upload = (customFolder = null) => uploadArvan(customFolder);
 
 module.exports = upload;

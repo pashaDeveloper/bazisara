@@ -10,6 +10,7 @@ export const platformOptions = [
 ];
 
 export const offlinePlayerOptions = [
+  { label: "ندارد", value: "offline_none" },
   { label: "تک نفره", value: "offline_1" },
   { label: "1-2 نفره", value: "offline_1_2" },
   { label: "1-3 نفره", value: "offline_1_3" },

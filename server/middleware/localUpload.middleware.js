@@ -2,7 +2,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
-const sharp = require("sharp");
+const { getResourceType, prepareFile } = require("../utils/uploadFile.util");
 
 const uploadRoot = path.join(__dirname, "..", "uploads");
 
@@ -20,24 +20,6 @@ const getBaseFolder = (customFolder) => {
 
 const getBaseUrl = (req) => {
   return process.env.LOCAL_UPLOAD_BASE_URL || `${req.protocol}://${req.get("host")}`;
-};
-
-const prepareFile = async (file) => {
-  const originalExtension = path.extname(file.originalname).replace(".", "").toLowerCase();
-  let extension = originalExtension || "bin";
-  let fileBuffer = file.buffer;
-
-  if (["jpg", "jpeg", "png"].includes(extension)) {
-    fileBuffer = await sharp(file.buffer)
-      .toFormat("webp", {
-        quality: 80,
-        lossless: extension === "png",
-      })
-      .toBuffer();
-    extension = "webp";
-  }
-
-  return { extension, fileBuffer };
 };
 
 const uploadLocal = (customFolder = null) => {
@@ -62,7 +44,7 @@ const uploadLocal = (customFolder = null) => {
 
           for (const file of req.files[field]) {
             const hashedName = crypto.randomBytes(16).toString("hex");
-            const { extension, fileBuffer } = await prepareFile(file);
+            const { extension, fileBuffer, contentType } = await prepareFile(file);
             const filename = `${hashedName}.${extension}`;
             const relativeFolder = baseFolder.split("/").filter(Boolean).join(path.sep);
             const destinationFolder = path.join(uploadRoot, relativeFolder);
@@ -80,11 +62,7 @@ const uploadLocal = (customFolder = null) => {
               filename,
               path: filePath,
               format: extension,
-              resource_type: file.mimetype?.startsWith("video/")
-                ? "video"
-                : file.mimetype?.startsWith("image/")
-                  ? "image"
-                  : "raw",
+              resource_type: getResourceType(contentType),
               storage: "local",
             });
           }

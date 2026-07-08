@@ -1,10 +1,8 @@
 const express = require("express");
 const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3");
-const cloudinary = require("cloudinary").v2;
 const verify = require("../middleware/verifyAdmin.middleware");
 const authorize = require("../middleware/authorize.middleware");
 const upload = require("../middleware/upload.middleware");
-const uploadCloudinary = require("../middleware/cloudinaryUpload.middleware");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
 
 const router = express.Router();
@@ -55,25 +53,6 @@ const requirePublicId = (req, res) => {
   return null;
 };
 
-const deleteCloudinaryHandler = async (req, res, next) => {
-  try {
-    const publicId = requirePublicId(req, res);
-    if (!publicId) return;
-
-    await cloudinary.uploader.destroy(publicId, {
-      resource_type: req.body?.resource_type || "image",
-    });
-
-    res.status(200).json({
-      acknowledgement: true,
-      message: "OK",
-      description: "File deleted successfully",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const deleteArvanHandler = async (req, res, next) => {
   try {
     const publicId = requirePublicId(req, res);
@@ -97,13 +76,6 @@ const deleteArvanHandler = async (req, res, next) => {
 };
 
 router.post(
-  "/cloudinary/create",
-  ...uploadAccess,
-  uploadCloudinary("page-builder").single("file"),
-  createUploadHandler
-);
-
-router.post(
   "/arvan/create",
   ...uploadAccess,
   uploadArvan("page-builder").fields([
@@ -113,16 +85,18 @@ router.post(
   createUploadHandler
 );
 
-router.delete("/cloudinary/delete", ...uploadAccess, deleteCloudinaryHandler);
 router.delete("/arvan/delete", ...uploadAccess, deleteArvanHandler);
 
 router.post(
   "/create",
   ...uploadAccess,
-  upload("page-builder").single("file"),
+  upload("page-builder").fields([
+    { name: "file", maxCount: 1 },
+    { name: "upload", maxCount: 1 },
+  ]),
   createUploadHandler
 );
 
-router.delete("/delete", ...uploadAccess, deleteCloudinaryHandler);
+router.delete("/delete", ...uploadAccess, deleteArvanHandler);
 
 module.exports = router;
