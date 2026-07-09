@@ -12,6 +12,9 @@ const imageContentTypes = {
 };
 
 const compressibleImageExtensions = new Set(["jpg", "jpeg", "jfif", "png", "webp"]);
+const resizeWebpQuality = 86;
+const compressionTargetRatio = 0.5;
+const compressionQualities = [86, 82, 78, 74, 70, 66];
 
 const getDateFolder = () => {
   const now = new Date();
@@ -72,10 +75,24 @@ const resizeImage = async (file, extension, options) => {
     })
     .webp({
       effort: 6,
-      quality: 92,
+      quality: resizeWebpQuality,
       smartSubsample: true,
     })
     .toBuffer();
+};
+
+const pickCompressedBuffer = (buffers, originalSize) => {
+  const usableBuffers = buffers.filter((buffer) => buffer && buffer.length < originalSize);
+  if (!usableBuffers.length) {
+    return null;
+  }
+
+  const targetSize = originalSize * compressionTargetRatio;
+  const targetBuffer = usableBuffers
+    .filter((buffer) => buffer.length <= targetSize)
+    .sort((a, b) => b.length - a.length)[0];
+
+  return targetBuffer || usableBuffers.sort((a, b) => a.length - b.length)[0];
 };
 
 const compressImage = async (file, extension) => {
@@ -92,20 +109,20 @@ const compressImage = async (file, extension) => {
   const candidates = await Promise.all(
     [
       normalizedImage.clone().webp({ lossless: true, effort: 6 }).toBuffer(),
-      normalizedImage
-        .clone()
-        .webp({
-          effort: 6,
-          quality: 92,
-          smartSubsample: true,
-        })
-        .toBuffer(),
+      ...compressionQualities.map((quality) =>
+        normalizedImage
+          .clone()
+          .webp({
+            effort: 6,
+            quality,
+            smartSubsample: true,
+          })
+          .toBuffer()
+      ),
     ].map((task) => task.catch(() => null))
   );
 
-  return candidates
-    .filter((buffer) => buffer && buffer.length < file.buffer.length)
-    .sort((a, b) => a.length - b.length)[0] || null;
+  return pickCompressedBuffer(candidates, file.buffer.length);
 };
 
 const prepareFile = async (file, options = {}) => {
