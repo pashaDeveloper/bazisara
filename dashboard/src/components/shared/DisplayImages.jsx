@@ -34,11 +34,11 @@ function UploadOverlay({ state }) {
       {isUploading ? (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/45 text-white">
           <div
-            className="h-12 w-12 animate-spin rounded-full"
+            className="h-8 w-8 animate-spin rounded-full"
             style={{
               background: `conic-gradient(rgb(255 255 255) ${progress * 3.6}deg, rgba(255,255,255,.24) 0deg)`,
-              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
-              mask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
+              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
+              mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
             }}
           />
         </div>

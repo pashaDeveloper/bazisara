@@ -7,6 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { mediaFromUploadOrBody } = require("../utils/media.util");
 
 async function ensureParentExists(parentId) {
   if (!parentId) return null;
@@ -82,13 +83,7 @@ exports.createCategory = async (req, res) => {
     name: String(name).trim(),
     description,
     icon: icon || null,
-    image: req.uploadedFiles?.image?.[0]
-        ? {
-          url: req.uploadedFiles.image[0].url,
-          public_id: req.uploadedFiles.image[0].public_id,
-          storage: req.uploadedFiles.image[0].storage || "",
-        }
-      : undefined,
+    image: mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image),
     parent: parent || null,
     creator: req.admin?._id || null,
   });
@@ -209,13 +204,8 @@ exports.updateCategory = async (req, res) => {
     await ensureIconExists(icon);
     category.icon = icon || null;
   }
-  if (req.uploadedFiles?.image?.[0]) {
-    category.image = {
-      url: req.uploadedFiles.image[0].url,
-      public_id: req.uploadedFiles.image[0].public_id,
-      storage: req.uploadedFiles.image[0].storage || "",
-    };
-  }
+  const image = mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image);
+  if (image) category.image = image;
 
   await category.save();
 

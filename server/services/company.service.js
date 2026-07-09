@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Company = require("../models/company.model");
+const { mediaFromUploadOrBody } = require("../utils/media.util");
 const Icon = require("../models/icon.model");
 const {
   buildSearchQuery,
@@ -60,13 +61,8 @@ const normalizeCompanyPayload = (body, uploadedFiles) => {
     payload.foundedYear = body.foundedYear === "" ? null : Number(body.foundedYear);
   }
 
-  if (uploadedFiles?.logo?.[0]) {
-    payload.logo = {
-      url: uploadedFiles.logo[0].url,
-      public_id: uploadedFiles.logo[0].public_id,
-      storage: uploadedFiles.logo[0].storage || "",
-    };
-  }
+  const logo = mediaFromUploadOrBody(uploadedFiles, "logo", body.logo);
+  if (logo) payload.logo = logo;
 
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)

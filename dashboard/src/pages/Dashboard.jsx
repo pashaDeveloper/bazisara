@@ -145,7 +145,7 @@ function ContentTable({ title, rows, type }) {
     <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm text-zinc-950 dark:text-white">{title}</h2>
-        <Link className="text-xs text-zinc-500 transition hover:text-green-600 dark:text-zinc-400 dark:hover:text-blue-200" to={type === "game" ? "/games" : "/articles"}>
+        <Link className="text-xs text-zinc-500 transition hover:text-green-600 dark:text-zinc-400 dark:hover:text-blue-200" to={type === "game" ? "/games" : "/magazines"}>
           مدیریت
         </Link>
       </div>

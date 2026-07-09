@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ageRatingOptions } from "../gameOptions";
 import { parseInputDate, stripHtml } from "../gameFormUtils";
 
 export function SkeletonBlock({ className = "" }) {
@@ -68,30 +69,37 @@ export function GameDetailPreview({
   const [indicatorStyle, setIndicatorStyle] = useState({ width: 0, right: 0 });
   const resolvedActiveTab = activeTab || localActiveTab;
   const detailTabs = [
-    { key: "intro", label: "معرفی" },
-    { key: "review", label: "نقد و بررسی" },
-    { key: "specs", label: "مشخصات" },
-    { key: "comments", label: "دیدگاه‌ها" },
+    { key: "intro", label: "Ù…Ø¹Ø±ÙÛŒ" },
+    { key: "review", label: "Ù†Ù‚Ø¯ Ùˆ Ø¨Ø±Ø±Ø³ÛŒ" },
+    { key: "specs", label: "Ù…Ø´Ø®ØµØ§Øª" },
+    { key: "comments", label: "Ø¯ÛŒØ¯Ú¯Ø§Ù‡â€ŒÙ‡Ø§" },
   ];
   const activeTabIndex = Math.max(detailTabs.findIndex((tab) => tab.key === resolvedActiveTab), 0);
 
   const platformSizes = useMemo(() => form.platformSizes || [], [form.platformSizes]);
+  const ageRatingLabel = (() => {
+    const value = form.ageRating;
+    if (!value) return "";
+    if (typeof value === "object") return value.title_fa || value.title_en || value.key || "";
+    const option = ageRatingOptions.find((item) => item.value === value || item.key === value || item.legacyValues?.includes(value));
+    return option?.title_fa || option?.label || value;
+  })();
   const releaseSummary = platformReleases
     .map((item) => {
       const date = parseInputDate(item.releaseDate)?.toLocaleDateString("fa-IR");
       return [item.label, date].filter(Boolean).join(": ");
     })
     .filter(Boolean)
-    .join("، ");
+    .join("ØŒ ");
   const specs = [
-    ["پلتفرم", platforms.join("، ")],
-    ["نسخه", form.edition],
-    ["سرویس انتشار", Array.isArray(form.launcher) ? form.launcher.join("، ") : form.launcher],
-    ["تاریخ انتشار", releaseSummary],
-    ["رده سنی", form.ageRating],
-    ["زمان تقریبی گیم‌پلی", form.gameplayTime],
-    ["امتیاز متاکریتیک", form.metacriticScore],
-    ["ژانرها", genres.join("، ")],
+    ["Ù¾Ù„ØªÙØ±Ù…", platforms.join("ØŒ ")],
+    ["Ù†Ø³Ø®Ù‡", form.edition],
+    ["Ø³Ø±ÙˆÛŒØ³ Ø§Ù†ØªØ´Ø§Ø±", Array.isArray(form.launcher) ? form.launcher.join("ØŒ ") : form.launcher],
+    ["ØªØ§Ø±ÛŒØ® Ø§Ù†ØªØ´Ø§Ø±", releaseSummary],
+    ["Ø±Ø¯Ù‡ Ø³Ù†ÛŒ", ageRatingLabel],
+    ["Ø²Ù…Ø§Ù† ØªÙ‚Ø±ÛŒØ¨ÛŒ Ú¯ÛŒÙ…â€ŒÙ¾Ù„ÛŒ", form.gameplayTime],
+    ["Ø§Ù…ØªÛŒØ§Ø² Ù…ØªØ§Ú©Ø±ÛŒØªÛŒÚ©", form.metacriticScore],
+    ["Ú˜Ø§Ù†Ø±Ù‡Ø§", genres.join("ØŒ ")],
   ];
 
   useLayoutEffect(() => {
@@ -134,17 +142,17 @@ export function GameDetailPreview({
         return (
           <div className="space-y-3">
             <div className="rounded-xl border border-zinc-800 bg-black p-4">
-              <p className="text-xs text-zinc-500">عنوان</p>
+              <p className="text-xs text-zinc-500">Ø¹Ù†ÙˆØ§Ù†</p>
               <p className="mt-1 text-sm text-zinc-200">{form.reviewSiteTitle || "-"}</p>
-              <p className="mt-3 text-xs text-zinc-500">منبع</p>
+              <p className="mt-3 text-xs text-zinc-500">Ù…Ù†Ø¨Ø¹</p>
               <p className="mt-1 text-sm text-zinc-200">{form.reviewSource || "-"}</p>
-              <p className="mt-3 text-xs text-zinc-500">لینک</p>
+              <p className="mt-3 text-xs text-zinc-500">Ù„ÛŒÙ†Ú©</p>
               <p className="mt-1 break-all text-sm text-zinc-200">{form.reviewLink || "-"}</p>
             </div>
             <div className="space-y-2">
               {reviewItems.length ? reviewItems.map((item, index) => (
                 <div className="rounded-xl border border-zinc-800 bg-black p-3" key={`${item.title}-${index}`}>
-                  <p className="text-sm font-medium text-white">{item.title || "عنوان نقد"}</p>
+                  <p className="text-sm font-medium text-white">{item.title || "Ø¹Ù†ÙˆØ§Ù† Ù†Ù‚Ø¯"}</p>
                   <p className="mt-1 break-all text-xs text-zinc-400">{item.link || "-"}</p>
                 </div>
               )) : <SkeletonBlock className="h-24 w-full" />}
@@ -184,7 +192,7 @@ export function GameDetailPreview({
             </div>
             {platformSizes.length ? (
               <div className="rounded-xl border border-zinc-800 bg-black p-4">
-                <p className="mb-3 text-xs font-bold text-zinc-500">حجم نسخه‌ها</p>
+                <p className="mb-3 text-xs font-bold text-zinc-500">Ø­Ø¬Ù… Ù†Ø³Ø®Ù‡â€ŒÙ‡Ø§</p>
                 <div className="space-y-2">
                   {platformSizes.map((item, index) => (
                     <div className="grid gap-2 text-xs text-zinc-200 md:grid-cols-[120px_1fr_120px]" key={`${item.platform}-${index}`}>
@@ -222,7 +230,7 @@ export function GameDetailPreview({
             <SkeletonBlock className="h-6 w-3/4 bg-zinc-300/25" />
           )}
           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px]">
-            {[form.edition, form.ageRating, form.metacriticScore].map((value, index) => (
+            {[form.edition, ageRatingLabel, form.metacriticScore].map((value, index) => (
               <span className="rounded-lg bg-zinc-100 p-2" key={index}>
                 {value || <SkeletonBlock className="mx-auto h-3 w-10 bg-zinc-300/25" />}
               </span>
@@ -230,10 +238,10 @@ export function GameDetailPreview({
           </div>
           <div className="mt-3 flex gap-2">
             <button className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-xs font-bold text-white" type="button">
-              افزودن به سبد
+              Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ù‡ Ø³Ø¨Ø¯
             </button>
             <button className="flex-1 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-bold text-white" type="button">
-              مشاهده ویدئو
+              Ù…Ø´Ø§Ù‡Ø¯Ù‡ ÙˆÛŒØ¯Ø¦Ùˆ
             </button>
           </div>
         </div>
@@ -272,4 +280,5 @@ export function GameDetailPreview({
     </div>
   );
 }
+
 

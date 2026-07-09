@@ -12,11 +12,11 @@ type PageProps = {
 
 export default async function ArticleLegacyRedirectPage({ params }: PageProps) {
   const { slug: id } = await params;
-  const article = await getApiItem<Article>("/articles", id);
+  const article = await getApiItem<Article>("/magazines", id);
 
   if (!article) {
-    redirect("/articles");
+    redirect("/magazines");
   }
 
-  redirect(`/articles/${slugify(article.slug || article.title) || id}/${id}`);
+  redirect(`/magazines/${slugify(article.slug || article.title) || id}/${id}`);
 }

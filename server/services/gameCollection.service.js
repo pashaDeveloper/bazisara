@@ -7,6 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { mediaFromUploadOrBody } = require("../utils/media.util");
 
 function makeSlug(value) {
   return String(value || "")
@@ -90,14 +91,7 @@ function normalizePayload(body, adminId) {
 }
 
 function getUploadedImage(req) {
-  const file = req.uploadedFiles?.image?.[0];
-  if (!file) return undefined;
-
-  return {
-    url: file.url,
-    public_id: file.public_id,
-    storage: file.storage || "",
-  };
+  return mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image);
 }
 
 exports.createCollection = async (req, res) => {

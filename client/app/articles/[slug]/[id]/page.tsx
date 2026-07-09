@@ -13,7 +13,7 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
-  const article = await getApiItem<Article>("/articles", id);
+  const article = await getApiItem<Article>("/magazines", id);
 
   return {
     title: article ? `${article.title} | بازی بازار` : "مجله | بازی بازار",
@@ -61,7 +61,7 @@ function getCategoryPath(category?: NamedEntity | null) {
 
 export default async function ArticleDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const article = await getApiItem<Article>("/articles", id);
+  const article = await getApiItem<Article>("/magazines", id);
 
   if (!article) notFound();
 

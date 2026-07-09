@@ -57,11 +57,11 @@ function UploadStateOverlay({ state }) {
       {isUploading ? (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45 text-white">
           <span
-            className="relative h-12 w-12 animate-spin rounded-full"
+            className="relative h-8 w-8 animate-spin rounded-full"
             style={{
               background: `conic-gradient(rgb(255 255 255) ${progress * 3.6}deg, rgba(255,255,255,.24) 0deg)`,
-              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
-              mask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
+              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
+              mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
             }}
           />
         </div>
@@ -199,7 +199,7 @@ function PlatformReleaseRowsEditor({ items = [], onChange, onCreatePlatform, pla
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="platform-release-font space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">تاریخ انتشار پلتفرم‌ها</span>
         <button
@@ -212,7 +212,7 @@ function PlatformReleaseRowsEditor({ items = [], onChange, onCreatePlatform, pla
       </div>
       <div className="space-y-3">
         {rows.map((item, index) => (
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`platform-release-${index}`}>
+          <div className="platform-release-font grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`platform-release-${index}`}>
             <QuickCreateField label="پلتفرم" onCreate={() => onCreatePlatform?.({ field: "platformReleases", index })}>
               <SingleSelectDropdown
                 label="پلتفرم"
@@ -1180,7 +1180,11 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
     syncGallery((prev) => [...prev, ...nextItems]);
 
     nextItems.forEach(async (item) => {
-      const media = await onImageUpload?.(item.id, item.file);
+      const media = await onImageUpload?.(item.id, item.file, {
+        resizeFit: "cover",
+        resizeHeight: 1080,
+        resizeWidth: 1920,
+      });
       if (!media) {
         syncGallery((prev) => prev.map((current) => (current.id === item.id ? { ...current, file: undefined, kind: "error" } : current)));
         return;
@@ -1221,7 +1225,11 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
     );
 
     (async () => {
-      const media = await onImageUpload?.(nextId, file);
+      const media = await onImageUpload?.(nextId, file, {
+        resizeFit: "cover",
+        resizeHeight: 1080,
+        resizeWidth: 1920,
+      });
       if (!media) {
         syncGallery((prev) => prev.map((current) => (current.id === nextId ? { ...current, file: undefined, kind: "error" } : current)));
         return;

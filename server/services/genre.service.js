@@ -7,6 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { mediaFromUploadOrBody } = require("../utils/media.util");
 
 async function ensureIconExists(iconId) {
   if (!iconId) return null;
@@ -40,13 +41,7 @@ exports.createGenre = async (req, res) => {
     name: String(name).trim(),
     description,
     icon: icon || null,
-    image: req.uploadedFiles?.image?.[0]
-        ? {
-          url: req.uploadedFiles.image[0].url,
-          public_id: req.uploadedFiles.image[0].public_id,
-          storage: req.uploadedFiles.image[0].storage || "",
-        }
-      : undefined,
+    image: mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image),
     creator: req.admin?._id || null,
   });
   const populatedGenre = await genre.populate("icon", "name svg color");
@@ -143,13 +138,8 @@ exports.updateGenre = async (req, res) => {
     await ensureIconExists(icon);
     genre.icon = icon || null;
   }
-  if (req.uploadedFiles?.image?.[0]) {
-    genre.image = {
-      url: req.uploadedFiles.image[0].url,
-      public_id: req.uploadedFiles.image[0].public_id,
-      storage: req.uploadedFiles.image[0].storage || "",
-    };
-  }
+  const image = mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image);
+  if (image) genre.image = image;
 
   await genre.save();
   const populatedGenre = await genre.populate("icon", "name svg color");

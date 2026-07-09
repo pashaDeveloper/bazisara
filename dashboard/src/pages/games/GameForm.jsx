@@ -132,11 +132,22 @@ const getUploadErrorMessage = (error) => {
   return "خطای نامشخص در آپلود";
 };
 
-const uploadImageWithProgress = (file, onProgress) => {
+const formatFileSize = (size) => {
+  const value = Number(size || 0);
+  if (!value) return "";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const uploadImageWithProgress = (file, onProgress, options = {}) => {
   const baseUrl = String(import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
   const formData = new FormData();
   formData.append("file", file);
+  if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
+  if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));
+  if (options.resizeFit) formData.append("resizeFit", String(options.resizeFit));
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -228,6 +239,63 @@ const quickCreateLabels = {
   gameCollection: "کالکشن بازی",
   platform: "پلتفرم",
 };
+
+function QuickCreateImageUpload({ label = "تصویر", name, onRemove, onSelect, preview, state }) {
+  const isUploading = state?.status === "uploading";
+  const progress = Math.max(0, Math.min(100, Number(state?.progress || 0)));
+
+  return (
+    <div className="space-y-3 md:col-span-2">
+      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+          <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+          <span>انتخاب {label}</span>
+          <input
+            accept="image/*"
+            className="hidden"
+            name={name}
+            onChange={(event) => onSelect?.(event.target.files?.[0] || null)}
+            type="file"
+          />
+        </label>
+        {preview ? (
+          <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+            <img alt="" className="h-full w-full object-cover" src={preview} />
+            {(state?.originalSize || state?.uploadedSize) ? (
+              <div className="absolute bottom-1 left-1 right-1 z-20 flex flex-wrap gap-1">
+                {state.originalSize ? <span className="rounded-md bg-red-600/90 px-1.5 py-0.5 text-[9px] !text-white">{formatFileSize(state.originalSize)}</span> : null}
+                {state.uploadedSize ? <span className="rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-[9px] !text-white">{formatFileSize(state.uploadedSize)}</span> : null}
+              </div>
+            ) : null}
+            {isUploading ? (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45">
+                <span
+                  className="h-8 w-8 animate-spin rounded-full"
+                  style={{
+                    background: `conic-gradient(rgb(255 255 255) ${progress * 3.6}deg, rgba(255,255,255,.24) 0deg)`,
+                    WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
+                    mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))",
+                  }}
+                />
+              </div>
+            ) : null}
+            {onRemove ? (
+              <button
+                aria-label="حذف تصویر"
+                className="absolute left-1 top-1 z-40 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-600/90 text-white transition hover:bg-red-500"
+                onClick={onRemove}
+                type="button"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function GameFormSection({ children, index, title }) {
   return (
@@ -404,7 +472,6 @@ function GameForm({ mode = "create" }) {
     () => brands.map((item) => ({ label: item.title_fa || item.title_en || item.name || item.code || item._id, value: item._id })),
     [brands]
   );
-  const iconOptions = useMemo(() => icons.map((item) => ({ label: item.name || item._id, value: item._id })), [icons]);
   const relatedGameOptions = useMemo(
     () =>
       (relatedGamesData?.data || [])
@@ -545,16 +612,22 @@ function GameForm({ mode = "create" }) {
     });
   };
 
-  const setQuickCreateImageFile = (file) => {
-    setQuickCreateValue("image", file || null);
+  const setQuickCreateImageFile = async (file, field = "image") => {
     if (!(file instanceof File)) {
+      setQuickCreateValue(field, null);
       setQuickCreateImagePreview("");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => setQuickCreateImagePreview(String(reader.result || ""));
-    reader.readAsDataURL(file);
+    const localPreview = URL.createObjectURL(file);
+    setQuickCreateImagePreview(localPreview);
+
+    const media = await handleImageUpload(`quickCreate-${quickCreate?.type || field}-${field}`, file);
+    URL.revokeObjectURL(localPreview);
+    if (!media) return;
+
+    setQuickCreateValue(field, media);
+    setQuickCreateImagePreview(media.url);
   };
 
   const appendCreatedItemToForm = (createdId) => {
@@ -595,6 +668,10 @@ function GameForm({ mode = "create" }) {
     const trimmed = Object.fromEntries(Object.entries(quickCreateForm).map(([key, value]) => [key, String(value || "").trim()]));
     const name = trimmed.name || trimmed.title_fa || trimmed.name_fa || trimmed.title_en || trimmed.name_en;
     const slug = makeGameSlug(trimmed.slug || trimmed.title_en || trimmed.name_en || name);
+    const appendMedia = (formData, key, value) => {
+      if (value instanceof File) formData.append(key, value);
+      else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
+    };
 
     if (type === "gameCollection") {
       const formData = new FormData();
@@ -603,7 +680,7 @@ function GameForm({ mode = "create" }) {
       formData.append("slug", slug);
       if (trimmed.description) formData.append("description", trimmed.description);
       if (trimmed.placement) formData.append("placement", trimmed.placement);
-      if (quickCreateForm.image instanceof File) formData.append("image", quickCreateForm.image);
+      appendMedia(formData, "image", quickCreateForm.image);
       return formData;
     }
 
@@ -619,7 +696,7 @@ function GameForm({ mode = "create" }) {
       append("brand", trimmed.brand);
       append("description", trimmed.description);
       append("svgIcon", trimmed.svgIcon);
-      if (quickCreateForm.image instanceof File) formData.append("image", quickCreateForm.image);
+      appendMedia(formData, "image", quickCreateForm.image);
       return formData;
     }
 
@@ -633,14 +710,18 @@ function GameForm({ mode = "create" }) {
     append("country", type === "company" ? trimmed.country : "");
     append("foundedYear", type === "company" ? trimmed.foundedYear : "");
     append("type", type === "company" ? trimmed.type : "");
-    if (quickCreateForm.image instanceof File) formData.append("image", quickCreateForm.image);
-    if (quickCreateForm.logo instanceof File) formData.append("logo", quickCreateForm.logo);
+    appendMedia(formData, "image", quickCreateForm.image);
+    appendMedia(formData, "logo", quickCreateForm.logo);
     return formData;
   };
 
   const handleQuickCreateSubmit = async (event) => {
     event.preventDefault();
     if (!quickCreate?.type) return;
+    if (Object.entries(imageUploadState).some(([key, item]) => key.startsWith("quickCreate-") && item?.status === "uploading")) {
+      toast.error("تا پایان آپلود تصویر صبر کنید", { id: "quick-create" });
+      return;
+    }
 
     const type = quickCreate.type;
     const label = quickCreateLabels[type] || "مورد";
@@ -743,7 +824,7 @@ function GameForm({ mode = "create" }) {
     }
   };
 
-  const handleImageUpload = async (uploadKey, file, { fallbackType = "image" } = {}) => {
+  const handleImageUpload = async (uploadKey, file, { fallbackType = "image", resizeFit, resizeHeight, resizeWidth } = {}) => {
     if (!(file instanceof File)) return null;
 
     const previousTempMedia = tempUploadedImagesRef.current.get(uploadKey);
@@ -761,17 +842,21 @@ function GameForm({ mode = "create" }) {
     }));
 
     try {
-      const response = await uploadImageWithProgress(file, (progress) => {
-        if (didUnmountRef.current) return;
-        setImageUploadState((prev) => ({
-          ...prev,
-          [uploadKey]: {
-            ...(prev[uploadKey] || {}),
-            progress,
-            status: "uploading",
-          },
-        }));
-      });
+      const response = await uploadImageWithProgress(
+        file,
+        (progress) => {
+          if (didUnmountRef.current) return;
+          setImageUploadState((prev) => ({
+            ...prev,
+            [uploadKey]: {
+              ...(prev[uploadKey] || {}),
+              progress,
+              status: "uploading",
+            },
+          }));
+        },
+        { resizeFit, resizeHeight, resizeWidth }
+      );
       const media = normalizeUploadedMedia(response, fallbackType);
 
       if (!media) {
@@ -1248,6 +1333,22 @@ function GameForm({ mode = "create" }) {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
+                {["category", "genre", "tag", "gameKeyword", "gameCollection", "platform", "company"].includes(quickCreate.type) ? (
+                  <QuickCreateImageUpload
+                    label={quickCreate.type === "company" ? "لوگو" : quickCreate.type === "platform" ? "تصویر پلتفرم" : quickCreate.type === "genre" ? "تصویر ژانر" : "تصویر"}
+                    name={`quick-create-${quickCreate.type}-image`}
+                    onRemove={async () => {
+                      const field = quickCreate.type === "company" ? "logo" : "image";
+                      await deleteUploadedImage(`quickCreate-${quickCreate.type}-${field}`, quickCreateForm[field]);
+                      setQuickCreateValue(field, null);
+                      setQuickCreateImagePreview("");
+                    }}
+                    onSelect={(file) => setQuickCreateImageFile(file, quickCreate.type === "company" ? "logo" : "image")}
+                    preview={quickCreateImagePreview}
+                    state={imageUploadState[`quickCreate-${quickCreate.type}-${quickCreate.type === "company" ? "logo" : "image"}`]}
+                  />
+                ) : null}
+
                 {quickCreate.type === "gameCollection" ? (
                   <>
                     <label className="space-y-2">
@@ -1256,6 +1357,15 @@ function GameForm({ mode = "create" }) {
                         className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
                         onChange={(event) => setQuickCreateValue("title_fa", event.target.value)}
                         value={quickCreateForm.title_fa}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("slug", event.target.value)}
+                        value={quickCreateForm.slug}
                       />
                     </label>
                     <label className="space-y-2">
@@ -1276,6 +1386,15 @@ function GameForm({ mode = "create" }) {
                         className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
                         onChange={(event) => setQuickCreateValue("name_fa", event.target.value)}
                         value={quickCreateForm.name_fa}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("slug", event.target.value)}
+                        value={quickCreateForm.slug}
                       />
                     </label>
                     <label className="space-y-2">
@@ -1311,38 +1430,9 @@ function GameForm({ mode = "create" }) {
                         value={quickCreateForm.svgIcon}
                       />
                     </label>
-                    <label className="space-y-2 md:col-span-2">
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">تصویر</span>
-                      <input
-                        accept="image/*"
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-                        onChange={(event) => setQuickCreateValue("image", event.target.files?.[0] || null)}
-                        type="file"
-                      />
-                    </label>
                   </>
                 ) : quickCreate.type === "genre" ? (
                   <>
-                    <div className="space-y-3 md:col-span-2">
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">تصویر ژانر</span>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <label className="inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
-                          <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
-                          <span>انتخاب تصویر ژانر</span>
-                          <input
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(event) => setQuickCreateImageFile(event.target.files?.[0] || null)}
-                            type="file"
-                          />
-                        </label>
-                        {quickCreateImagePreview ? (
-                          <div className="h-16 w-16 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
-                            <img alt="genre preview" className="h-full w-full object-cover" src={quickCreateImagePreview} />
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
                     <label className="space-y-2">
                       <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان</span>
                       <input
@@ -1372,14 +1462,25 @@ function GameForm({ mode = "create" }) {
                     </div>
                   </>
                 ) : (
-                  <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان</span>
-                    <input
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-                      onChange={(event) => setQuickCreateValue("name", event.target.value)}
-                      value={quickCreateForm.name}
-                    />
-                  </label>
+                  <>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("name", event.target.value)}
+                        value={quickCreateForm.name}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("slug", event.target.value)}
+                        value={quickCreateForm.slug}
+                      />
+                    </label>
+                  </>
                 )}
 
                 {quickCreate.type === "gameKeyword" ? (
@@ -1395,21 +1496,16 @@ function GameForm({ mode = "create" }) {
                 ) : null}
 
                 {["category", "company"].includes(quickCreate.type) ? (
-                  <label className="space-y-2">
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">آیکون</span>
-                    <select
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                  <div className="md:col-span-2">
+                    <IconPicker
+                      icons={icons}
+                      isLoadingIcons={isLoadingIcons}
+                      label="آیکون"
+                      name="icon"
                       onChange={(event) => setQuickCreateValue("icon", event.target.value)}
                       value={quickCreateForm.icon}
-                    >
-                      <option value="">بدون آیکون</option>
-                      {iconOptions.map((icon) => (
-                        <option key={icon.value} value={icon.value}>
-                          {icon.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                    />
+                  </div>
                 ) : null}
 
                 {quickCreate.type === "category" ? (
@@ -1484,41 +1580,6 @@ function GameForm({ mode = "create" }) {
                   </label>
                 ) : null}
 
-                {["category", "tag", "gameKeyword", "gameCollection"].includes(quickCreate.type) ? (
-                  <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">تصویر</span>
-                    <input
-                      accept="image/*"
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-                      onChange={(event) => setQuickCreateValue("image", event.target.files?.[0] || null)}
-                      type="file"
-                    />
-                  </label>
-                ) : null}
-
-                {quickCreate.type === "company" ? (
-                  <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">لوگو</span>
-                    <input
-                      accept="image/*"
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-                      onChange={(event) => setQuickCreateValue("logo", event.target.files?.[0] || null)}
-                      type="file"
-                    />
-                  </label>
-                ) : null}
-
-                {quickCreate.type !== "genre" ? (
-                  <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
-                    <input
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
-                      dir="ltr"
-                      onChange={(event) => setQuickCreateValue("slug", event.target.value)}
-                      value={quickCreateForm.slug}
-                    />
-                  </label>
-                ) : null}
                 <label className="space-y-2 md:col-span-2">
                   <span className="text-sm text-zinc-700 dark:text-zinc-300">توضیحات</span>
                   <textarea

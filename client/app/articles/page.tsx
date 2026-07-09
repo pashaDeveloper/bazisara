@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function ArticlesPage() {
-  const articles = await getApiList<Article>("/articles/all", 100);
+  const articles = await getApiList<Article>("/magazines/all", 100);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-zinc-950">

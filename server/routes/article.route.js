@@ -27,7 +27,7 @@ registerStoragePost(
   router,
   "/create",
   articleAccess,
-  "articles",
+  "magazines",
   articleUploadFields,
   articleController.createArticle
 );
@@ -36,7 +36,7 @@ registerStoragePatch(
   router,
   "/:id",
   articleAccess,
-  "articles",
+  "magazines",
   articleUploadFields,
   articleController.updateArticle
 );
@@ -44,14 +44,14 @@ registerStoragePatch(
 router.post(
   "/create",
   ...articleAccess,
-  uploadArvan("articles").fields(articleUploadFields),
+  uploadArvan("magazines").fields(articleUploadFields),
   articleController.createArticle
 );
 
 router.patch(
   "/:id",
   ...articleAccess,
-  uploadArvan("articles").fields(articleUploadFields),
+  uploadArvan("magazines").fields(articleUploadFields),
   articleController.updateArticle
 );
 

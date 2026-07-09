@@ -53,6 +53,15 @@ const searchTitleSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const ageRatingSchema = new mongoose.Schema(
+  {
+    key: { type: String, trim: true, default: "" },
+    title_fa: { type: String, trim: true, default: "" },
+    title_en: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
 const gameFilterValueSchema = new mongoose.Schema(
   {
     priceMin: { type: Number, default: null },
@@ -226,11 +235,7 @@ const gameSchema = new mongoose.Schema(
       default: "",
     },
     socialLinks: [socialLinkSchema],
-    ageRating: {
-      type: String,
-      trim: true,
-      default: "",
-    },
+    ageRating: ageRatingSchema,
     gameplayTime: {
       type: String,
       trim: true,

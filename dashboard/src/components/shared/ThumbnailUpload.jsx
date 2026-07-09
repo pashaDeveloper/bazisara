@@ -30,7 +30,7 @@ function ThumbnailUpload({
   previewShape = "square",
   className = "",
   disabled = false,
-  immediateUpload = true,
+  immediateUpload = false,
   onUploadError,
 }) {
   const inputRegistration = useMemo(() => register || {}, [register]);

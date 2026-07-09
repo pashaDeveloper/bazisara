@@ -54,7 +54,7 @@ export function ArticleCard({ article }: { article: Article }) {
 
   return (
     <Link
-      href={`/articles/${slugify(article.slug || article.title) || article._id}/${article._id}`}
+      href={`/magazines/${slugify(article.slug || article.title) || article._id}/${article._id}`}
       className="group block w-full space-y-2 transition hover:-translate-y-1"
       dir="rtl"
     >

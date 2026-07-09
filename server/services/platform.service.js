@@ -7,6 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { mediaFromUploadOrBody } = require("../utils/media.util");
 
 function makeSlug(value) {
   return String(value || "")
@@ -44,12 +45,13 @@ function buildUploadedFile(uploadedFiles = {}, fieldName) {
   };
 }
 
-function buildImage(uploadedFiles = {}) {
-  const file = buildUploadedFile(uploadedFiles, "image");
-  if (!file) return null;
+function buildImage(uploadedFiles = {}, bodyValue) {
+  const image = mediaFromUploadOrBody(uploadedFiles, "image", bodyValue);
+  if (!image) return null;
   return {
-    url: file.url,
-    public_id: file.public_id,
+    url: image.url,
+    public_id: image.public_id,
+    storage: image.storage || "",
   };
 }
 
@@ -124,7 +126,7 @@ exports.createPlatform = async (req, res) => {
       description: "برند پلتفرم الزامی است",
     });
   }
-  const image = buildImage(req.uploadedFiles);
+  const image = buildImage(req.uploadedFiles, req.body.image);
   const fontFile = buildUploadedFile(req.uploadedFiles, "fontFile");
 
   const platform = await Platform.create({
@@ -267,7 +269,7 @@ exports.updatePlatform = async (req, res) => {
       description: "نام فارسی، نام انگلیسی و اسلاگ پلتفرم الزامی است",
     });
   }
-  const image = buildImage(req.uploadedFiles);
+  const image = buildImage(req.uploadedFiles, req.body.image);
   if (image?.url) platform.image = image;
   const fontFile = buildUploadedFile(req.uploadedFiles, "fontFile");
   if (fontFile?.url) platform.fontFile = fontFile;

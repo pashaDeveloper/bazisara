@@ -14,7 +14,7 @@ export const adminApi = bazisaraApi.injectEndpoints({
         url: `/admin/approvals/${type}/${id}/approve`,
         method: "PATCH",
       }),
-      invalidatesTags: ["Approval", "Game", "Article", "Slider", "Admin"],
+      invalidatesTags: ["Approval", "Game", "Magazine", "Article", "Slider", "Admin"],
     }),
     rejectApproval: builder.mutation({
       query: ({ type, id, reason }) => ({
@@ -22,7 +22,7 @@ export const adminApi = bazisaraApi.injectEndpoints({
         method: "PATCH",
         body: { reason },
       }),
-      invalidatesTags: ["Approval", "ApprovalMessage", "Game", "Article", "Slider", "Admin"],
+      invalidatesTags: ["Approval", "ApprovalMessage", "Game", "Magazine", "Article", "Slider", "Admin"],
     }),
     getApprovalMessages: builder.query({
       query: () => ({

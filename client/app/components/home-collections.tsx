@@ -197,7 +197,7 @@ const articlePlatformTabs = [
 ];
 
 function articleHref(article: Article) {
-  return `/articles/${slugify(article.slug || article.title) || article._id}/${article._id}`;
+  return `/magazines/${slugify(article.slug || article.title) || article._id}/${article._id}`;
 }
 
 function formatArticleTime(article: Article) {

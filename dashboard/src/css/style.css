@@ -21,6 +21,10 @@
     font-family: 'Vazir'; 
   }
 
+  .platform-release-font {
+    font-family: 'Vazir', sans-serif;
+  }
+
   @layer components {
     .delete-button {
       @apply line-clamp-1 cursor-pointer rounded-full border border-red-500/5 bg-red-500/5 p-2 text-red-500 transition-colors hover:border-red-500/10 hover:bg-red-500/10 hover:!opacity-100 group-hover:opacity-70;

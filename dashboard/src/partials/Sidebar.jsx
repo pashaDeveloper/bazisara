@@ -98,7 +98,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
         { title: "نحوه ارسال", icon: Products, path: "/shipping-methods" },
       ],
     },
-    { title: "مجله", icon: Blog, path: "/articles" },
+    { title: "مجله", icon: Blog, path: "/magazines" },
     { title: "اسلایدرها", icon: Gallery, path: "/sliders" },
   ];
 

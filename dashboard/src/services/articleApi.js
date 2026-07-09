@@ -4,48 +4,48 @@ export const articleApi = bazisaraApi.injectEndpoints({
   endpoints: (builder) => ({
     createArticle: builder.mutation({
       query: (formData) => ({
-        url: "/articles/create",
+        url: "/magazines/create",
         method: "POST",
         body: formData,
       }),
-      invalidatesTags: ["Article"],
+      invalidatesTags: ["Magazine", "Article"],
     }),
     getArticles: builder.query({
       query: ({ page = 1, limit = 10, search = "" } = {}) => ({
-        url: "/articles/all",
+        url: "/magazines/all",
         method: "GET",
         params: { page, limit, ...(search ? { search } : {}) },
       }),
-      providesTags: ["Article"],
+      providesTags: ["Magazine"],
     }),
     getArticle: builder.query({
       query: (id) => ({
-        url: `/articles/${id}`,
+        url: `/magazines/${id}`,
         method: "GET",
       }),
-      providesTags: ["Article"],
+      providesTags: ["Magazine"],
     }),
     generateArticleSlug: builder.mutation({
       query: (title) => ({
-        url: "/articles/slug",
+        url: "/magazines/slug",
         method: "POST",
         body: { title },
       }),
     }),
     updateArticle: builder.mutation({
       query: ({ id, formData }) => ({
-        url: `/articles/${id}`,
+        url: `/magazines/${id}`,
         method: "PATCH",
         body: formData,
       }),
-      invalidatesTags: ["Article"],
+      invalidatesTags: ["Magazine", "Article"],
     }),
     deleteArticle: builder.mutation({
       query: (id) => ({
-        url: `/articles/${id}`,
+        url: `/magazines/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Article"],
+      invalidatesTags: ["Magazine", "Article"],
     }),
   }),
 });

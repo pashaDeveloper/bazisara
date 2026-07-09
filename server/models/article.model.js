@@ -22,20 +22,20 @@ const faqSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const articleSchema = new mongoose.Schema(
+const magazineSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, "Article title is required"],
+      required: [true, "Magazine title is required"],
       trim: true,
-      maxLength: [180, "Article title must be at most 180 characters"],
+      maxLength: [180, "Magazine title must be at most 180 characters"],
     },
     slug: {
       type: String,
-      required: [true, "Article slug is required"],
+      required: [true, "Magazine slug is required"],
       trim: true,
       lowercase: true,
-      maxLength: [220, "Article slug must be at most 220 characters"],
+      maxLength: [220, "Magazine slug must be at most 220 characters"],
     },
     excerpt: {
       type: String,
@@ -118,11 +118,11 @@ const articleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-articleSchema.index(
+magazineSchema.index(
   { slug: 1, isDeleted: 1 },
   { unique: true, partialFilterExpression: { isDeleted: false } }
 );
 
-const Article = mongoose.model("Article", articleSchema);
+const Magazine = mongoose.model("Magazine", magazineSchema, "articles");
 
-module.exports = Article;
+module.exports = Magazine;

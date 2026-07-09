@@ -33,6 +33,18 @@ const getPublicUrl = (key) => {
   return `${baseUrl.replace(/\/$/, "")}/${key.split("/").map(encodeURIComponent).join("/")}`;
 };
 
+const getPrepareOptions = (req, customFolder, field) => {
+  if (customFolder === "games" && field === "gallery") {
+    return { fit: "cover", resizeHeight: 1080, resizeWidth: 1920 };
+  }
+
+  return {
+    fit: req.body?.resizeFit,
+    resizeHeight: req.body?.resizeHeight,
+    resizeWidth: req.body?.resizeWidth,
+  };
+};
+
 const uploadArvan = (customFolder = null) => {
   const multerInstance = multer({ storage: multer.memoryStorage() });
 
@@ -67,7 +79,7 @@ const uploadArvan = (customFolder = null) => {
               customFolder,
             });
 
-            const { extension, fileBuffer, contentType } = await prepareFile(file);
+            const { extension, fileBuffer, contentType } = await prepareFile(file, getPrepareOptions(req, customFolder, field));
             const { filename, key } = makeObjectName(customFolder, extension);
 
             console.log("[ARVAN_UPLOAD] prepared file", {

@@ -44,6 +44,11 @@ export function normalizeOptionValue(value, options, fallback = "") {
       .filter(Boolean);
   }
 
+  if (value && typeof value === "object") {
+    const objectValue = value.key || value.value || value.title_fa || value.title_en || value.label || "";
+    return normalizeOptionValue(objectValue, options, fallback);
+  }
+
   const selectedOption = options.find((option) => {
     return option.value === value || option.legacyValues?.includes(value);
   });

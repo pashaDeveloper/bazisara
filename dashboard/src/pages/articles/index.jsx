@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
@@ -72,7 +72,7 @@ function Articles() {
                 مجله‌ها شامل تیتر، کاور، دسته‌بندی، تگ، بازی‌های مرتبط، محتوای صفحه‌ساز و تنظیمات سئو هستند.
               </p>
             </div>
-            <AddButton link="/articles/create" />
+            <AddButton link="/magazines/create" />
           </div>
         </div>
 
@@ -143,7 +143,7 @@ function Articles() {
                           <Link
                             aria-label="ویرایش مجله"
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
-                            to={`/articles/edit/${item._id}`}
+                            to={`/magazines/edit/${item._id}`}
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
@@ -184,3 +184,4 @@ function Articles() {
 }
 
 export default Articles;
+

@@ -389,7 +389,7 @@ function App() {
         <Route path="/shipping-methods/create" element={<Auth><ShippingMethodForm /></Auth>} />
         <Route path="/shipping-methods/edit/:id" element={<Auth><ShippingMethodForm mode="edit" /></Auth>} />
         <Route
-          path="/articles"
+          path="/magazines"
           element={
             <Auth>
               <Articles />
@@ -397,7 +397,7 @@ function App() {
           }
         />
         <Route
-          path="/articles/create"
+          path="/magazines/create"
           element={
             <Auth>
               <ArticleForm />
@@ -405,13 +405,16 @@ function App() {
           }
         />
         <Route
-          path="/articles/edit/:id"
+          path="/magazines/edit/:id"
           element={
             <Auth>
               <ArticleForm mode="edit" />
             </Auth>
           }
         />
+        <Route path="/articles" element={<Navigate to="/magazines" replace />} />
+        <Route path="/articles/create" element={<Navigate to="/magazines/create" replace />} />
+        <Route path="/articles/edit/:id" element={<Navigate to={location.pathname.replace("/articles", "/magazines")} replace />} />
         <Route
           path="/sliders"
           element={

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
@@ -15,9 +15,9 @@ import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
 import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/Dropdown";
 import { ArticleCardPreview, ArticleDetailPreview } from "./components/ArticlePreviews";
 import { DatePickerField } from "../games/components/GameFormFields";
-import { useGetCategoriesQuery } from "@/services/category/categoryApi";
+import { useCreateCategoryMutation, useGetCategoriesQuery } from "@/services/category/categoryApi";
 import { useGetGamesQuery } from "@/services/gameApi";
-import { useGetTagsQuery } from "@/services/tagApi";
+import { useCreateTagMutation, useGetTagsQuery } from "@/services/tagApi";
 import { useCreateArticleMutation, useGenerateArticleSlugMutation, useGetArticleQuery, useUpdateArticleMutation } from "@/services/articleApi";
 
 function getTodayDateInput() {
@@ -108,6 +108,23 @@ function Textarea({ label, name, onChange, placeholder, rows = 4, value }) {
   );
 }
 
+function QuickCreateField({ children, label, onCreate }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_56px]">
+      {children}
+      <button
+        aria-label={`افزودن ${label}`}
+        className="mt-5 inline-flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 !text-white dark:border-blue-700 dark:bg-blue-600 [&_svg]:!text-white"
+        onClick={onCreate}
+        title={`افزودن ${label}`}
+        type="button"
+      >
+        <Plus className="h-7 w-7 !text-white" style={{ color: "#fff" }} />
+      </button>
+    </div>
+  );
+}
+
 function FaqRowsEditor({ items = [], onChange }) {
   const rows = Array.isArray(items) && items.length ? items : [{ question: "", answer: "" }];
 
@@ -191,13 +208,17 @@ function ArticleForm({ mode = "create" }) {
   const [contentCoverPreview, setContentCoverPreview] = useState("");
   const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEdit);
+  const [quickCreate, setQuickCreate] = useState(null);
+  const [quickCreateForm, setQuickCreateForm] = useState({ name: "", slug: "", description: "" });
   const slugManuallyEditedRef = useRef(isEdit);
 
   const { data: articleData, isLoading: isLoadingArticle } = useGetArticleQuery(id, { skip: !isEdit || !id });
-  const { data: categoriesData } = useGetCategoriesQuery({ page: 1, limit: 200 });
-  const { data: tagsData } = useGetTagsQuery({ page: 1, limit: 200 });
+  const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery({ page: 1, limit: 200 });
+  const { data: tagsData, refetch: refetchTags } = useGetTagsQuery({ page: 1, limit: 200 });
   const { data: gamesData } = useGetGamesQuery({ page: 1, limit: 200 });
   const [createArticle, createState] = useCreateArticleMutation();
+  const [createCategory, createCategoryState] = useCreateCategoryMutation();
+  const [createTag, createTagState] = useCreateTagMutation();
   const [generateArticleSlug, generateSlugState] = useGenerateArticleSlugMutation();
   const [updateArticle, updateState] = useUpdateArticleMutation();
 
@@ -205,6 +226,7 @@ function ArticleForm({ mode = "create" }) {
   const tags = tagsData?.data || [];
   const games = gamesData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
+  const isQuickCreateSaving = createCategoryState.isLoading || createTagState.isLoading;
   const isLastStep = currentStep === steps.length - 1;
   const titleIsValid = Boolean(form.title.trim());
   const contentIsValid = Boolean(form.content.trim());
@@ -315,6 +337,60 @@ function ArticleForm({ mode = "create" }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const openQuickCreate = (type) => {
+    setQuickCreate(type);
+    setQuickCreateForm({ name: "", slug: "", description: "" });
+  };
+
+  const closeQuickCreate = () => {
+    if (isQuickCreateSaving) return;
+    setQuickCreate(null);
+    setQuickCreateForm({ name: "", slug: "", description: "" });
+  };
+
+  const handleQuickCreateSubmit = async (event) => {
+    event.preventDefault();
+    if (!quickCreate) return;
+
+    const name = quickCreateForm.name.trim();
+    if (!name) {
+      toast.error("\u0646\u0627\u0645 \u0631\u0627 \u0648\u0627\u0631\u062f \u06a9\u0646\u06cc\u062f", { id: "article-quick-create" });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("description", quickCreateForm.description.trim());
+    if (quickCreate === "tag") {
+      formData.append("slug", makeSlug(quickCreateForm.slug || name));
+    }
+
+    try {
+      const label = quickCreate === "category" ? "\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc" : "\u062a\u06af";
+      toast.loading(`\u062f\u0631 \u062d\u0627\u0644 \u0627\u0641\u0632\u0648\u062f\u0646 ${label}...`, { id: "article-quick-create" });
+      const response =
+        quickCreate === "category"
+          ? await createCategory(formData).unwrap()
+          : await createTag(formData).unwrap();
+      const createdId = response?.data?._id;
+
+      if (quickCreate === "category") {
+        await refetchCategories();
+        if (createdId) setForm((prev) => ({ ...prev, category: createdId }));
+      } else {
+        await refetchTags();
+        if (createdId) setForm((prev) => ({ ...prev, tags: prev.tags.includes(createdId) ? prev.tags : [...prev.tags, createdId] }));
+      }
+
+      setQuickCreate(null);
+      setQuickCreateForm({ name: "", slug: "", description: "" });
+      toast.success(response?.description || `${label} \u0627\u0636\u0627\u0641\u0647 \u0634\u062f`, { id: "article-quick-create" });
+    } catch (error) {
+      const label = quickCreate === "category" ? "\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc" : "\u062a\u06af";
+      toast.error(error?.data?.description || `\u0627\u0641\u0632\u0648\u062f\u0646 ${label} \u0646\u0627\u0645\u0648\u0641\u0642 \u0628\u0648\u062f`, { id: "article-quick-create" });
+    }
+  };
+
   const goToStep = (step) => {
     const targetIndex = step - 1;
 
@@ -381,7 +457,7 @@ function ArticleForm({ mode = "create" }) {
       const response = isEdit ? await updateArticle({ id, formData }).unwrap() : await createArticle(formData).unwrap();
 
       toast.success(response.description || "مجله ذخیره شد", { id: "save-article" });
-      navigate("/articles");
+      navigate("/magazines");
     } catch (error) {
       toast.error(error?.data?.description || "ذخیره مجله انجام نشد", { id: "save-article" });
     }
@@ -442,14 +518,36 @@ function ArticleForm({ mode = "create" }) {
         );
       case "faqs":
         return <FaqRowsEditor items={form.faqs} onChange={(value) => setArrayField("faqs", value)} />;
-      case "relations":
+      case "relations": {
+        const relationQuickCreateActions = (
+          <div className="grid gap-3 md:grid-cols-2">
+            <button
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white dark:border-blue-700 dark:bg-blue-600"
+              onClick={() => openQuickCreate("category")}
+              type="button"
+            >
+              <Plus className="h-6 w-6 !text-white" style={{ color: "#fff" }} />
+              {"\u0627\u0641\u0632\u0648\u062f\u0646 \u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc"}
+            </button>
+            <button
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white dark:border-blue-700 dark:bg-blue-600"
+              onClick={() => openQuickCreate("tag")}
+              type="button"
+            >
+              <Plus className="h-6 w-6 !text-white" style={{ color: "#fff" }} />
+              {"\u0627\u0641\u0632\u0648\u062f\u0646 \u062a\u06af"}
+            </button>
+          </div>
+        );
         return (
           <div className="space-y-4">
+            {relationQuickCreateActions}
             <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={handleChange} options={categoryOptions} value={form.category} />
             <MultiSelectDropdown label="تگ‌ها" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
             <MultiSelectDropdown label="بازی‌های مرتبط" onChange={(value) => setArrayField("relatedGames", value)} options={gameOptions} value={form.relatedGames} />
           </div>
         );
+      }
       case "publish":
         return (
           <div className="space-y-4">
@@ -488,7 +586,7 @@ function ArticleForm({ mode = "create" }) {
             <p className="text-xs text-zinc-400">مدیریت مجله‌نویس</p>
             <h1 className="mt-1 text-2xl font-bold text-white">{isEdit ? "ویرایش مجله" : "افزودن مجله"}</h1>
           </div>
-          <Link className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white" to="/articles">
+          <Link className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white" to="/magazines">
             بازگشت به لیست
           </Link>
         </div>
@@ -545,6 +643,66 @@ function ArticleForm({ mode = "create" }) {
           )}
         </form>
 
+        {quickCreate ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" dir="rtl">
+            <form className="w-full max-w-lg space-y-4 rounded-2xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl" onSubmit={handleQuickCreateSubmit}>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-bold text-white">{quickCreate === "category" ? "افزودن دسته‌بندی" : "افزودن تگ"}</h2>
+                <button
+                  aria-label="بستن"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
+                  disabled={isQuickCreateSaving}
+                  onClick={closeQuickCreate}
+                  type="button"
+                >
+                  <Cross />
+                </button>
+              </div>
+              <Field
+                label={quickCreate === "category" ? "نام دسته‌بندی" : "نام تگ"}
+                name="quickCreateName"
+                onChange={(event) => setQuickCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder={quickCreate === "category" ? "مثلا اخبار بازی" : "مثلا راهنمای خرید"}
+                value={quickCreateForm.name}
+              />
+              {quickCreate === "tag" ? (
+                <Field
+                  label="اسلاگ"
+                  name="quickCreateSlug"
+                  onChange={(event) => setQuickCreateForm((prev) => ({ ...prev, slug: event.target.value }))}
+                  placeholder="buying-guide"
+                  value={quickCreateForm.slug}
+                />
+              ) : null}
+              <Textarea
+                label="توضیحات"
+                name="quickCreateDescription"
+                onChange={(event) => setQuickCreateForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="توضیح کوتاه"
+                rows={3}
+                value={quickCreateForm.description}
+              />
+              <div className="flex items-center justify-end gap-3 border-t border-zinc-800 pt-4">
+                <button
+                  className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white"
+                  disabled={isQuickCreateSaving}
+                  onClick={closeQuickCreate}
+                  type="button"
+                >
+                  انصراف
+                </button>
+                <button
+                  className="rounded-xl border border-emerald-700 bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-700 dark:bg-blue-600"
+                  disabled={isQuickCreateSaving}
+                  type="submit"
+                >
+                  {isQuickCreateSaving ? "در حال ثبت..." : "ثبت و انتخاب"}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
         {isDesktopPreviewOpen ? (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur" dir="rtl">
             <button
@@ -572,3 +730,5 @@ function ArticleForm({ mode = "create" }) {
 }
 
 export default ArticleForm;
+
+

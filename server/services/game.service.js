@@ -30,7 +30,56 @@ const populateGame = (query) =>
     .populate("filterDefinitions", "key label type options min max unit")
     .populate("filterValues.genres", "name icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
-    .populate("relatedGames", "title slug cover cardDesktopCover");
+    .populate("relatedGames", "title slug cover cardDesktopCover")
+    .populate("creator", "name email avatar role adminId");
+
+const ageRatingCatalog = [
+  { key: "everyone", title_fa: "همه سنین", title_en: "Everyone" },
+  { key: "everyone_10", title_fa: "کودکان", title_en: "Everyone 10+" },
+  { key: "teen", title_fa: "نوجوانان", title_en: "Teen" },
+  { key: "mature", title_fa: "بزرگسالان", title_en: "Mature 17+" },
+];
+
+const ageRatingLegacyMap = new Map(
+  ageRatingCatalog.flatMap((item) => {
+    const legacyValues = {
+      everyone: ["Everyone", "همه سنین", "مناسب همه", "PEGI 3", "پگی ۳"],
+      everyone_10: ["Everyone 10+", "کودکانه", "مناسب بالای ۱۰ سال", "PEGI 7", "پگی ۷"],
+      teen: ["Teen", "نوجوانان", "مناسب نوجوانان", "PEGI 12", "PEGI 16", "پگی ۱۲", "پگی ۱۶"],
+      mature: ["Mature 17+", "Adults Only 18+", "+18", "+18 / PEGI 18", "PEGI 18", "بزرگسالان", "مناسب بالای ۱۷ سال", "مناسب بالای ۱۸ سال", "پگی ۱۸"],
+    }[item.key] || [];
+
+    return [item.key, item.title_fa, item.title_en, ...legacyValues].map((value) => [String(value).trim(), item]);
+  })
+);
+
+function parseAgeRating(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return { key: "", title_fa: "", title_en: "" };
+
+  let raw = value;
+  if (typeof value === "string") {
+    try {
+      raw = JSON.parse(value);
+    } catch (_) {
+      raw = value;
+    }
+  }
+
+  if (raw && typeof raw === "object") {
+    const key = String(raw.key || raw.value || "").trim();
+    const catalogItem = ageRatingLegacyMap.get(key);
+    return {
+      key: key || catalogItem?.key || "",
+      title_fa: String(raw.title_fa || raw.titleFa || raw.label_fa || catalogItem?.title_fa || "").trim(),
+      title_en: String(raw.title_en || raw.titleEn || raw.label_en || catalogItem?.title_en || "").trim(),
+    };
+  }
+
+  const text = String(raw || "").trim();
+  const catalogItem = ageRatingLegacyMap.get(text);
+  return catalogItem || { key: text, title_fa: text, title_en: "" };
+}
 
 function makeSlug(value) {
   return String(value || "")
@@ -449,7 +498,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     socialLinks:
       body.socialLinks !== undefined ? parseSocialLinks(body.socialLinks) : undefined,
     ageRating:
-      body.ageRating !== undefined ? String(body.ageRating).trim() : undefined,
+      body.ageRating !== undefined ? parseAgeRating(body.ageRating) : undefined,
     gameplayTime:
       body.gameplayTime !== undefined ? String(body.gameplayTime).trim() : undefined,
     reviewSiteTitle:

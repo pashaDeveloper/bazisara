@@ -6,6 +6,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { mediaFromUploadOrBody } = require("../utils/media.util");
 
 function makeSlug(value) {
   return String(value || "")
@@ -55,13 +56,8 @@ function normalizeTagPayload(body, uploadedFiles) {
     seoKeywords: normalizeKeywords(body.seoKeywords),
   };
 
-  if (uploadedFiles?.image?.[0]) {
-    payload.image = {
-      url: uploadedFiles.image[0].url,
-      public_id: uploadedFiles.image[0].public_id,
-      storage: uploadedFiles.image[0].storage || "",
-    };
-  }
+  const image = mediaFromUploadOrBody(uploadedFiles, "image", body.image);
+  if (image) payload.image = image;
 
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)

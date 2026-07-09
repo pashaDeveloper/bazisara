@@ -46,7 +46,7 @@ export default async function Home() {
   const [sliders, games, articles] = await Promise.all([
     getApiList<Slider>("/sliders/all", 8),
     getApiList<Game>("/games/all", 24),
-    getApiList<Article>("/articles/all", 24),
+    getApiList<Article>("/magazines/all", 24),
   ]);
 
   return (

@@ -37,7 +37,7 @@ export function getAnalyticsIds() {
 
 function contentFromPath(path: string) {
   const parts = path.split("/").filter(Boolean);
-  const entityType = parts[0] === "articles" ? "article" : parts[0] === "games" ? "game" : "";
+  const entityType = parts[0] === "magazines" || parts[0] === "articles" ? "article" : parts[0] === "games" ? "game" : "";
   const entityId = entityType && parts.length >= 3 ? parts[2] : "";
 
   return { entityType, entityId };

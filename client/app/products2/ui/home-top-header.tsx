@@ -35,7 +35,7 @@ export function HomeTopHeader({
     { href: "/products2", label: "دسته‌بندی کالاها" },
     { href: "/products2", label: "تخفیف‌های ویژه" },
     { href: "/products2", label: "Open Box" },
-    { href: "/articles", label: "مجله بازی بازار" },
+    { href: "/magazines", label: "مجله بازی بازار" },
     { href: "/products2", label: "پیگیری سفارشات" },
     { href: "/contact", label: "تماس با ما" },
     { href: "/about", label: "ارتباط با ما" },

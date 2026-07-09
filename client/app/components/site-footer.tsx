@@ -4,7 +4,7 @@ import Link from "next/link";
 const footerLinks = [
   { href: "/products2", label: "فروشگاه" },
   { href: "/games", label: "بازی‌ها" },
-  { href: "/articles", label: "مجله" },
+  { href: "/magazines", label: "مجله" },
   { href: "/contact", label: "تماس با ما" },
   { href: "/about", label: "ارتباط با ما" },
 ];
@@ -45,4 +45,3 @@ export function SiteFooter() {
     </footer>
   );
 }
-
