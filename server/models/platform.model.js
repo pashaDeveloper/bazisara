@@ -47,7 +47,17 @@ const platformSchema = new mongoose.Schema(
     image: {
       url: { type: String, trim: true, default: "" },
       public_id: { type: String, trim: true, default: "" },
-      storage: { type: String, trim: true, default: "" },
+    },
+    fontFile: {
+      url: { type: String, trim: true, default: "" },
+      public_id: { type: String, trim: true, default: "" },
+      format: { type: String, trim: true, default: "" },
+    },
+    svgIcon: {
+      type: String,
+      trim: true,
+      default: "",
+      maxLength: [10000, "SVG icon must be at most 10000 characters"],
     },
     ...baseSchema.obj,
   },

@@ -35,7 +35,7 @@ const getOriginalExtension = (file) => {
   return "bin";
 };
 
-const compressImageLosslessly = async (file, extension) => {
+const compressImage = async (file, extension) => {
   if (!compressibleImageExtensions.has(extension)) {
     return null;
   }
@@ -45,13 +45,24 @@ const compressImageLosslessly = async (file, extension) => {
     return null;
   }
 
-  return sharp(file.buffer)
-    .rotate()
-    .webp({
-      lossless: true,
-      effort: 6,
-    })
-    .toBuffer();
+  const normalizedImage = sharp(file.buffer).rotate();
+  const candidates = await Promise.all(
+    [
+      normalizedImage.clone().webp({ lossless: true, effort: 6 }).toBuffer(),
+      normalizedImage
+        .clone()
+        .webp({
+          effort: 6,
+          quality: 92,
+          smartSubsample: true,
+        })
+        .toBuffer(),
+    ].map((task) => task.catch(() => null))
+  );
+
+  return candidates
+    .filter((buffer) => buffer && buffer.length < file.buffer.length)
+    .sort((a, b) => a.length - b.length)[0] || null;
 };
 
 const prepareFile = async (file) => {
@@ -60,7 +71,7 @@ const prepareFile = async (file) => {
   let fileBuffer = file.buffer;
   let contentType = file.mimetype || imageContentTypes[extension] || "application/octet-stream";
 
-  const compressedBuffer = await compressImageLosslessly(file, extension);
+  const compressedBuffer = await compressImage(file, extension);
 
   if (compressedBuffer && compressedBuffer.length < file.buffer.length) {
     fileBuffer = compressedBuffer;

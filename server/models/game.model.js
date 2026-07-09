@@ -6,11 +6,6 @@ const mediaSchema = new mongoose.Schema(
   {
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
-    storage: {
-      type: String,
-      enum: ["", "cloudinary", "arvan", "local"],
-      default: "",
-    },
     type: { type: String, enum: ["image", "video"], default: "image" },
   },
   { _id: false }

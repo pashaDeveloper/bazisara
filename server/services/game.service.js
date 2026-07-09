@@ -20,9 +20,9 @@ const populateGame = (query) =>
   query
     .populate("category", "name")
     .populate("genres", "name icon image")
-    .populate("platforms", "name name_fa name_en slug parent")
-    .populate("platformReleases.platform", "name name_fa name_en slug parent")
-    .populate("platformSizes.platform", "name slug parent")
+    .populate("platforms", "name name_fa name_en slug parent image fontFile svgIcon")
+    .populate("platformReleases.platform", "name name_fa name_en slug parent image fontFile svgIcon")
+    .populate("platformSizes.platform", "name slug parent image fontFile svgIcon")
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image")
@@ -201,16 +201,14 @@ function normalizeStructuredImages(items, uploadedFiles, fieldName) {
   let fileIndex = 0;
 
   return items.map((item) => {
-    const hasImageUrl = typeof item.image === "string" && item.image.trim();
-    if (!hasImageUrl && fileIndex < files.length) {
+    const image = parseMediaValue(item.image, "image");
+    if (!image && fileIndex < files.length) {
       const image = buildMedia(files[fileIndex]);
       fileIndex += 1;
       return { ...item, image };
     }
 
-    return hasImageUrl
-      ? { ...item, image: { url: item.image.trim(), public_id: "", type: "image" } }
-      : { ...item, image: undefined };
+    return image ? { ...item, image } : { ...item, image: undefined };
   });
 }
 
@@ -230,13 +228,13 @@ function buildMedia(file) {
   return {
     url: file.url,
     public_id: file.public_id,
-    storage: file.storage || "",
     type: file.resource_type === "video" ? "video" : "image",
   };
 }
 
 function parseMediaValue(value, fallbackType = "image") {
   if (value === undefined || value === null || value === "") return undefined;
+  if (value === "__delete__") return null;
 
   const raw =
     typeof value === "string"
@@ -254,7 +252,6 @@ function parseMediaValue(value, fallbackType = "image") {
   return {
     url: String(raw.url || "").trim(),
     public_id: String(raw.public_id || raw.key || "").trim(),
-    storage: String(raw.storage || "").trim(),
     type: raw.type === "video" || raw.resource_type === "video" ? "video" : fallbackType,
   };
 }
@@ -412,7 +409,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             type: typeof item === "string" ? "" : String(item?.type || "").trim(),
             versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
-            image: typeof item === "string" ? "" : String(item?.image || "").trim(),
+            image: typeof item === "string" ? "" : item?.image || "",
           }))
         : undefined,
     extraEditions:
@@ -421,7 +418,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
             price: typeof item === "string" ? null : toNumber(item?.price),
-            image: typeof item === "string" ? "" : String(item?.image || "").trim(),
+            image: typeof item === "string" ? "" : item?.image || "",
           }))
         : undefined,
     platformSizes:
@@ -469,15 +466,19 @@ function normalizePayload(body, uploadedFiles, currentGame) {
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
+  else if (body.cover !== undefined) payload.cover = parseMediaValue(body.cover, "image");
 
   const cardDesktopCover = buildMedia(uploadedFiles?.cardDesktopCover?.[0]);
   if (cardDesktopCover) payload.cardDesktopCover = cardDesktopCover;
+  else if (body.cardDesktopCover !== undefined) payload.cardDesktopCover = parseMediaValue(body.cardDesktopCover, "image");
 
   const cardMobileCover = buildMedia(uploadedFiles?.cardMobileCover?.[0]);
   if (cardMobileCover) payload.cardMobileCover = cardMobileCover;
+  else if (body.cardMobileCover !== undefined) payload.cardMobileCover = parseMediaValue(body.cardMobileCover, "image");
 
   const desktopCover = buildMedia(uploadedFiles?.desktopCover?.[0]);
   if (desktopCover) payload.desktopCover = desktopCover;
+  else if (body.desktopCover !== undefined) payload.desktopCover = parseMediaValue(body.desktopCover, "image");
 
   const mobileCover = buildMedia(uploadedFiles?.mobileCover?.[0]);
   if (mobileCover) payload.mobileCover = mobileCover;
@@ -495,6 +496,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
 
   const patchImage = buildMedia(uploadedFiles?.patchImage?.[0]);
   if (patchImage) payload.patchImage = patchImage;
+  else if (body.patchImage !== undefined) payload.patchImage = parseMediaValue(body.patchImage, "image");
 
   if (payload.dlcs !== undefined) {
     payload.dlcs = normalizeStructuredImages(payload.dlcs, uploadedFiles, "dlcImages");

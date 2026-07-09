@@ -2,7 +2,7 @@
 
 import React from "react";
 
-const Plus = ({ className,props}) => {
+const Plus = ({ className, ...props }) => {
   return (
     <svg
       {...props}

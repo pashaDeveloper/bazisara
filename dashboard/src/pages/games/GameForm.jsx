@@ -2,11 +2,13 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
+import CloudUpload from "@/components/icons/CloudUpload";
+import IconPicker from "@/components/shared/IconPicker";
 import SendButton from "@/components/shared/button/SendButton";
-import { useGetCategoriesQuery } from "../../services/category/categoryApi";
-import { useGetCompaniesQuery } from "../../services/companyApi";
-import { useGetGenresQuery } from "../../services/genreApi";
-import { useGetTagsQuery } from "../../services/tagApi";
+import { useCreateCategoryMutation, useGetCategoriesQuery } from "../../services/category/categoryApi";
+import { useCreateCompanyMutation, useGetCompaniesQuery } from "../../services/companyApi";
+import { useCreateGenreMutation, useGetGenresQuery } from "../../services/genreApi";
+import { useCreateTagMutation, useGetTagsQuery } from "../../services/tagApi";
 import {
   useCreateGameMutation,
   useGetGameQuery,
@@ -21,10 +23,12 @@ import {
   offlinePlayerOptions,
 } from "./gameOptions";
 import { formatDate, makeGameSlug, normalizeOptionValue, toIdArray } from "./gameFormUtils";
-import { useGetPlatformsQuery } from "@/services/platformApi";
-import { useGetGameCollectionsQuery } from "@/services/gameCollectionApi";
-import { useGetGameKeywordsQuery } from "@/services/gameKeywordApi";
+import { useCreatePlatformMutation, useGetPlatformsQuery } from "@/services/platformApi";
+import { useCreateGameCollectionMutation, useGetGameCollectionsQuery } from "@/services/gameCollectionApi";
+import { useCreateGameKeywordMutation, useGetGameKeywordsQuery } from "@/services/gameKeywordApi";
 import { useDeleteUploadMutation, useUploadMutation } from "@/services/upload/uploadApi";
+import { useGetBrandsQuery } from "@/services/brandApi";
+import { useGetIconsQuery } from "@/services/iconApi";
 import { flattenPlatforms } from "../platforms/utils";
 import DesktopCoverCropper from "./components/DesktopCoverCropper";
 import { GameCardPreview, GameDetailPreview } from "./components/GamePreviews";
@@ -101,6 +105,7 @@ const initialForm = {
 const isFile = (value) => value instanceof File;
 
 const isMediaObject = (value) => Boolean(value && typeof value === "object" && !(value instanceof File) && value.url);
+const deletedMediaValue = "__delete__";
 
 const normalizeUploadedMedia = (response, fallbackType = "video") => {
   const file = response?.data || response;
@@ -109,9 +114,68 @@ const normalizeUploadedMedia = (response, fallbackType = "video") => {
   return {
     url: file.url,
     public_id: file.public_id || file.key || "",
-    storage: file.storage || "arvan",
     type: file.resource_type === "video" ? "video" : file.type || fallbackType,
+    originalSize: file.original_size || file.originalSize || null,
+    uploadedSize: file.size || file.bytes || null,
+    storage: file.storage || "",
   };
+};
+
+const getUploadErrorMessage = (error) => {
+  if (!error) return "خطای نامشخص در آپلود";
+  if (typeof error === "string") return error;
+  if (error?.data?.description) return error.data.description;
+  if (error?.data?.message) return error.data.message;
+  if (error?.description) return error.description;
+  if (error?.message) return error.message;
+  if (error?.status) return `خطای آپلود با کد ${error.status}`;
+  return "خطای نامشخص در آپلود";
+};
+
+const uploadImageWithProgress = (file, onProgress) => {
+  const baseUrl = String(import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${baseUrl}/uploads/arvan/create`);
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) {
+        onProgress?.(35);
+        return;
+      }
+      onProgress?.(Math.min(95, Math.round((event.loaded / event.total) * 100)));
+    };
+
+    xhr.onload = () => {
+      let payload = null;
+      try {
+        payload = JSON.parse(xhr.responseText || "{}");
+      } catch (_) {
+        payload = { description: xhr.responseText };
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
+        resolve(payload);
+        return;
+      }
+
+      reject({
+        status: xhr.status,
+        message: payload?.description || payload?.message || xhr.statusText,
+        data: payload,
+      });
+    };
+
+    xhr.onerror = () => reject({ message: "ارتباط با سرور آپلود برقرار نشد؛ CORS یا شبکه را بررسی کنید" });
+    xhr.onabort = () => reject({ message: "آپلود لغو شد" });
+    xhr.send(formData);
+  });
 };
 
 const formSections = [
@@ -133,6 +197,37 @@ const previewTabs = [
   { key: "mobile", label: "موبایل" },
   { key: "desktop", label: "دسکتاپ" },
 ];
+
+const quickCreateInitialValues = {
+  name: "",
+  title_fa: "",
+  title_en: "",
+  name_fa: "",
+  name_en: "",
+  slug: "",
+  brand: "",
+  country: "",
+  description: "",
+  foundedYear: "",
+  icon: "",
+  image: null,
+  logo: null,
+  parent: "",
+  placement: "homepage",
+  svgIcon: "",
+  type: "developer_publisher",
+  website: "",
+};
+
+const quickCreateLabels = {
+  category: "دسته‌بندی",
+  genre: "ژانر",
+  tag: "تگ",
+  company: "شرکت",
+  gameKeyword: "کلمه کلیدی بازی",
+  gameCollection: "کالکشن بازی",
+  platform: "پلتفرم",
+};
 
 function GameFormSection({ children, index, title }) {
   return (
@@ -234,26 +329,40 @@ function GameForm({ mode = "create" }) {
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
   const [activePreviewTab, setActivePreviewTab] = useState("form");
   const [isSlugTouched, setIsSlugTouched] = useState(false);
+  const [quickCreate, setQuickCreate] = useState(null);
+  const [quickCreateForm, setQuickCreateForm] = useState(quickCreateInitialValues);
+  const [quickCreateImagePreview, setQuickCreateImagePreview] = useState("");
   const [videoUploadState, setVideoUploadState] = useState({
     trailerVideo: false,
   });
+  const [imageUploadState, setImageUploadState] = useState({});
   const tempUploadedVideosRef = useRef(new Map());
+  const tempUploadedImagesRef = useRef(new Map());
   const didSaveRef = useRef(false);
   const didUnmountRef = useRef(false);
 
   const { data: gameData, isLoading: isLoadingGame } = useGetGameQuery(id, {
     skip: !isEdit || !id,
   });
-  const { data: categoriesData } = useGetCategoriesQuery({ page: 1, limit: 200 });
-  const { data: genresData } = useGetGenresQuery({ page: 1, limit: 200 });
-  const { data: companiesData } = useGetCompaniesQuery({ page: 1, limit: 200 });
-  const { data: tagsData } = useGetTagsQuery({ page: 1, limit: 200 });
-  const { data: gameKeywordsData } = useGetGameKeywordsQuery({ page: 1, limit: 300 });
-  const { data: platformsData } = useGetPlatformsQuery({ tree: true, limit: 500 });
-  const { data: collectionsData } = useGetGameCollectionsQuery({ page: 1, limit: 300 });
+  const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery({ page: 1, limit: 200 });
+  const { data: genresData, refetch: refetchGenres } = useGetGenresQuery({ page: 1, limit: 200 });
+  const { data: companiesData, refetch: refetchCompanies } = useGetCompaniesQuery({ page: 1, limit: 200 });
+  const { data: tagsData, refetch: refetchTags } = useGetTagsQuery({ page: 1, limit: 200 });
+  const { data: gameKeywordsData, refetch: refetchGameKeywords } = useGetGameKeywordsQuery({ page: 1, limit: 300 });
+  const { data: platformsData, refetch: refetchPlatforms } = useGetPlatformsQuery({ tree: true, limit: 500 });
+  const { data: collectionsData, refetch: refetchCollections } = useGetGameCollectionsQuery({ page: 1, limit: 300 });
+  const { data: brandsData } = useGetBrandsQuery({ page: 1, limit: 500 });
+  const { data: iconsData, isLoading: isLoadingIcons } = useGetIconsQuery({ page: 1, limit: 300 });
   const { data: relatedGamesData } = useGetGamesQuery({ page: 1, limit: 500 });
   const [uploadFile] = useUploadMutation();
   const [deleteUpload] = useDeleteUploadMutation();
+  const [createCategory, createCategoryState] = useCreateCategoryMutation();
+  const [createGenre, createGenreState] = useCreateGenreMutation();
+  const [createTag, createTagState] = useCreateTagMutation();
+  const [createCompany, createCompanyState] = useCreateCompanyMutation();
+  const [createGameKeyword, createGameKeywordState] = useCreateGameKeywordMutation();
+  const [createGameCollection, createGameCollectionState] = useCreateGameCollectionMutation();
+  const [createPlatform, createPlatformState] = useCreatePlatformMutation();
   const [createGame, createState] = useCreateGameMutation();
   const [updateGame, updateState] = useUpdateGameMutation();
   const [translateSearchTitleSlug] = useTranslateGameSearchTitleSlugMutation();
@@ -265,8 +374,19 @@ function GameForm({ mode = "create" }) {
   const gameKeywords = gameKeywordsData?.data || [];
   const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
   const collections = collectionsData?.data || [];
+  const brands = brandsData?.data || [];
+  const icons = iconsData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
+  const isQuickCreateSaving =
+    createCategoryState.isLoading ||
+    createGenreState.isLoading ||
+    createTagState.isLoading ||
+    createCompanyState.isLoading ||
+    createGameKeywordState.isLoading ||
+    createGameCollectionState.isLoading ||
+    createPlatformState.isLoading;
   const isUploadingVideo = videoUploadState.trailerVideo;
+  const isUploadingImage = Object.values(imageUploadState).some((item) => item?.status === "uploading");
   const titleIsValid = Boolean(form.title.trim());
   const categoryIsValid = Boolean(form.category);
 
@@ -280,6 +400,11 @@ function GameForm({ mode = "create" }) {
   );
   const collectionOptions = useMemo(() => collections.map((item) => ({ label: item.title_fa, value: item._id })), [collections]);
   const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
+  const brandOptions = useMemo(
+    () => brands.map((item) => ({ label: item.title_fa || item.title_en || item.name || item.code || item._id, value: item._id })),
+    [brands]
+  );
+  const iconOptions = useMemo(() => icons.map((item) => ({ label: item.name || item._id, value: item._id })), [icons]);
   const relatedGameOptions = useMemo(
     () =>
       (relatedGamesData?.data || [])
@@ -296,7 +421,6 @@ function GameForm({ mode = "create" }) {
       id: `existing-${item.public_id || item.url || index}`,
       url: item.url,
       public_id: item.public_id || "",
-      storage: item.storage || "",
       type: item.type || "image",
       kind: "existing",
     }));
@@ -338,7 +462,7 @@ function GameForm({ mode = "create" }) {
             title: String(item?.title || "").trim(),
             type: String(item?.type || "").trim(),
             versionSize: String(item?.versionSize || "").trim(),
-            image: item?.image?.url || item?.image || "",
+            image: item?.image?.url ? item.image : item?.image || "",
           }))
         : [],
       extraEditions: Array.isArray(game.extraEditions)
@@ -346,7 +470,7 @@ function GameForm({ mode = "create" }) {
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             versionSize: String(item?.versionSize || "").trim(),
             price: item?.price ?? "",
-            image: item?.image?.url || item?.image || "",
+            image: item?.image?.url ? item.image : item?.image || "",
           }))
         : [],
       hasDubbing: Boolean(game.hasDubbing),
@@ -396,6 +520,169 @@ function GameForm({ mode = "create" }) {
 
   const setArrayField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const openQuickCreate = (type, target = {}) => {
+    setQuickCreate({ type, target });
+    setQuickCreateForm(quickCreateInitialValues);
+    setQuickCreateImagePreview("");
+  };
+
+  const closeQuickCreate = () => {
+    if (isQuickCreateSaving) return;
+    setQuickCreate(null);
+    setQuickCreateForm(quickCreateInitialValues);
+    setQuickCreateImagePreview("");
+  };
+
+  const setQuickCreateValue = (name, value) => {
+    setQuickCreateForm((prev) => {
+      const next = { ...prev, [name]: value };
+      if ((name === "name" || name === "title_en" || name === "title_fa" || name === "name_en") && !prev.slug) {
+        next.slug = makeGameSlug(value);
+      }
+      return next;
+    });
+  };
+
+  const setQuickCreateImageFile = (file) => {
+    setQuickCreateValue("image", file || null);
+    if (!(file instanceof File)) {
+      setQuickCreateImagePreview("");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => setQuickCreateImagePreview(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  };
+
+  const appendCreatedItemToForm = (createdId) => {
+    if (!createdId || !quickCreate?.target?.field) return;
+
+    const { field, index } = quickCreate.target;
+    setForm((prev) => {
+      if (field === "category") return { ...prev, category: createdId };
+
+      if (field === "platformReleases" || field === "platformSizes") {
+        const fallbackRow = field === "platformReleases" ? { platform: "", releaseDate: "" } : { platform: "", variant: "", size: "" };
+        const rows = Array.isArray(prev[field]) && prev[field].length ? [...prev[field]] : [fallbackRow];
+        const rowIndex = Number.isInteger(index) ? index : 0;
+        while (rows.length <= rowIndex) rows.push({ ...fallbackRow });
+        rows[rowIndex] = { ...rows[rowIndex], platform: createdId };
+        return { ...prev, [field]: rows };
+      }
+
+      const currentValues = Array.isArray(prev[field]) ? prev[field] : [];
+      return currentValues.includes(createdId) ? prev : { ...prev, [field]: [...currentValues, createdId] };
+    });
+  };
+
+  const refetchQuickCreateList = async (type) => {
+    const refetchMap = {
+      category: refetchCategories,
+      genre: refetchGenres,
+      tag: refetchTags,
+      company: refetchCompanies,
+      gameKeyword: refetchGameKeywords,
+      gameCollection: refetchCollections,
+      platform: refetchPlatforms,
+    };
+    await refetchMap[type]?.();
+  };
+
+  const buildQuickCreateRequest = (type) => {
+    const trimmed = Object.fromEntries(Object.entries(quickCreateForm).map(([key, value]) => [key, String(value || "").trim()]));
+    const name = trimmed.name || trimmed.title_fa || trimmed.name_fa || trimmed.title_en || trimmed.name_en;
+    const slug = makeGameSlug(trimmed.slug || trimmed.title_en || trimmed.name_en || name);
+
+    if (type === "gameCollection") {
+      const formData = new FormData();
+      formData.append("title_fa", trimmed.title_fa || name);
+      if (trimmed.title_en) formData.append("title_en", trimmed.title_en);
+      formData.append("slug", slug);
+      if (trimmed.description) formData.append("description", trimmed.description);
+      if (trimmed.placement) formData.append("placement", trimmed.placement);
+      if (quickCreateForm.image instanceof File) formData.append("image", quickCreateForm.image);
+      return formData;
+    }
+
+    const formData = new FormData();
+    const append = (key, value) => {
+      if (value !== undefined && value !== null && String(value).trim() !== "") formData.append(key, String(value).trim());
+    };
+
+    if (type === "platform") {
+      append("name_fa", trimmed.name_fa || name);
+      append("name_en", trimmed.name_en || trimmed.name_fa || name);
+      append("slug", slug);
+      append("brand", trimmed.brand);
+      append("description", trimmed.description);
+      append("svgIcon", trimmed.svgIcon);
+      if (quickCreateForm.image instanceof File) formData.append("image", quickCreateForm.image);
+      return formData;
+    }
+
+    append("name", name);
+    append("slug", slug);
+    append("title_en", type === "gameKeyword" ? trimmed.title_en : "");
+    append("description", trimmed.description);
+    append("icon", trimmed.icon);
+    append("parent", type === "category" ? trimmed.parent : "");
+    append("website", type === "company" ? trimmed.website : "");
+    append("country", type === "company" ? trimmed.country : "");
+    append("foundedYear", type === "company" ? trimmed.foundedYear : "");
+    append("type", type === "company" ? trimmed.type : "");
+    if (quickCreateForm.image instanceof File) formData.append("image", quickCreateForm.image);
+    if (quickCreateForm.logo instanceof File) formData.append("logo", quickCreateForm.logo);
+    return formData;
+  };
+
+  const handleQuickCreateSubmit = async (event) => {
+    event.preventDefault();
+    if (!quickCreate?.type) return;
+
+    const type = quickCreate.type;
+    const label = quickCreateLabels[type] || "مورد";
+    const hasName = Boolean(
+      quickCreateForm.name.trim() ||
+        quickCreateForm.title_fa.trim() ||
+        quickCreateForm.name_fa.trim() ||
+        quickCreateForm.title_en.trim() ||
+        quickCreateForm.name_en.trim()
+    );
+
+    if (!hasName) {
+      toast.error(`عنوان ${label} را وارد کنید`, { id: "quick-create" });
+      return;
+    }
+    if (type === "platform" && !quickCreateForm.brand) {
+      toast.error("برای ساخت پلتفرم، برند را انتخاب کنید", { id: "quick-create" });
+      return;
+    }
+
+    const createMap = {
+      category: createCategory,
+      genre: createGenre,
+      tag: createTag,
+      company: createCompany,
+      gameKeyword: createGameKeyword,
+      gameCollection: createGameCollection,
+      platform: createPlatform,
+    };
+
+    try {
+      toast.loading(`در حال افزودن ${label}...`, { id: "quick-create" });
+      const response = await createMap[type](buildQuickCreateRequest(type)).unwrap();
+      const createdId = response?.data?._id || response?.data?.id;
+      await refetchQuickCreateList(type);
+      appendCreatedItemToForm(createdId);
+      setQuickCreate(null);
+      setQuickCreateForm(quickCreateInitialValues);
+      toast.success(response?.description || `${label} اضافه شد`, { id: "quick-create" });
+    } catch (error) {
+      toast.error(error?.data?.description || `افزودن ${label} ناموفق بود`, { id: "quick-create" });
+    }
   };
 
   const deleteTemporaryMedia = async (media) => {
@@ -456,6 +743,111 @@ function GameForm({ mode = "create" }) {
     }
   };
 
+  const handleImageUpload = async (uploadKey, file, { fallbackType = "image" } = {}) => {
+    if (!(file instanceof File)) return null;
+
+    const previousTempMedia = tempUploadedImagesRef.current.get(uploadKey);
+    const localPreview = URL.createObjectURL(file);
+    setImageUploadState((prev) => ({
+      ...prev,
+      [uploadKey]: {
+        error: "",
+        localPreview,
+        originalSize: file.size,
+        progress: 1,
+        status: "uploading",
+        uploadedSize: null,
+      },
+    }));
+
+    try {
+      const response = await uploadImageWithProgress(file, (progress) => {
+        if (didUnmountRef.current) return;
+        setImageUploadState((prev) => ({
+          ...prev,
+          [uploadKey]: {
+            ...(prev[uploadKey] || {}),
+            progress,
+            status: "uploading",
+          },
+        }));
+      });
+      const media = normalizeUploadedMedia(response, fallbackType);
+
+      if (!media) {
+        throw new Error("پاسخ آپلود معتبر نیست و آدرس فایل برنگشت");
+      }
+
+      if (!didUnmountRef.current) {
+        setImageUploadState((prev) => ({
+          ...prev,
+          [uploadKey]: {
+            ...(prev[uploadKey] || {}),
+            error: "",
+            originalSize: media.originalSize || file.size,
+            progress: 100,
+            status: "done",
+            uploadedSize: media.uploadedSize || null,
+          },
+        }));
+      }
+
+      tempUploadedImagesRef.current.set(uploadKey, media);
+      if (previousTempMedia?.public_id && previousTempMedia.public_id !== media.public_id) {
+        await deleteTemporaryMedia(previousTempMedia);
+      }
+
+      return media;
+    } catch (error) {
+      const message = getUploadErrorMessage(error);
+      if (!didUnmountRef.current) {
+        setImageUploadState((prev) => ({
+          ...prev,
+          [uploadKey]: {
+            ...(prev[uploadKey] || {}),
+            error: message,
+            progress: 0,
+            status: "error",
+          },
+        }));
+        toast.error(message, { id: `${uploadKey}-upload` });
+      }
+      if (previousTempMedia) tempUploadedImagesRef.current.set(uploadKey, previousTempMedia);
+      return null;
+    }
+  };
+
+  const deleteTemporaryImage = async (uploadKey) => {
+    const media = tempUploadedImagesRef.current.get(uploadKey);
+    if (!media) return;
+    tempUploadedImagesRef.current.delete(uploadKey);
+    await deleteTemporaryMedia(media);
+  };
+
+  const deleteUploadedImage = async (uploadKey, media) => {
+    const temporaryMedia = tempUploadedImagesRef.current.get(uploadKey);
+    if (temporaryMedia) {
+      tempUploadedImagesRef.current.delete(uploadKey);
+      await deleteTemporaryMedia(temporaryMedia);
+      return;
+    }
+
+    await deleteTemporaryMedia(media);
+  };
+
+  const deleteMainImage = async (field, setPreview) => {
+    const game = gameData?.data || {};
+    const media = isMediaObject(form[field]) ? form[field] : game[field];
+    await deleteUploadedImage(field, media);
+    setForm((prev) => ({ ...prev, [field]: deletedMediaValue }));
+    setPreview("");
+
+    if (field === "cardDesktopCover") {
+      setCoverPreview("");
+      setForm((prev) => ({ ...prev, cover: deletedMediaValue }));
+    }
+  };
+
   useEffect(() => {
     didUnmountRef.current = false;
 
@@ -467,6 +859,10 @@ function GameForm({ mode = "create" }) {
         deleteTemporaryMedia(media);
       });
       tempUploadedVideosRef.current.clear();
+      tempUploadedImagesRef.current.forEach((media) => {
+        deleteTemporaryMedia(media);
+      });
+      tempUploadedImagesRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -510,11 +906,14 @@ function GameForm({ mode = "create" }) {
     Object.entries(normalizedForm).forEach(([key, value]) => {
       if (key === "cover" || key === "cardDesktopCover" || key === "cardMobileCover" || key === "desktopCover" || key === "patchImage") {
         if (value instanceof File) formData.append(key, value);
+        else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
+        else if (value === deletedMediaValue) formData.append(key, deletedMediaValue);
         return;
       }
       if (key === "gallery") {
         const galleryItems = [];
         (Array.isArray(value) ? value : []).forEach((item) => {
+          if (item?.kind === "error") return;
           if (item instanceof File) {
             formData.append("gallery", item);
             galleryItems.push({ kind: "new" });
@@ -527,13 +926,12 @@ function GameForm({ mode = "create" }) {
             return;
           }
 
-          if (item?.url) {
+          if (item?.url && !String(item.url).startsWith("blob:") && !String(item.url).startsWith("data:")) {
             galleryItems.push({
               kind: "existing",
               media: {
                 url: item.url,
                 public_id: item.public_id || "",
-                storage: item.storage || "",
                 type: item.type || "image",
               },
             });
@@ -555,7 +953,7 @@ function GameForm({ mode = "create" }) {
           title: String(item?.title || "").trim(),
           type: String(item?.type || "").trim(),
           versionSize: String(item?.versionSize || "").trim(),
-          image: typeof item?.image === "string" ? item.image : item?.image?.url || "",
+          image: isMediaObject(item?.image) ? item.image : typeof item?.image === "string" ? item.image : item?.image?.url || "",
         }));
         formData.append("dlcs", JSON.stringify(dlcPayload));
         (Array.isArray(value) ? value : []).forEach((item) => {
@@ -570,7 +968,7 @@ function GameForm({ mode = "create" }) {
           title: String(item?.title || "").trim(),
           versionSize: String(item?.versionSize || "").trim(),
           price: item?.price ?? "",
-          image: typeof item?.image === "string" ? item.image : item?.image?.url || "",
+          image: isMediaObject(item?.image) ? item.image : typeof item?.image === "string" ? item.image : item?.image?.url || "",
         }));
         formData.append("extraEditions", JSON.stringify(extraPayload));
         (Array.isArray(value) ? value : []).forEach((item) => {
@@ -598,6 +996,11 @@ function GameForm({ mode = "create" }) {
       return;
     }
 
+    if (isUploadingImage) {
+      toast.error("تا پایان آپلود تصاویر صبر کنید", { id: "game-image-upload" });
+      return;
+    }
+
     if (!titleIsValid || !categoryIsValid) {
       toast.error(!titleIsValid ? "عنوان بازی را وارد کنید" : "دسته‌بندی بازی را انتخاب کنید", { id: "save-game" });
       return;
@@ -612,6 +1015,7 @@ function GameForm({ mode = "create" }) {
 
       didSaveRef.current = true;
       tempUploadedVideosRef.current.clear();
+      tempUploadedImagesRef.current.clear();
       toast.success(response.description || "بازی ذخیره شد", { id: "save-game" });
       navigate("/games");
     } catch (error) {
@@ -641,11 +1045,16 @@ function GameForm({ mode = "create" }) {
             coverPreview={coverPreview}
             desktopCoverPreview={desktopCoverPreview}
             galleryPreview={galleryPreview}
+            imageUploadState={imageUploadState}
             isTrailerVideoUploading={videoUploadState.trailerVideo}
+            onDeleteMainImage={deleteMainImage}
+            onDeleteUploadedImage={deleteUploadedImage}
+            onImageUpload={handleImageUpload}
             onVideoUpload={handleVideoUpload}
             setCardDesktopCoverPreview={setCardDesktopCoverPreview}
             setCardMobileCoverPreview={setCardMobileCoverPreview}
             setCoverPreview={setCoverPreview}
+            setDesktopCoverPreview={setDesktopCoverPreview}
             setDesktopCoverCropFile={setDesktopCoverCropFile}
             setForm={setForm}
             setGalleryPreview={setGalleryPreview}
@@ -665,6 +1074,7 @@ function GameForm({ mode = "create" }) {
               gameKeywordOptions={gameKeywordOptions}
               genreOptions={genreOptions}
               onChange={handleChange}
+              onQuickCreate={openQuickCreate}
               setArrayField={setArrayField}
               tagOptions={tagOptions}
             />
@@ -680,20 +1090,20 @@ function GameForm({ mode = "create" }) {
       case "sizes":
         return (
           <div className="space-y-4">
-            <PlatformReleasesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />
-            <PlatformSizesStep form={form} platformOptions={platformOptions} setArrayField={setArrayField} />
+            <PlatformReleasesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
+            <PlatformSizesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
           </div>
         );
       case "dlc":
-        return <DlcStep form={form} setArrayField={setArrayField} />;
+        return <DlcStep form={form} imageUploadState={imageUploadState} onDeleteUploadedImage={deleteUploadedImage} onImageUpload={handleImageUpload} setArrayField={setArrayField} />;
       case "editions":
-        return <EditionsStep form={form} setArrayField={setArrayField} />;
+        return <EditionsStep form={form} imageUploadState={imageUploadState} onDeleteUploadedImage={deleteUploadedImage} onImageUpload={handleImageUpload} setArrayField={setArrayField} />;
       case "relatedGames":
         return <RelatedGamesStep form={form} relatedGameOptions={relatedGameOptions} setArrayField={setArrayField} />;
       case "review":
         return <ReviewStep form={form} onChange={handleChange} setArrayField={setArrayField} />;
       case "seo":
-        return <SeoTagsStep form={form} setArrayField={setArrayField} tagOptions={tagOptions} />;
+        return <SeoTagsStep form={form} onQuickCreate={openQuickCreate} setArrayField={setArrayField} tagOptions={tagOptions} />;
       case "social":
         return <SocialStep form={form} setArrayField={setArrayField} />;
       default:
@@ -805,9 +1215,9 @@ function GameForm({ mode = "create" }) {
                   ))}
                   <div className="sticky bottom-4 z-20 flex justify-end border-t border-zinc-200 bg-white/90 pt-4 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
                     <SendButton
-                      isLoading={isSaving || isUploadingVideo}
+                      isLoading={isSaving || isUploadingVideo || isUploadingImage}
                       label={isEdit ? "ذخیره بازی" : "ثبت بازی"}
-                      loadingLabel={isUploadingVideo ? "در حال آپلود ویدئو..." : "در حال ذخیره..."}
+                      loadingLabel={isUploadingImage ? "در حال آپلود تصویر..." : isUploadingVideo ? "در حال آپلود ویدئو..." : "در حال ذخیره..."}
                     />
                   </div>
                 </div>
@@ -817,13 +1227,339 @@ function GameForm({ mode = "create" }) {
           )}
         </form>
 
+        {quickCreate ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6" dir="rtl">
+            <form
+              className="w-full max-w-2xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+              onSubmit={handleQuickCreateSubmit}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-zinc-500">افزودن سریع</p>
+                  <h2 className="text-lg font-bold text-zinc-950 dark:text-white">{quickCreateLabels[quickCreate.type]}</h2>
+                </div>
+                <button
+                  className="rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-600 transition hover:border-red-400 hover:text-red-500 dark:border-zinc-800 dark:text-zinc-300"
+                  onClick={closeQuickCreate}
+                  type="button"
+                >
+                  بستن
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {quickCreate.type === "gameCollection" ? (
+                  <>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان فارسی</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("title_fa", event.target.value)}
+                        value={quickCreateForm.title_fa}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان انگلیسی</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("title_en", event.target.value)}
+                        value={quickCreateForm.title_en}
+                      />
+                    </label>
+                  </>
+                ) : quickCreate.type === "platform" ? (
+                  <>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">نام فارسی</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("name_fa", event.target.value)}
+                        value={quickCreateForm.name_fa}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">نام انگلیسی</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("name_en", event.target.value)}
+                        value={quickCreateForm.name_en}
+                      />
+                    </label>
+                    <label className="space-y-2 md:col-span-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">برند</span>
+                      <select
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("brand", event.target.value)}
+                        value={quickCreateForm.brand}
+                      >
+                        <option value="">انتخاب برند</option>
+                        {brandOptions.map((brand) => (
+                          <option key={brand.value} value={brand.value}>
+                            {brand.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-2 md:col-span-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">SVG آیکون</span>
+                      <textarea
+                        className="min-h-24 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("svgIcon", event.target.value)}
+                        value={quickCreateForm.svgIcon}
+                      />
+                    </label>
+                    <label className="space-y-2 md:col-span-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">تصویر</span>
+                      <input
+                        accept="image/*"
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("image", event.target.files?.[0] || null)}
+                        type="file"
+                      />
+                    </label>
+                  </>
+                ) : quickCreate.type === "genre" ? (
+                  <>
+                    <div className="space-y-3 md:col-span-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">تصویر ژانر</span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+                          <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+                          <span>انتخاب تصویر ژانر</span>
+                          <input
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(event) => setQuickCreateImageFile(event.target.files?.[0] || null)}
+                            type="file"
+                          />
+                        </label>
+                        {quickCreateImagePreview ? (
+                          <div className="h-16 w-16 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+                            <img alt="genre preview" className="h-full w-full object-cover" src={quickCreateImagePreview} />
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("name", event.target.value)}
+                        value={quickCreateForm.name}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("slug", event.target.value)}
+                        value={quickCreateForm.slug}
+                      />
+                    </label>
+                    <div className="md:col-span-2">
+                      <IconPicker
+                        icons={icons}
+                        isLoadingIcons={isLoadingIcons}
+                        label="آیکون"
+                        name="icon"
+                        onChange={(event) => setQuickCreateValue("icon", event.target.value)}
+                        value={quickCreateForm.icon}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان</span>
+                    <input
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      onChange={(event) => setQuickCreateValue("name", event.target.value)}
+                      value={quickCreateForm.name}
+                    />
+                  </label>
+                )}
+
+                {quickCreate.type === "gameKeyword" ? (
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان انگلیسی</span>
+                    <input
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      dir="ltr"
+                      onChange={(event) => setQuickCreateValue("title_en", event.target.value)}
+                      value={quickCreateForm.title_en}
+                    />
+                  </label>
+                ) : null}
+
+                {["category", "company"].includes(quickCreate.type) ? (
+                  <label className="space-y-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">آیکون</span>
+                    <select
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      onChange={(event) => setQuickCreateValue("icon", event.target.value)}
+                      value={quickCreateForm.icon}
+                    >
+                      <option value="">بدون آیکون</option>
+                      {iconOptions.map((icon) => (
+                        <option key={icon.value} value={icon.value}>
+                          {icon.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
+                {quickCreate.type === "category" ? (
+                  <label className="space-y-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">والد</span>
+                    <select
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      onChange={(event) => setQuickCreateValue("parent", event.target.value)}
+                      value={quickCreateForm.parent}
+                    >
+                      <option value="">بدون والد</option>
+                      {categoryOptions.map((category) => (
+                        <option key={category.value} value={category.value}>
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
+                {quickCreate.type === "company" ? (
+                  <>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">نوع شرکت</span>
+                      <select
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("type", event.target.value)}
+                        value={quickCreateForm.type}
+                      >
+                        <option value="developer_publisher">سازنده و ناشر</option>
+                        <option value="developer">سازنده</option>
+                        <option value="publisher">ناشر</option>
+                      </select>
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">کشور</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("country", event.target.value)}
+                        value={quickCreateForm.country}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">وب‌سایت</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        dir="ltr"
+                        onChange={(event) => setQuickCreateValue("website", event.target.value)}
+                        value={quickCreateForm.website}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">سال تاسیس</span>
+                      <input
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("foundedYear", event.target.value)}
+                        type="number"
+                        value={quickCreateForm.foundedYear}
+                      />
+                    </label>
+                  </>
+                ) : null}
+
+                {quickCreate.type === "gameCollection" ? (
+                  <label className="space-y-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">محل نمایش</span>
+                    <input
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      onChange={(event) => setQuickCreateValue("placement", event.target.value)}
+                      value={quickCreateForm.placement}
+                    />
+                  </label>
+                ) : null}
+
+                {["category", "tag", "gameKeyword", "gameCollection"].includes(quickCreate.type) ? (
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">تصویر</span>
+                    <input
+                      accept="image/*"
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      onChange={(event) => setQuickCreateValue("image", event.target.files?.[0] || null)}
+                      type="file"
+                    />
+                  </label>
+                ) : null}
+
+                {quickCreate.type === "company" ? (
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">لوگو</span>
+                    <input
+                      accept="image/*"
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      onChange={(event) => setQuickCreateValue("logo", event.target.files?.[0] || null)}
+                      type="file"
+                    />
+                  </label>
+                ) : null}
+
+                {quickCreate.type !== "genre" ? (
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
+                    <input
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                      dir="ltr"
+                      onChange={(event) => setQuickCreateValue("slug", event.target.value)}
+                      value={quickCreateForm.slug}
+                    />
+                  </label>
+                ) : null}
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">توضیحات</span>
+                  <textarea
+                    className="min-h-24 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                    onChange={(event) => setQuickCreateValue("description", event.target.value)}
+                    value={quickCreateForm.description}
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                <button
+                  className="rounded-xl border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-950 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-white dark:hover:text-white"
+                  disabled={isQuickCreateSaving}
+                  onClick={closeQuickCreate}
+                  type="button"
+                >
+                  انصراف
+                </button>
+                <button
+                  className="rounded-xl border border-emerald-600 bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
+                  disabled={isQuickCreateSaving}
+                  type="submit"
+                >
+                  {isQuickCreateSaving ? "در حال ثبت..." : "ثبت و انتخاب"}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
         <DesktopCoverCropper
           file={desktopCoverCropFile}
           onCancel={() => setDesktopCoverCropFile(null)}
-          onCrop={(croppedFile, previewUrl) => {
-            setForm((prev) => ({ ...prev, desktopCover: croppedFile }));
+          onCrop={async (croppedFile, previewUrl) => {
             setDesktopCoverPreview(previewUrl);
             setDesktopCoverCropFile(null);
+            const media = await handleImageUpload("desktopCover", croppedFile);
+            if (!media) return;
+            setForm((prev) => ({ ...prev, desktopCover: media }));
+            setDesktopCoverPreview(media.url);
           }}
         />
       </section>

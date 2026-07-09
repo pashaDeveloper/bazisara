@@ -27,6 +27,8 @@ const initialForm = {
   productionDate: "",
   description: "",
   image: null,
+  fontFile: null,
+  svgIcon: "",
 };
 
 const steps = [
@@ -88,6 +90,22 @@ function PlatformImageField({ imagePreview, isEdit, setForm, setImagePreview }) 
   );
 }
 
+function PlatformFontField({ setForm }) {
+  return (
+    <label className="flex w-fit cursor-pointer flex-row gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition hover:bg-green-200 dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700 dark:hover:bg-blue-200">
+      <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+      فایل فونت پلتفرم
+      <input
+        accept=".woff,.woff2,.ttf,.otf"
+        className="hidden"
+        name="fontFile"
+        onChange={(event) => setForm((prev) => ({ ...prev, fontFile: event.target.files?.[0] || null }))}
+        type="file"
+      />
+    </label>
+  );
+}
+
 function PlatformStepContent({
   currentKey,
   form,
@@ -116,7 +134,7 @@ function PlatformStepContent({
 
   if (currentKey === "image") {
     return (
-      <div className="rounded-2xl border border-zinc-800 bg-black p-5">
+      <div className="space-y-5 rounded-2xl border border-zinc-800 bg-black p-5">
         <div className="mb-4">
           <h2 className="text-sm font-bold text-white">تصویر پلتفرم</h2>
           <p className="mt-1 text-xs text-zinc-500">تصویر پلتفرم اختیاری است و در صورت انتخاب در ساختار فروشگاه نمایش داده می‌شود.</p>
@@ -127,6 +145,22 @@ function PlatformStepContent({
           setForm={setForm}
           setImagePreview={setImagePreview}
         />
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+          <div className="mb-3">
+            <h2 className="text-sm font-bold text-white">فونت یا SVG پلتفرم</h2>
+            <p className="mt-1 text-xs text-zinc-500">اگر پلتفرم آیکون فونتی دارد فایل فونت را بدهید؛ اگر SVG آماده دارد کد SVG را وارد کنید.</p>
+          </div>
+          <div className="space-y-4">
+            <PlatformFontField setForm={setForm} />
+            <TextareaField
+              label="کد SVG"
+              name="svgIcon"
+              onChange={onChange}
+              rows={6}
+              value={form.svgIcon}
+            />
+          </div>
+        </div>
       </div>
     );
   }
@@ -200,6 +234,8 @@ function PlatformForm({ mode = "create" }) {
       productionDate: toDateInput(platform.productionDate),
       description: platform.description || "",
       image: null,
+      fontFile: null,
+      svgIcon: platform.svgIcon || "",
     });
     setImagePreview(platform.image?.url || "");
   }, [platformData]);
@@ -289,6 +325,8 @@ function PlatformForm({ mode = "create" }) {
     formData.append("productionDate", form.productionDate || "");
     formData.append("description", form.description.trim());
     if (form.image) formData.append("image", form.image);
+    if (form.fontFile) formData.append("fontFile", form.fontFile);
+    formData.append("svgIcon", form.svgIcon || "");
     return formData;
   };
 

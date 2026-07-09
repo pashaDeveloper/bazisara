@@ -1,6 +1,53 @@
 import React, { useEffect, useState } from "react";
 
-function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", rounded = "square" }) {
+function formatFileSize(size) {
+  const value = Number(size || 0);
+  if (!value) return "";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function UploadOverlay({ state }) {
+  if (!state) return null;
+
+  const isUploading = state.status === "uploading";
+  const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
+
+  return (
+    <>
+      {(state.originalSize || state.uploadedSize) ? (
+        <div className="absolute bottom-1 left-1 right-1 z-20 flex flex-wrap gap-1">
+          {state.originalSize ? (
+            <span className="rounded-md bg-red-600/90 px-1.5 py-0.5 text-[9px] !text-white">
+              {formatFileSize(state.originalSize)}
+            </span>
+          ) : null}
+          {state.uploadedSize ? (
+            <span className="rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-[9px] !text-white">
+              {formatFileSize(state.uploadedSize)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isUploading ? (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/45 text-white">
+          <div
+            className="h-12 w-12 animate-spin rounded-full"
+            style={{
+              background: `conic-gradient(rgb(255 255 255) ${progress * 3.6}deg, rgba(255,255,255,.24) 0deg)`,
+              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
+              mask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
+            }}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", onRemove, rounded = "square" }) {
   const [loadedMap, setLoadedMap] = useState({});
   const hasMedia = galleryPreview?.length > 0;
   const roundedClass = rounded === "square" ? "rounded-xl" : "rounded-full";
@@ -36,11 +83,12 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
             item.type === "video" || /\.(mp4|webm|ogg)$/i.test(item.url || "");
           const mediaKey = `${item?.url || "media"}-${index}`;
           const isLoaded = Boolean(loadedMap[mediaKey]);
+          const uploadState = item.uploadState;
 
           return (
             <div
               key={mediaKey}
-              className={`relative mb-2 flex-shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 ${roundedClass} ${
+              className={`group relative mb-2 flex-shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 ${roundedClass} ${
                 !isLoaded ? "shine-effect" : ""
               }`}
               style={{
@@ -79,6 +127,23 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
                   width={imageSize}
                 />
               )}
+              <UploadOverlay state={uploadState} />
+              {typeof onRemove === "function" ? (
+                <button
+                  aria-label="حذف تصویر"
+                  className="absolute left-2 top-2 z-40 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-600/90 !text-white opacity-0 shadow-lg transition hover:bg-red-500 group-hover:opacity-100 [&_svg]:!text-white [&_svg]:stroke-white"
+                  onClick={() => onRemove(item, index)}
+                  type="button"
+                >
+                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "#fff" }} viewBox="0 0 24 24">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M6 6l1 16h10l1-16" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                  </svg>
+                </button>
+              ) : null}
             </div>
           );
         })
@@ -88,4 +153,3 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", ro
 }
 
 export default DisplayImages;
-

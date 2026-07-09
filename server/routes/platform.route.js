@@ -11,7 +11,10 @@ const {
 
 const router = express.Router();
 const platformAccess = [verify, authorize("owner", "superAdmin", "admin", "operator"), requireAdminProfileLevel(2)];
-const platformUploadFields = [{ name: "image", maxCount: 1 }];
+const platformUploadFields = [
+  { name: "image", maxCount: 1 },
+  { name: "fontFile", maxCount: 1 },
+];
 
 router.get("/all", platformController.getPlatforms);
 router.get("/:id", platformController.getPlatform);

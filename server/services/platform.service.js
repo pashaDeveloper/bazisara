@@ -25,13 +25,31 @@ function normalizeDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function buildImage(uploadedFiles = {}) {
-  const file = uploadedFiles.image?.[0];
+function normalizeSvg(value) {
+  const svg = String(value || "").trim();
+  if (!svg) return "";
+  if (!/^<svg[\s>][\s\S]*<\/svg>$/i.test(svg)) {
+    throw new Error("Platform SVG must be valid SVG markup");
+  }
+  return svg;
+}
+
+function buildUploadedFile(uploadedFiles = {}, fieldName) {
+  const file = uploadedFiles[fieldName]?.[0];
   if (!file) return null;
   return {
     url: file.url || file.path || "",
     public_id: file.public_id || file.key || file.filename || "",
-    storage: file.storage || "",
+    format: file.format || "",
+  };
+}
+
+function buildImage(uploadedFiles = {}) {
+  const file = buildUploadedFile(uploadedFiles, "image");
+  if (!file) return null;
+  return {
+    url: file.url,
+    public_id: file.public_id,
   };
 }
 
@@ -107,6 +125,7 @@ exports.createPlatform = async (req, res) => {
     });
   }
   const image = buildImage(req.uploadedFiles);
+  const fontFile = buildUploadedFile(req.uploadedFiles, "fontFile");
 
   const platform = await Platform.create({
     name_fa: nameFa,
@@ -118,6 +137,8 @@ exports.createPlatform = async (req, res) => {
     description: String(req.body?.description || "").trim(),
     productionDate: normalizeDate(req.body?.productionDate),
     ...(image?.url ? { image } : {}),
+    ...(fontFile?.url ? { fontFile } : {}),
+    svgIcon: normalizeSvg(req.body?.svgIcon),
     creator: req.admin?._id || null,
   });
 
@@ -248,6 +269,9 @@ exports.updatePlatform = async (req, res) => {
   }
   const image = buildImage(req.uploadedFiles);
   if (image?.url) platform.image = image;
+  const fontFile = buildUploadedFile(req.uploadedFiles, "fontFile");
+  if (fontFile?.url) platform.fontFile = fontFile;
+  if (req.body?.svgIcon !== undefined) platform.svgIcon = normalizeSvg(req.body.svgIcon);
 
   await platform.save();
 

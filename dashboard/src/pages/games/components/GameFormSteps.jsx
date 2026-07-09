@@ -15,7 +15,68 @@ import { DatePickerField, TextField, TextareaField } from "./GameFormFields";
 import { dlcTypeOptions } from "../gameOptions";
 import { makeGameSlug } from "../gameFormUtils";
 
-function TextListEditor({ label, items = [], onChange, placeholder = "مورد جدید" }) {
+function QuickCreateField({ children, label, onCreate }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_56px]">
+      {children}
+      <button
+        aria-label={`?????? ${label}`}
+        className="mt-5 inline-flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 !text-white dark:border-blue-700 dark:bg-blue-600 [&_svg]:!text-white"
+        onClick={onCreate}
+        title={`?????? ${label}`}
+        type="button"
+      >
+        <Plus className="h-7 w-7 !text-white" style={{ color: "#fff" }} />
+      </button>
+    </div>
+  );
+}
+
+function formatFileSize(size) {
+  const value = Number(size || 0);
+  if (!value) return "";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function UploadStateOverlay({ state }) {
+  if (!state) return null;
+
+  const isUploading = state.status === "uploading";
+  const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
+
+  return (
+    <>
+      {(state.originalSize || state.uploadedSize) ? (
+        <div className="absolute bottom-1 left-1 right-1 z-20 flex flex-wrap gap-1">
+          {state.originalSize ? <span className="rounded-md bg-red-600/90 px-1.5 py-0.5 text-[9px] !text-white">{formatFileSize(state.originalSize)}</span> : null}
+          {state.uploadedSize ? <span className="rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-[9px] !text-white">{formatFileSize(state.uploadedSize)}</span> : null}
+        </div>
+      ) : null}
+      {isUploading ? (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45 text-white">
+          <span
+            className="relative h-12 w-12 animate-spin rounded-full"
+            style={{
+              background: `conic-gradient(rgb(255 255 255) ${progress * 3.6}deg, rgba(255,255,255,.24) 0deg)`,
+              WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
+              mask: "radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px))",
+            }}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function imageUrl(value, uploadState) {
+  if ((uploadState?.status === "uploading" || uploadState?.status === "error") && uploadState?.localPreview) return uploadState.localPreview;
+  if (typeof value === "string") return value;
+  return value?.url || "";
+}
+
+function TextListEditor({ label, items = [], onChange, placeholder = "???? ????" }) {
   const rows = items.length ? items : [""];
 
   const updateItem = (index, value) => {
@@ -61,7 +122,7 @@ function TextListEditor({ label, items = [], onChange, placeholder = "مورد �
   );
 }
 
-function ObjectRowsEditor({ columns, items = [], onChange, title }) {
+function ObjectRowsEditor({ columns, items = [], onChange, onCreatePlatform, title }) {
   const rows = items.length ? items : [{ platform: "", variant: "", size: "" }];
 
   const updateItem = (index, patch) => {
@@ -89,13 +150,15 @@ function ObjectRowsEditor({ columns, items = [], onChange, title }) {
       <div className="space-y-3">
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_40px]" key={`${title}-${index}`}>
-            <SingleSelectDropdown
-              label={columns[0].label}
-              name={`${title}-platform-${index}`}
-              onChange={(event) => updateItem(index, { platform: event.target.value })}
-              options={columns[0].options}
-              value={item.platform}
-            />
+            <QuickCreateField label="??????" onCreate={() => onCreatePlatform?.({ field: "platformSizes", index })}>
+              <SingleSelectDropdown
+                label={columns[0].label}
+                name={`${title}-platform-${index}`}
+                onChange={(event) => updateItem(index, { platform: event.target.value })}
+                options={columns[0].options}
+                value={item.platform}
+              />
+            </QuickCreateField>
             <TextField
               label={columns[1].label}
               name={`${title}-variant-${index}`}
@@ -124,7 +187,7 @@ function ObjectRowsEditor({ columns, items = [], onChange, title }) {
   );
 }
 
-function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
+function PlatformReleaseRowsEditor({ items = [], onChange, onCreatePlatform, platformOptions }) {
   const rows = items.length ? items : [{ platform: "", releaseDate: "" }];
 
   const updateItem = (index, patch) => {
@@ -138,7 +201,7 @@ function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
   return (
     <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">تاریخ انتشار پلتفرم‌ها</span>
+        <span className="text-sm text-zinc-700 dark:text-zinc-300">????? ?????? ?????????</span>
         <button
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
           onClick={addItem}
@@ -150,15 +213,17 @@ function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
       <div className="space-y-3">
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`platform-release-${index}`}>
-            <SingleSelectDropdown
-              label="پلتفرم"
-              name={`platform-release-platform-${index}`}
-              onChange={(event) => updateItem(index, { platform: event.target.value })}
-              options={platformOptions}
-              value={item.platform}
-            />
+            <QuickCreateField label="??????" onCreate={() => onCreatePlatform?.({ field: "platformReleases", index })}>
+              <SingleSelectDropdown
+                label="??????"
+                name={`platform-release-platform-${index}`}
+                onChange={(event) => updateItem(index, { platform: event.target.value })}
+                options={platformOptions}
+                value={item.platform}
+              />
+            </QuickCreateField>
             <DatePickerField
-              label="تاریخ انتشار"
+              label="????? ??????"
               onChange={(value) => updateItem(index, { releaseDate: value })}
               value={item.releaseDate}
             />
@@ -176,23 +241,43 @@ function PlatformReleaseRowsEditor({ items = [], onChange, platformOptions }) {
   );
 }
 
-function InlineImageUploadButton({ name, onChange, title }) {
+function InlineImageUploadButton({ image, name, onChange, onRemove, state, title }) {
+  const previewUrl = imageUrl(image, state);
+
   return (
-    <label className="mt-6 inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
-      <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
-      <span>{title}</span>
-      <input
-        accept="image/*"
-        className="hidden"
-        name={name}
-        onChange={(event) => onChange?.(event.target.files?.[0] || null)}
-        type="file"
-      />
-    </label>
+    <div className="mt-6 flex items-center gap-2">
+      {previewUrl ? (
+        <div className="group relative h-12 w-12 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+          <img alt="" className="h-full w-full object-cover" src={previewUrl} />
+          <UploadStateOverlay state={state} />
+          {typeof onRemove === "function" ? (
+            <button
+              aria-label="??? ?????"
+              className="absolute inset-0 z-40 flex items-center justify-center bg-black/45 !text-white opacity-0 transition group-hover:opacity-100 [&_svg]:!text-white"
+              onClick={onRemove}
+              type="button"
+            >
+              <Trash className="h-4 w-4 !text-white" style={{ color: "#fff" }} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <label className="inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+        <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+        <span>{title}</span>
+        <input
+          accept="image/*"
+          className="hidden"
+          name={name}
+          onChange={(event) => onChange?.(event.target.files?.[0] || null)}
+          type="file"
+        />
+      </label>
+    </div>
   );
 }
 
-function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
+function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUploadedImage, onImageUpload, title, typeOptions }) {
   const rows = items.length ? items : [{ title: "", type: "", image: "", versionSize: "" }];
 
   const updateItem = (index, patch) => {
@@ -228,30 +313,39 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
           <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
             <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
               <TextField
-                label="عنوان DLC"
+                label="????? DLC"
                 name={`${title}-title-${index}`}
                 onChange={(event) => updateItem(index, { title: event.target.value })}
-                placeholder="مثلا Midnight Expansion"
+                placeholder="???? Midnight Expansion"
                 value={item.title}
               />
               <SingleSelectDropdown
-                label="نوع DLC"
+                label="??? DLC"
                 name={`${title}-type-${index}`}
                 onChange={(event) => updateItem(index, { type: event.target.value })}
                 options={typeOptions}
                 value={item.type}
               />
               <TextField
-                label="حجم نسخه"
+                label="??? ????"
                 name={`${title}-versionSize-${index}`}
                 onChange={(event) => updateItem(index, { versionSize: event.target.value })}
-                placeholder="مثلا 12 GB"
+                placeholder="???? 12 GB"
                 value={item.versionSize}
               />
               <InlineImageUploadButton
+                image={item.image}
                 name={`dlcImages-${index}`}
-                onChange={(file) => updateItem(index, { image: file })}
-                title="انتخاب عکس DLC"
+                onChange={async (file) => {
+                  const media = await onImageUpload?.(`dlcs-${index}`, file);
+                  if (media) updateItem(index, { image: media });
+                }}
+                onRemove={async () => {
+                  await onDeleteUploadedImage?.(`dlcs-${index}`, item.image);
+                  updateItem(index, { image: "" });
+                }}
+                state={imageUploadState[`dlcs-${index}`]}
+                title="?????? ??? DLC"
               />
               <button
                 className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
@@ -268,7 +362,7 @@ function DlcRowsEditor({ items = [], onChange, title, typeOptions }) {
   );
 }
 
-function EditionRowsEditor({ items = [], onChange, title }) {
+function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUploadedImage, onImageUpload, title }) {
   const rows = items.length ? items : [{ title: "", versionSize: "", price: "", image: "" }];
 
   const updateItem = (index, patch) => {
@@ -304,31 +398,40 @@ function EditionRowsEditor({ items = [], onChange, title }) {
           <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
             <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
               <TextField
-                label="عنوان"
+                label="?????"
                 name={`${title}-title-${index}`}
                 onChange={(event) => updateItem(index, { title: event.target.value })}
-                placeholder="مثلا Deluxe Edition"
+                placeholder="???? Deluxe Edition"
                 value={item.title}
               />
               <TextField
-                label="حجم نسخه"
+                label="??? ????"
                 name={`${title}-versionSize-${index}`}
                 onChange={(event) => updateItem(index, { versionSize: event.target.value })}
-                placeholder="مثلا 12 GB"
+                placeholder="???? 12 GB"
                 value={item.versionSize}
               />
               <TextField
-                label="قیمت"
+                label="????"
                 name={`${title}-price-${index}`}
                 onChange={(event) => updateItem(index, { price: event.target.value })}
-                placeholder="مثلا 250000"
+                placeholder="???? 250000"
                 type="number"
                 value={item.price}
               />
               <InlineImageUploadButton
+                image={item.image}
                 name={`extraEditionImages-${index}`}
-                onChange={(file) => updateItem(index, { image: file })}
-                title="انتخاب عکس نسخه"
+                onChange={async (file) => {
+                  const media = await onImageUpload?.(`extraEditions-${index}`, file);
+                  if (media) updateItem(index, { image: media });
+                }}
+                onRemove={async () => {
+                  await onDeleteUploadedImage?.(`extraEditions-${index}`, item.image);
+                  updateItem(index, { image: "" });
+                }}
+                state={imageUploadState[`extraEditions-${index}`]}
+                title="?????? ??? ????"
               />
               <button
                 className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
@@ -372,15 +475,15 @@ function LinkRowsEditor({ label, items = [], onChange }) {
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`${label}-${index}`}>
             <TextField
-              label="عنوان"
+              label="?????"
               name={`${label}-title-${index}`}
               onChange={(event) => updateItem(index, { title: event.target.value })}
-              placeholder="مثلا Metacritic"
+              placeholder="???? Metacritic"
               value={item.title}
             />
             <TextField
               dir="ltr"
-              label="لینک"
+              label="????"
               name={`${label}-link-${index}`}
               onChange={(event) => updateItem(index, { link: event.target.value })}
               placeholder="https://..."
@@ -472,7 +575,7 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
   return (
     <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">عناوین جستجو</span>
+        <span className="text-sm text-zinc-700 dark:text-zinc-300">?????? ?????</span>
         <button
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
           onClick={addItem}
@@ -485,16 +588,16 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`search-title-${index}`}>
             <TextField
-              label="عنوان"
+              label="?????"
               name={`search-title-${index}`}
               onChange={(event) => updateTitle(index, event.target.value)}
               onKeyDown={(event) => handleInputKeyDown(event, index)}
-              placeholder="مثلا بازی اکشن پلی استیشن 5"
+              placeholder="???? ???? ???? ??? ?????? 5"
               value={item.title}
             />
             <TextField
               dir="ltr"
-              label="اسلاگ"
+              label="?????"
               name={`search-title-slug-${index}`}
               onChange={(event) => updateItem(index, { slug: event.target.value })}
               onKeyDown={(event) => handleInputKeyDown(event, index)}
@@ -523,6 +626,7 @@ export function BasicStep({
   setCardDesktopCoverPreview,
   setCardMobileCoverPreview,
   setCoverPreview,
+  setDesktopCoverPreview,
   setDesktopCoverCropFile,
   form,
   onChange,
@@ -532,15 +636,17 @@ export function BasicStep({
 }) {
   return (
     <div className="grid gap-4">
-      <TextField label="نام بازی *" name="title" onChange={onChange} value={form.title} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <TextField label="??? ???? *" name="title" onChange={onChange} value={form.title} />
+        <TextField dir="ltr" label="???? ????" name="slug" onChange={onChange} value={form.slug} />
+      </div>
       <LegacySearchTitleRowsEditor
         items={form.searchTitles}
         onChange={(value) => setArrayField("searchTitles", value)}
         translateSearchTitleSlug={translateSearchTitleSlug}
       />
-      <TextField dir="ltr" label="لینک بازی" name="slug" onChange={onChange} value={form.slug} />
       <div className="min-w-0 space-y-2">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">معرفی و خلاصه داستان</span>
+        <span className="text-sm text-zinc-700 dark:text-zinc-300">????? ? ????? ??????</span>
         <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
           <MyEditor
             value={form.shortDescription}
@@ -558,7 +664,11 @@ export function GameMediaStep({
   coverPreview,
   desktopCoverPreview,
   galleryPreview,
+  imageUploadState = {},
   isTrailerVideoUploading,
+  onDeleteMainImage,
+  onDeleteUploadedImage,
+  onImageUpload,
   onVideoUpload,
   setCardDesktopCoverPreview,
   setCardMobileCoverPreview,
@@ -574,51 +684,69 @@ export function GameMediaStep({
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت *</span>
-          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1024 × 1024</p>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">????? ???? *</span>
+          <p className="mb-3 text-xs text-zinc-500">?????? ????????: 1024 × 1024</p>
           <ThumbnailUpload
+            immediateUpload={false}
             name="cardDesktopCover"
+            onRemove={() => onDeleteMainImage?.("cardDesktopCover", setCardDesktopCoverPreview)}
             preview={cardDesktopCoverPreview}
-            setThumbnail={(file) => {
+            uploadState={imageUploadState.cardDesktopCover}
+            setThumbnail={async (file) => {
+              const media = await onImageUpload?.("cardDesktopCover", file);
+              if (!media) return;
               setForm((prev) => ({
                 ...prev,
-                cardDesktopCover: file,
-                cover: prev.cover || file,
+                cardDesktopCover: media,
+                cover: prev.cover || media,
               }));
+              setCardDesktopCoverPreview(media.url);
+              if (!coverPreview) setCoverPreview(media.url);
             }}
             setThumbnailPreview={(preview) => {
               setCardDesktopCoverPreview(preview);
               if (!coverPreview) setCoverPreview(preview);
             }}
-            title="انتخاب"
+            title="??????"
           />
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر جزئیات موبایل</span>
-          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1440 × 1080</p>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">????? ?????? ??????</span>
+          <p className="mb-3 text-xs text-zinc-500">?????? ????????: 1440 × 1080</p>
           <ThumbnailUpload
+            immediateUpload={false}
             name="cardMobileCover"
+            onRemove={() => onDeleteMainImage?.("cardMobileCover", setCardMobileCoverPreview)}
             preview={cardMobileCoverPreview}
-            setThumbnail={(file) => setForm((prev) => ({ ...prev, cardMobileCover: file }))}
+            uploadState={imageUploadState.cardMobileCover}
+            setThumbnail={async (file) => {
+              const media = await onImageUpload?.("cardMobileCover", file);
+              if (!media) return;
+              setForm((prev) => ({ ...prev, cardMobileCover: media }));
+              setCardMobileCoverPreview(media.url);
+            }}
             setThumbnailPreview={setCardMobileCoverPreview}
-            title="انتخاب"
+            title="??????"
           />
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر جزئیات دسکتاپ</span>
-          <p className="mb-3 text-xs text-zinc-500">خروجی برش: 1920 × 1080</p>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">????? ?????? ??????</span>
+          <p className="mb-3 text-xs text-zinc-500">????? ???: 1920 × 1080</p>
           <ThumbnailUpload
+            immediateUpload={false}
             name="desktopCover"
+            onRemove={() => onDeleteMainImage?.("desktopCover", setDesktopCoverPreview)}
             preview={desktopCoverPreview}
+            uploadState={imageUploadState.desktopCover}
             setThumbnail={(file) => {
               if (file instanceof File) setDesktopCoverCropFile(file);
             }}
             setThumbnailPreview={() => {}}
-            title="انتخاب"
+            title="??????"
           />
         </div>
       </div>
-      <MediaStep galleryPreview={galleryPreview} setForm={setForm} setGalleryPreview={setGalleryPreview} />
+      <MediaStep galleryPreview={galleryPreview} imageUploadState={imageUploadState} onDeleteUploadedImage={onDeleteUploadedImage} onImageUpload={onImageUpload} setForm={setForm} setGalleryPreview={setGalleryPreview} />
       <VideosStep
         isTrailerVideoUploading={isTrailerVideoUploading}
         onVideoUpload={onVideoUpload}
@@ -631,7 +759,17 @@ export function GameMediaStep({
   );
 }
 
-export function RelationsStep({ categoryOptions, collectionOptions, companyOptions, form, gameKeywordOptions, genreOptions, onChange, setArrayField }) {
+export function RelationsStep({
+  categoryOptions,
+  collectionOptions,
+  companyOptions,
+  form,
+  gameKeywordOptions,
+  genreOptions,
+  onChange,
+  onQuickCreate,
+  setArrayField,
+}) {
   const toggleGenresVisibility = () => {
     onChange?.({
       target: {
@@ -644,36 +782,56 @@ export function RelationsStep({ categoryOptions, collectionOptions, companyOptio
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_48px]">
-        <MultiSelectDropdown label="ژانرها" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_56px_48px]">
+        <MultiSelectDropdown label="??????" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
         <button
-          aria-label={form.showGenresInCategories ? "نمایش ژانر در دسته‌بندی" : "عدم نمایش ژانر در دسته‌بندی"}
+          aria-label="?????? ????"
+          className="mt-5 inline-flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 !text-white dark:border-blue-700 dark:bg-blue-600 [&_svg]:!text-white"
+          onClick={() => onQuickCreate?.("genre", { field: "genres" })}
+          title="?????? ????"
+          type="button"
+        >
+          <Plus className="h-7 w-7 !text-white" style={{ color: "#fff" }} />
+        </button>
+        <button
+          aria-label={form.showGenresInCategories ? "????? ???? ?? ?????????" : "??? ????? ???? ?? ?????????"}
           className={`mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border transition ${
             form.showGenresInCategories
               ? "border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300"
               : "border-zinc-200 bg-white text-zinc-600 hover:border-emerald-500 hover:text-emerald-600 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:border-blue-500 dark:hover:text-blue-300"
           }`}
           onClick={toggleGenresVisibility}
-          title={form.showGenresInCategories ? "ژانر در دسته‌بندی مخفی است" : "ژانر در دسته‌بندی نمایش داده می‌شود"}
+          title={form.showGenresInCategories ? "???? ?? ????????? ???? ???" : "???? ?? ????????? ????? ???? ??????"}
           type="button"
         >
           {form.showGenresInCategories ? <OutlineEyeInvisible className="h-5 w-5" /> : <OutlineEye className="h-5 w-5" />}
         </button>
       </div>
-      <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
-      <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
-      <MultiSelectDropdown label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
-      <MultiSelectDropdown label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
-      <MultiSelectDropdown label="ناشرها" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
+      <QuickCreateField label="?????????" onCreate={() => onQuickCreate?.("category", { field: "category" })}>
+        <SingleSelectDropdown label="?????????" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
+      </QuickCreateField>
+      <QuickCreateField label="??????" onCreate={() => onQuickCreate?.("gameCollection", { field: "collections" })}>
+        <MultiSelectDropdown label="?????????? ?????" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
+      </QuickCreateField>
+      <QuickCreateField label="???? ?????" onCreate={() => onQuickCreate?.("gameKeyword", { field: "gameKeywords" })}>
+        <MultiSelectDropdown label="????? ????? ????" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
+      </QuickCreateField>
+      <QuickCreateField label="????" onCreate={() => onQuickCreate?.("company", { field: "developers" })}>
+        <MultiSelectDropdown label="?????????" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
+      </QuickCreateField>
+      <QuickCreateField label="????" onCreate={() => onQuickCreate?.("company", { field: "publishers" })}>
+        <MultiSelectDropdown label="??????" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
+      </QuickCreateField>
     </div>
   );
 }
 
-export function PlatformReleasesStep({ form, platformOptions, setArrayField }) {
+export function PlatformReleasesStep({ form, onQuickCreate, platformOptions, setArrayField }) {
   return (
     <PlatformReleaseRowsEditor
       items={form.platformReleases}
       onChange={(value) => setArrayField("platformReleases", value)}
+      onCreatePlatform={(target) => onQuickCreate?.("platform", target)}
       platformOptions={platformOptions}
     />
   );
@@ -683,7 +841,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
   return (
     <div className="space-y-4">
       <SingleSelectDropdown
-        label="بازیکنان آفلاین"
+        label="???????? ??????"
         name="offlinePlayers"
         onChange={(event) => setArrayField("offlinePlayers", event.target.value ? [event.target.value] : [])}
         options={offlinePlayerOptions}
@@ -694,7 +852,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
           <StatusSwitch
             checked={form.hasOnlineMode}
             id="hasOnlineMode"
-            label="حالت آنلاین"
+            label="???? ??????"
             name="hasOnlineMode"
             onChange={onChange}
           />
@@ -703,7 +861,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
               label=""
               name="onlinePlayerCount"
               onChange={onChange}
-              placeholder="مثلا ۲ تا ۸ نفر"
+              placeholder="???? ? ?? ? ???"
               value={form.onlinePlayerCount}
             />
           ) : null}
@@ -712,7 +870,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
           <StatusSwitch
             checked={form.hasMultiplayerMode}
             id="hasMultiplayerMode"
-            label="حالت مولتی"
+            label="???? ?????"
             name="hasMultiplayerMode"
             onChange={onChange}
           />
@@ -721,7 +879,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
               label=""
               name="multiplayerPlayerCount"
               onChange={onChange}
-              placeholder="مثلا ۲ تا ۴ نفر"
+              placeholder="???? ? ?? ? ???"
               value={form.multiplayerPlayerCount}
             />
           ) : null}
@@ -735,7 +893,7 @@ export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
   return (
     <div className="grid gap-4">
       <MultiSelectDropdown
-        label="بازی‌های مشابه"
+        label="???????? ?????"
         onChange={(value) => setArrayField("relatedGames", value)}
         options={relatedGameOptions}
         value={form.relatedGames}
@@ -747,27 +905,27 @@ export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
 export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <SingleSelectDropdown label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
-      <TextField label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
-      <TextField label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
-      <TextField dir="ltr" label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
+      <SingleSelectDropdown label="??? ???" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
+      <TextField label="???? ?????? ???????" name="gameplayTime" onChange={onChange} placeholder="???? 25 ????" value={form.gameplayTime} />
+      <TextField label="?????? ?????????" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
+      <TextField dir="ltr" label="??????? ????" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
       <div className="md:col-span-3">
-        <StatusSwitch checked={form.isFeatured} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
+        <StatusSwitch checked={form.isFeatured} id="isFeatured" label="???? ????????" name="isFeatured" onChange={onChange} />
       </div>
       <div className="md:col-span-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4 space-y-3">
-        <StatusSwitch checked={form.hasDubbing} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
-        <StatusSwitch checked={form.hasSubtitle} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />
+        <StatusSwitch checked={form.hasDubbing} id="hasDubbing" label="????? ????" name="hasDubbing" onChange={onChange} />
+        <StatusSwitch checked={form.hasSubtitle} id="hasSubtitle" label="??????? ????" name="hasSubtitle" onChange={onChange} />
         <StatusSwitch
           checked={form.hasFreePersianSubtitle}
           id="hasFreePersianSubtitle"
-          label="زیرنویس فارسی رایگان دارد؟"
+          label="??????? ????? ?????? ?????"
           name="hasFreePersianSubtitle"
           onChange={onChange}
         />
         <StatusSwitch
           checked={form.hasPaidPersianSubtitle}
           id="hasPaidPersianSubtitle"
-          label="زیرنویس فارسی غیررایگان دارد؟"
+          label="??????? ????? ????????? ?????"
           name="hasPaidPersianSubtitle"
           onChange={onChange}
         />
@@ -776,18 +934,19 @@ export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
   );
 }
 
-export function PlatformSizesStep({ form, platformOptions, setArrayField }) {
+export function PlatformSizesStep({ form, onQuickCreate, platformOptions, setArrayField }) {
   return (
     <div className="space-y-4">
       <ObjectRowsEditor
         columns={[
-          { label: "پلتفرم", options: platformOptions },
-          { label: "نسخه", placeholder: "مثلا Standard / PS5" },
-          { label: "حجم", placeholder: "مثلا 78 GB" },
+          { label: "??????", options: platformOptions },
+          { label: "????", placeholder: "???? Standard / PS5" },
+          { label: "???", placeholder: "???? 78 GB" },
         ]}
         items={form.platformSizes}
         onChange={(value) => setArrayField("platformSizes", value)}
-        title="حجم نسخه‌های پلتفرم"
+        onCreatePlatform={(target) => onQuickCreate?.("platform", target)}
+        title="??? ???????? ??????"
       />
     </div>
   );
@@ -817,53 +976,53 @@ export function DiscoveryStep({
   return (
     <div className="grid gap-4">
       <MultiSelectDropdown
-        label="ژانرهای فیلتر"
+        label="??????? ?????"
         onChange={(value) => updateFilterValues({ genres: value })}
         options={genreOptions}
         value={filterValues.genres || []}
       />
       <MultiSelectDropdown
-        label="رده سنی فیلتر"
+        label="??? ??? ?????"
         onChange={(value) => updateFilterValues({ ageRatings: value })}
         options={ageRatingOptions}
         value={filterValues.ageRatings || []}
       />
       <MultiSelectDropdown
-        label="حالت بازی"
+        label="???? ????"
         onChange={(value) => updateFilterValues({ gameModes: value })}
         options={gameModeOptions}
         value={filterValues.gameModes || []}
       />
       <MultiSelectDropdown
-        label="بازیکنان آفلاین"
+        label="???????? ??????"
         onChange={(value) => updateFilterValues({ offlinePlayers: value })}
         options={offlinePlayerOptions}
         value={filterValues.offlinePlayers || []}
       />
       <div className="grid gap-4 md:grid-cols-2">
         <TextField
-          label="حداقل قیمت"
+          label="????? ????"
           name="filter-price-min"
           onChange={(event) => updateFilterValues({ priceMin: event.target.value })}
           type="number"
           value={filterValues.priceMin ?? ""}
         />
         <TextField
-          label="حداکثر قیمت"
+          label="?????? ????"
           name="filter-price-max"
           onChange={(event) => updateFilterValues({ priceMax: event.target.value })}
           type="number"
           value={filterValues.priceMax ?? ""}
         />
         <TextField
-          label="حداقل حجم GB"
+          label="????? ??? GB"
           name="filter-size-min"
           onChange={(event) => updateFilterValues({ sizeMinGb: event.target.value })}
           type="number"
           value={filterValues.sizeMinGb ?? ""}
         />
         <TextField
-          label="حداکثر حجم GB"
+          label="?????? ??? GB"
           name="filter-size-max"
           onChange={(event) => updateFilterValues({ sizeMaxGb: event.target.value })}
           type="number"
@@ -874,68 +1033,83 @@ export function DiscoveryStep({
   );
 }
 
-export function DlcEditionStep({ form, setArrayField }) {
+export function DlcEditionStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, setArrayField }) {
   return (
     <div className="space-y-4">
       <DlcRowsEditor
-        title="DLC ها"
+        title="DLC ??"
+        imageUploadState={imageUploadState}
         items={form.dlcs}
         onChange={(value) => setArrayField("dlcs", value)}
+        onDeleteUploadedImage={onDeleteUploadedImage}
+        onImageUpload={onImageUpload}
         typeOptions={dlcTypeOptions}
       />
       <EditionRowsEditor
-        title="نسخه‌های اضافه"
+        title="???????? ?????"
+        imageUploadState={imageUploadState}
         items={form.extraEditions}
         onChange={(value) => setArrayField("extraEditions", value)}
+        onDeleteUploadedImage={onDeleteUploadedImage}
+        onImageUpload={onImageUpload}
       />
     </div>
   );
 }
 
-export function DlcStep({ form, setArrayField }) {
+export function DlcStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, setArrayField }) {
   return (
     <DlcRowsEditor
-      title="DLC ها"
+      title="DLC ??"
+      imageUploadState={imageUploadState}
       items={form.dlcs}
       onChange={(value) => setArrayField("dlcs", value)}
+      onDeleteUploadedImage={onDeleteUploadedImage}
+      onImageUpload={onImageUpload}
       typeOptions={dlcTypeOptions}
     />
   );
 }
 
-export function EditionsStep({ form, setArrayField }) {
+export function EditionsStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, setArrayField }) {
   return (
     <EditionRowsEditor
-      title="نسخه‌های بازی"
+      title="???????? ????"
+      imageUploadState={imageUploadState}
       items={form.extraEditions}
       onChange={(value) => setArrayField("extraEditions", value)}
+      onDeleteUploadedImage={onDeleteUploadedImage}
+      onImageUpload={onImageUpload}
     />
   );
 }
 
-export function SeoTagsStep({ form, setArrayField, tagOptions }) {
+export function SeoTagsStep({ form, onQuickCreate, setArrayField, tagOptions }) {
   return (
-    <MultiSelectDropdown
-      label="تگ‌های سئو"
-      onChange={(value) => setArrayField("tags", value)}
-      options={tagOptions}
-      value={form.tags}
-    />
+    <QuickCreateField label="??" onCreate={() => onQuickCreate?.("tag", { field: "tags" })}>
+      <MultiSelectDropdown
+        label="?????? ???"
+        onChange={(value) => setArrayField("tags", value)}
+        options={tagOptions}
+        value={form.tags}
+      />
+    </QuickCreateField>
   );
 }
 
 export function PatchStep({ form, onChange, patchImagePreview, setForm, setPatchImagePreview }) {
   return (
     <div className="grid gap-4">
-      <TextField label="عنوان پچ" name="patchTitle" onChange={onChange} value={form.patchTitle} />
+      <TextField label="????? ??" name="patchTitle" onChange={onChange} value={form.patchTitle} />
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-        <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">عکس پچ</span>
+        <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">??? ??</span>
         <ThumbnailUpload
+            immediateUpload={false}
           name="patchImage"
           preview={patchImagePreview}
           setThumbnail={(file) => setForm((prev) => ({ ...prev, patchImage: file }))}
           setThumbnailPreview={setPatchImagePreview}
-          title="انتخاب"
+          title="??????"
         />
       </div>
     </div>
@@ -945,7 +1119,7 @@ export function PatchStep({ form, onChange, patchImagePreview, setForm, setPatch
 export function ReviewStep({ form, setArrayField }) {
   return (
     <div className="grid gap-4">
-      <LinkRowsEditor label="لینک‌های نقد و بررسی" items={form.reviewItems} onChange={(value) => setArrayField("reviewItems", value)} />
+      <LinkRowsEditor label="???????? ??? ? ?????" items={form.reviewItems} onChange={(value) => setArrayField("reviewItems", value)} />
     </div>
   );
 }
@@ -953,7 +1127,7 @@ export function ReviewStep({ form, setArrayField }) {
 export function SummaryStep({ form, onChange }) {
   return (
     <div className="grid gap-4">
-      <TextareaField label="خلاصه" name="shortDescription" onChange={onChange} rows={4} value={form.shortDescription} />
+      <TextareaField label="?????" name="shortDescription" onChange={onChange} rows={4} value={form.shortDescription} />
     </div>
   );
 }
@@ -961,7 +1135,7 @@ export function SummaryStep({ form, onChange }) {
 export function SocialStep({ form, setArrayField }) {
   return (
     <SocialLinksInput
-      label="شبکه‌های اجتماعی بازی"
+      label="???????? ??????? ????"
       onChange={(value) => setArrayField("socialLinks", value)}
       value={form.socialLinks}
     />
@@ -972,7 +1146,7 @@ export function DescriptionStep({ form, setForm }) {
   return (
     <div className="grid gap-4">
       <FormPageBuilder
-        label="توضیح مفصل"
+        label="????? ????"
         onChange={(value) => setForm((prev) => ({ ...prev, description: value }))}
         value={form.description}
       />
@@ -980,7 +1154,7 @@ export function DescriptionStep({ form, setForm }) {
   );
 }
 
-export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
+export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploadedImage, onImageUpload, setForm, setGalleryPreview }) {
   const [draggedId, setDraggedId] = React.useState(null);
 
   const syncGallery = (updater) => {
@@ -996,7 +1170,7 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
     if (!selectedFiles.length) return;
 
     const nextItems = selectedFiles.map((file, index) => ({
-      id: `new-${Date.now()}-${index}-${file.name}`,
+      id: `gallery-${Date.now()}-${index}-${file.name}`,
       url: URL.createObjectURL(file),
       type: "image",
       kind: "new",
@@ -1004,16 +1178,39 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
     }));
 
     syncGallery((prev) => [...prev, ...nextItems]);
+
+    nextItems.forEach(async (item) => {
+      const media = await onImageUpload?.(item.id, item.file);
+      if (!media) {
+        syncGallery((prev) => prev.map((current) => (current.id === item.id ? { ...current, file: undefined, kind: "error" } : current)));
+        return;
+      }
+      syncGallery((prev) =>
+        prev.map((current) =>
+          current.id === item.id
+            ? {
+                ...current,
+                ...media,
+                file: undefined,
+                kind: "uploaded",
+                media,
+                url: media.url,
+              }
+            : current
+        )
+      );
+    });
   };
 
   const replaceFile = (id, file) => {
     if (!file) return;
+    const nextId = `gallery-${Date.now()}-${file.name}`;
 
     syncGallery((prev) =>
       prev.map((item) =>
         item.id === id
           ? {
-              id: `new-${Date.now()}-${file.name}`,
+              id: nextId,
               url: URL.createObjectURL(file),
               type: "image",
               kind: "new",
@@ -1022,10 +1219,33 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
           : item
       )
     );
+
+    (async () => {
+      const media = await onImageUpload?.(nextId, file);
+      if (!media) {
+        syncGallery((prev) => prev.map((current) => (current.id === nextId ? { ...current, file: undefined, kind: "error" } : current)));
+        return;
+      }
+      syncGallery((prev) =>
+        prev.map((current) =>
+          current.id === nextId
+            ? {
+                ...current,
+                ...media,
+                file: undefined,
+                kind: "uploaded",
+                media,
+                url: media.url,
+              }
+            : current
+        )
+      );
+    })();
   };
 
-  const removeItem = (id) => {
-    syncGallery((prev) => prev.filter((item) => item.id !== id));
+  const removeItem = (item) => {
+    onDeleteUploadedImage?.(item.id, item.media || item);
+    syncGallery((prev) => prev.filter((current) => current.id !== item.id));
   };
 
   const moveItem = (targetId) => {
@@ -1047,15 +1267,16 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
     <div className="space-y-4">
       <div className="grid gap-4">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">?????</span>
           <ThumbnailUpload
+            immediateUpload={false}
             multiple
             name="gallery"
             preview=""
             setThumbnail={appendFiles}
             setThumbnailPreview={() => {}}
             showPreview={false}
-            title="انتخاب"
+            title="??????"
           />
           {galleryPreview.length ? (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -1073,15 +1294,25 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
                 >
                   <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black">
                     <img alt="gallery" className="h-full w-full object-cover" src={item.url} />
+                    <UploadStateOverlay state={imageUploadState[item.id]} />
+                    <button
+                      aria-label="??? ?????"
+                      className="absolute left-2 top-2 z-40 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-600/90 !text-white opacity-0 shadow-lg transition hover:bg-red-500 group-hover:opacity-100 [&_svg]:!text-white"
+                      onClick={() => removeItem(item)}
+                      title="???"
+                      type="button"
+                    >
+                      <Trash className="h-4 w-4 !text-white" style={{ color: "#fff" }} />
+                    </button>
                     <span className="absolute right-2 top-2 rounded-md bg-white dark:bg-black/70 px-2 py-1 text-[10px] text-zinc-950 dark:text-white">
                       {index + 1}
                     </span>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-1 gap-2">
                     <label
-                      aria-label="ویرایش تصویر"
+                      aria-label="?????? ?????"
                       className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 transition hover:border-white hover:text-zinc-950 dark:text-white"
-                      title="ویرایش"
+                      title="??????"
                     >
                       <Edit className="h-4 w-4" />
                       <input
@@ -1091,22 +1322,13 @@ export function MediaStep({ galleryPreview, setForm, setGalleryPreview }) {
                         type="file"
                       />
                     </label>
-                    <button
-                      aria-label="حذف تصویر"
-                      className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 text-red-300 transition hover:border-red-500 hover:text-red-200"
-                      onClick={() => removeItem(item.id)}
-                      title="حذف"
-                      type="button"
-                    >
-                      <Trash className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="mt-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center text-sm text-zinc-500">
-              هنوز تصویری برای گالری انتخاب نشده است.
+              ???? ?????? ???? ????? ?????? ???? ???.
             </div>
           )}
         </div>
@@ -1127,8 +1349,9 @@ export function VideosStep({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تریلر</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">?????</span>
           <ThumbnailUpload
+            immediateUpload={false}
             accept="video/*"
             disabled={isTrailerVideoUploading}
             imageSize={150}
@@ -1138,23 +1361,25 @@ export function VideosStep({
             previewShape="square"
             setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
             setThumbnailPreview={() => {}}
-            title="انتخاب"
+            title="??????"
           />
-          {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
+          {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">?? ??? ????? ????? ??? Arvan...</p> : null}
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر تریلر</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">????? ?????</span>
           <ThumbnailUpload
+            immediateUpload={false}
             imageSize={150}
             name="trailerThumbnail"
             preview={trailerThumbnailPreview}
             previewShape="square"
             setThumbnail={(file) => setForm((prev) => ({ ...prev, trailerThumbnail: file }))}
             setThumbnailPreview={setTrailerThumbnailPreview}
-            title="انتخاب"
+            title="??????"
           />
         </div>
       </div>
     </div>
   );
 }
+

@@ -19,6 +19,7 @@ const s3Client = new S3Client({
   endpoint: process.env.ARVAN_S3_ENDPOINT,
   region: process.env.ARVAN_S3_REGION || "us-east-1",
   forcePathStyle: process.env.ARVAN_S3_FORCE_PATH_STYLE !== "false",
+  followRegionRedirects: true,
   credentials: {
     accessKeyId: process.env.ARVAN_S3_ACCESS_KEY,
     secretAccessKey: process.env.ARVAN_S3_SECRET_KEY,
@@ -101,6 +102,8 @@ const uploadArvan = (customFolder = null) => {
               key,
               filename,
               format: extension,
+              original_size: file.size,
+              size: fileBuffer.length,
               resource_type: getResourceType(contentType),
               storage: "arvan",
             });
@@ -109,7 +112,19 @@ const uploadArvan = (customFolder = null) => {
 
         next();
       } catch (error) {
-        console.error("[ARVAN_UPLOAD] upload failed", error);
+        console.error("[ARVAN_UPLOAD] upload failed", {
+          name: error?.name,
+          message: error?.message,
+          code: error?.Code || error?.code,
+          statusCode: error?.$metadata?.httpStatusCode,
+          requestId: error?.$metadata?.requestId,
+          bucket: process.env.ARVAN_S3_BUCKET,
+          endpoint: process.env.ARVAN_S3_ENDPOINT,
+          region: process.env.ARVAN_S3_REGION,
+          forcePathStyle: process.env.ARVAN_S3_FORCE_PATH_STYLE !== "false",
+          location: error?.$response?.headers?.location,
+          headers: error?.$response?.headers,
+        });
         next(error);
       }
     });
