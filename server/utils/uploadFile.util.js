@@ -14,7 +14,7 @@ const imageContentTypes = {
 const compressibleImageExtensions = new Set(["jpg", "jpeg", "jfif", "png", "webp"]);
 const resizeWebpQuality = 86;
 const compressionTargetRatio = 0.5;
-const compressionQualities = [86, 82, 78, 74, 70, 66];
+const compressionQualities = [86, 84, 82, 81, 80, 79, 78, 76, 74, 72, 70, 68, 66];
 
 const getDateFolder = () => {
   const now = new Date();
