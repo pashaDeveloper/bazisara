@@ -35,12 +35,15 @@ function SvgIcon({ icon, label }) {
 function DropdownShell({
   buttonContent,
   children,
+  controlClassName = "",
   disabled = false,
+  iconClassName = "",
   label,
   placeholder,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
+  const resolvedPlaceholder = !placeholder || /[ØÙÚÛ]/.test(placeholder) ? "انتخاب کنید" : placeholder;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -55,20 +58,22 @@ function DropdownShell({
 
   return (
     <div className="relative" ref={wrapperRef}>
-      {label ? <label className="mb-2 block text-xs text-zinc-400">{label}</label> : null}
+      {label ? <label className="mb-1 block text-sm text-zinc-700 dark:text-gray-100">{label}</label> : null}
       <button
         aria-expanded={isOpen}
-        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-black px-3 py-2 text-right text-sm text-white outline-none transition hover:border-zinc-600 focus:border-white disabled:cursor-not-allowed disabled:opacity-60"
+        className={`relative h-10 w-full rounded-full border border-gray-300 bg-white py-2 pl-3 pr-14 text-right text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500 ${controlClassName}`.trim()}
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
-        <span className="min-w-0 flex-1">{buttonContent || <span className="text-zinc-600">{placeholder}</span>}</span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-zinc-500 transition ${isOpen ? "rotate-180" : ""}`} />
+        <span className={`pointer-events-none absolute right-0 top-0 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 ${iconClassName}`.trim()}>
+          <ChevronDown className={`h-5 w-5 transition ${isOpen ? "rotate-180" : ""}`} />
+        </span>
+        <span className="block min-w-0 truncate">{buttonContent || <span className="text-zinc-500 dark:text-gray-300">{resolvedPlaceholder}</span>}</span>
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950 p-1 shadow-2xl shadow-black/40">
+        <div className="absolute right-0 z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 shadow-2xl shadow-black/15 dark:border-gray-600 dark:bg-zinc-950 dark:shadow-black/40">
           {children({ close: () => setIsOpen(false) })}
         </div>
       ) : null}
@@ -77,7 +82,9 @@ function DropdownShell({
 }
 
 export function SingleSelectDropdown({
+  controlClassName,
   disabled,
+  iconClassName,
   label,
   name,
   onChange,
@@ -93,7 +100,9 @@ export function SingleSelectDropdown({
   return (
     <DropdownShell
       disabled={disabled}
+      controlClassName={controlClassName}
       label={label}
+      iconClassName={iconClassName}
       placeholder={placeholder}
       buttonContent={selectedOption ? optionLabel(selectedOption) : null}
     >
@@ -106,7 +115,7 @@ export function SingleSelectDropdown({
             return (
               <button
                 className={`flex w-full items-center rounded-lg px-3 py-2 text-right text-sm transition ${
-                  isSelected ? "bg-white text-black" : "text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                  isSelected ? "bg-green-100 text-green-900 dark:bg-blue-100 dark:text-blue-700" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                 }`}
                 key={currentValue}
                 onClick={() => {
@@ -128,7 +137,9 @@ export function SingleSelectDropdown({
 }
 
 export function MultiSelectDropdown({
+  controlClassName,
   disabled,
+  iconClassName,
   label,
   onChange,
   options = [],
@@ -150,21 +161,15 @@ export function MultiSelectDropdown({
   return (
     <DropdownShell
       disabled={disabled}
+      controlClassName={controlClassName}
       label={label}
+      iconClassName={iconClassName}
       placeholder={placeholder}
       buttonContent={
         selectedLabels.length ? (
-          <span className="flex flex-wrap gap-2">
-            {selectedLabels.slice(0, 3).map((item) => (
-              <span className="rounded-lg bg-zinc-900 px-2 py-1 text-xs text-zinc-200" key={item}>
-                {item}
-              </span>
-            ))}
-            {selectedLabels.length > 3 ? (
-              <span className="rounded-lg bg-zinc-900 px-2 py-1 text-xs text-zinc-400">
-                +{selectedLabels.length - 3}
-              </span>
-            ) : null}
+          <span className="block truncate">
+            {selectedLabels.slice(0, 2).join("، ")}
+            {selectedLabels.length > 2 ? ` +${selectedLabels.length - 2}` : ""}
           </span>
         ) : null
       }
@@ -260,4 +265,3 @@ export function IconSelectDropdown({
 }
 
 export default SingleSelectDropdown;
-

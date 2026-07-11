@@ -80,7 +80,7 @@ const uploadArvan = (customFolder = null) => {
             });
 
             const { extension, fileBuffer, contentType } = await prepareFile(file, getPrepareOptions(req, customFolder, field));
-            const { filename, key } = makeObjectName(customFolder, extension);
+            const { filename, key } = makeObjectName(customFolder, extension, req.body);
 
             console.log("[ARVAN_UPLOAD] prepared file", {
               field,
@@ -124,6 +124,14 @@ const uploadArvan = (customFolder = null) => {
 
         next();
       } catch (error) {
+        if (error?.statusCode === 400) {
+          return res.status(400).json({
+            acknowledgement: false,
+            message: "Bad Request",
+            description: error.message,
+          });
+        }
+
         console.error("[ARVAN_UPLOAD] upload failed", {
           name: error?.name,
           message: error?.message,

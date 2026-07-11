@@ -12,19 +12,87 @@ const imageContentTypes = {
 };
 
 const compressibleImageExtensions = new Set(["jpg", "jpeg", "jfif", "png", "webp"]);
-const resizeWebpQuality = 86;
-const compressionTargetRatio = 0.5;
-const compressionQualities = [86, 84, 82, 81, 80, 79, 78, 76, 74, 72, 70, 68, 66];
+const resizeWebpQuality = 78;
+const compressionTargetRatio = 0.35;
+const compressionQualities = [82, 78, 74, 70, 66, 62, 58, 54, 50];
+const defaultMaxImageDimension = 1920;
 
-const getDateFolder = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
+const folderAliases = {
+  avatar: "profile",
+  categories: "category",
+  games: "game",
+  "game-collections": "game-collection",
+  genres: "genre",
+  magazines: "magazine",
+  platforms: "platform",
+  products: "product",
+  tags: "tag",
 };
 
-const getBaseFolder = (customFolder) => {
-  return customFolder ? `${customFolder}/${getDateFolder()}` : getDateFolder();
+const makeBadRequest = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+};
+
+const toFirstString = (value) => {
+  if (Array.isArray(value)) return toFirstString(value[0]);
+  if (typeof value === "string") return value.trim();
+  if (value == null) return "";
+  return String(value).trim();
+};
+
+const slugifyFolderSegment = (value) => {
+  const segment = toFirstString(value)
+    .normalize("NFKC")
+    .replace(/[\\/:*?"<>|#%{}^~[\]`]/g, "-")
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return segment;
+};
+
+const getEntityTypeFolder = (customFolder, body = {}) => {
+  const rawType = toFirstString(body.entityType || body.uploadType || customFolder || "uploads");
+  const normalizedType = rawType.replace(/_/g, "-").toLowerCase();
+  return folderAliases[normalizedType] || slugifyFolderSegment(normalizedType) || "uploads";
+};
+
+const getEntityName = (body = {}) => {
+  return [
+    body.entityName,
+    body.uploadName,
+    body.title,
+    body.title_fa,
+    body.title_en,
+    body.name,
+    body.name_fa,
+    body.name_en,
+    body.displayName,
+    body.username,
+    body.slug,
+  ]
+    .map(toFirstString)
+    .find(Boolean);
+};
+
+const shouldRequireEntityName = (body = {}) => {
+  return ["true", "1", "yes"].includes(toFirstString(body.requireEntityName).toLowerCase());
+};
+
+const getBaseFolder = (customFolder, body = {}) => {
+  const typeFolder = getEntityTypeFolder(customFolder, body);
+  const entityName = slugifyFolderSegment(getEntityName(body));
+
+  if (entityName) return `${typeFolder}/${entityName}`;
+
+  if (shouldRequireEntityName(body)) {
+    throw makeBadRequest("Entity name is required before uploading files");
+  }
+
+  return typeFolder;
 };
 
 const getOriginalExtension = (file) => {
@@ -54,6 +122,10 @@ const normalizeResizeOptions = (options = {}) => {
   };
 };
 
+const shouldAutoResize = (metadata) => {
+  return metadata.width > defaultMaxImageDimension || metadata.height > defaultMaxImageDimension;
+};
+
 const resizeImage = async (file, extension, options) => {
   const resizeOptions = normalizeResizeOptions(options);
   if (!resizeOptions || !compressibleImageExtensions.has(extension)) {
@@ -72,8 +144,10 @@ const resizeImage = async (file, extension, options) => {
       height: resizeOptions.height,
       position: "center",
       width: resizeOptions.width,
+      withoutEnlargement: true,
     })
     .webp({
+      alphaQuality: 80,
       effort: 6,
       quality: resizeWebpQuality,
       smartSubsample: true,
@@ -106,13 +180,28 @@ const compressImage = async (file, extension) => {
   }
 
   const normalizedImage = sharp(file.buffer).rotate();
+  const imagePipeline = () => {
+    const pipeline = normalizedImage.clone();
+
+    if (shouldAutoResize(metadata)) {
+      return pipeline.resize({
+        fit: "inside",
+        height: defaultMaxImageDimension,
+        width: defaultMaxImageDimension,
+        withoutEnlargement: true,
+      });
+    }
+
+    return pipeline;
+  };
+
   const candidates = await Promise.all(
     [
-      normalizedImage.clone().webp({ lossless: true, effort: 6 }).toBuffer(),
+      imagePipeline().webp({ lossless: true, effort: 6 }).toBuffer(),
       ...compressionQualities.map((quality) =>
-        normalizedImage
-          .clone()
+        imagePipeline()
           .webp({
+            alphaQuality: 80,
             effort: 6,
             quality,
             smartSubsample: true,
@@ -151,9 +240,9 @@ const prepareFile = async (file, options = {}) => {
   return { extension, fileBuffer, contentType };
 };
 
-const makeObjectName = (customFolder, extension) => {
+const makeObjectName = (customFolder, extension, body = {}) => {
   const filename = `${crypto.randomBytes(16).toString("hex")}.${extension}`;
-  const key = `${getBaseFolder(customFolder)}/${filename}`;
+  const key = `${getBaseFolder(customFolder, body)}/${filename}`;
 
   return { filename, key };
 };

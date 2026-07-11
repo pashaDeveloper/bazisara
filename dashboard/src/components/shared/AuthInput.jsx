@@ -1,11 +1,11 @@
 import React from "react";
 
 const AuthInput = React.forwardRef(
-  ({ icon: Icon, className = "", children, ...props }, ref) => {
+  ({ icon: Icon, className = "", iconClassName = "", children, ...props }, ref) => {
     return (
       <div className="relative">
         {Icon && (
-          <span className="pointer-events-none absolute right-0 top-0 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+          <span className={`pointer-events-none absolute right-0 top-0 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 ${iconClassName}`.trim()}>
             <Icon className="h-5 w-5" />
           </span>
         )}

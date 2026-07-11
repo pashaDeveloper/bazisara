@@ -35,11 +35,17 @@ export function getUploadErrorMessage(error) {
   return "خطای نامشخص در آپلود";
 }
 
-export function uploadImageWithProgress(file, onProgress) {
+export function uploadImageWithProgress(file, onProgress, options = {}) {
   const baseUrl = String(import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
   const formData = new FormData();
   formData.append("file", file);
+  if (options.entityType) formData.append("entityType", options.entityType);
+  if (options.entityName) formData.append("entityName", options.entityName);
+  if (options.requireEntityName) formData.append("requireEntityName", "true");
+  if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
+  if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));
+  if (options.resizeFit) formData.append("resizeFit", String(options.resizeFit));
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

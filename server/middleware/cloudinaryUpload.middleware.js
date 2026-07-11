@@ -42,7 +42,7 @@ const uploadCloudinary = (customFolder = null) => {
 
           for (const file of req.files[field]) {
             const { extension, fileBuffer, contentType } = await prepareFile(file);
-            const { key } = makeObjectName(customFolder, extension);
+            const { key } = makeObjectName(customFolder, extension, req.body);
             const resourceType = getResourceType(contentType);
             const publicId = key.replace(/\.[^.]+$/, "");
             const result = await uploadBuffer(fileBuffer, {

@@ -15,18 +15,28 @@ import { DatePickerField, TextField, TextareaField } from "./GameFormFields";
 import { dlcTypeOptions } from "../gameOptions";
 import { makeGameSlug } from "../gameFormUtils";
 
+const borderlessControlClass = "";
+const borderlessIconClass = "";
+const borderlessSwitchClass = "border-0 shadow-none";
+
 function QuickCreateField({ children, label, onCreate }) {
+  const child = React.isValidElement(children)
+    ? React.cloneElement(children, {
+        controlClassName: [children.props.controlClassName, "pl-14"].filter(Boolean).join(" "),
+      })
+    : children;
+
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_56px]">
-      {children}
+    <div className="relative">
+      {child}
       <button
         aria-label={`افزودن ${label}`}
-        className="mt-5 inline-flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 !text-white dark:border-blue-700 dark:bg-blue-600 [&_svg]:!text-white"
+        className="absolute bottom-0 left-0 flex h-10 w-12 items-center justify-center rounded-l-full rounded-r-none border-0 border-r border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
         onClick={onCreate}
         title={`افزودن ${label}`}
         type="button"
       >
-        <Plus className="h-7 w-7 !text-white" style={{ color: "#fff" }} />
+        <Plus className="h-5 w-5" />
       </button>
     </div>
   );
@@ -88,7 +98,7 @@ function TextListEditor({ label, items = [], onChange, placeholder = "???? ????"
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
         <button
@@ -103,13 +113,13 @@ function TextListEditor({ label, items = [], onChange, placeholder = "???? ????"
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_40px]" key={`${label}-${index}`}>
             <input
-              className="h-12 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
+              className="h-10 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-2.5 text-xs text-zinc-950 dark:text-white outline-none transition focus:border-white sm:h-12 sm:rounded-xl sm:px-3 sm:text-sm"
               onChange={(event) => updateItem(index, event.target.value)}
               placeholder={placeholder}
               value={item}
             />
             <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400 sm:h-12 sm:w-12 sm:rounded-xl"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -174,7 +184,7 @@ function ObjectRowsEditor({ columns, items = [], onChange, onCreatePlatform, tit
               value={item.size}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -228,7 +238,7 @@ function PlatformReleaseRowsEditor({ items = [], onChange, onCreatePlatform, pla
               value={item.releaseDate}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -262,7 +272,7 @@ function InlineImageUploadButton({ image, name, onChange, onRemove, state, title
           ) : null}
         </div>
       ) : null}
-      <label className="inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+      <label className="py-1 px-4 flex flex-row gap-x-2 dark:bg-blue-100 bg-green-100 border dark:text-blue-700 dark:border-blue-900 border-green-900 text-green-900 rounded-secondary w-fit text-sm cursor-pointer">
         <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
         <span>{title}</span>
         <input
@@ -297,7 +307,7 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3  bg-white dark:bg-black p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">{title}</span>
         <button
@@ -382,7 +392,7 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3  p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">{title}</span>
         <button
@@ -460,7 +470,7 @@ function LinkRowsEditor({ label, items = [], onChange }) {
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+    <div className="space-y-3  p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
         <button
@@ -490,7 +500,7 @@ function LinkRowsEditor({ label, items = [], onChange }) {
               value={item.link}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -588,7 +598,7 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`search-title-${index}`}>
             <TextField
-              label="خلاصه"
+              label="نام"
               name={`search-title-${index}`}
               onChange={(event) => updateTitle(index, event.target.value)}
               onKeyDown={(event) => handleInputKeyDown(event, index)}
@@ -597,7 +607,7 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
             />
             <TextField
               dir="ltr"
-              label="خلاصه"
+              label="اسلاگ"
               name={`search-title-slug-${index}`}
               onChange={(event) => updateItem(index, { slug: event.target.value })}
               onKeyDown={(event) => handleInputKeyDown(event, index)}
@@ -605,7 +615,7 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
               value={item.slug}
             />
             <button
-              className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
+              className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition hover:border-red-500 hover:text-red-400"
               onClick={() => removeItem(index)}
               type="button"
             >
@@ -647,7 +657,7 @@ export function BasicStep({
       />
       <div className="min-w-0 space-y-2">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">خلاصه بازی</span>
-        <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+        <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-gray-600 dark:bg-[#0a2d4d]">
           <MyEditor
             value={form.shortDescription}
             onChange={(value) => setForm((prev) => ({ ...prev, shortDescription: value }))}
@@ -690,6 +700,7 @@ export function GameMediaStep({
             immediateUpload={false}
             name="cardDesktopCover"
             onRemove={() => onDeleteMainImage?.("cardDesktopCover", setCardDesktopCoverPreview)}
+            profilePreview
             preview={cardDesktopCoverPreview}
             uploadState={imageUploadState.cardDesktopCover}
             setThumbnail={async (file) => {
@@ -717,6 +728,7 @@ export function GameMediaStep({
             immediateUpload={false}
             name="cardMobileCover"
             onRemove={() => onDeleteMainImage?.("cardMobileCover", setCardMobileCoverPreview)}
+            profilePreview
             preview={cardMobileCoverPreview}
             uploadState={imageUploadState.cardMobileCover}
             setThumbnail={async (file) => {
@@ -736,6 +748,7 @@ export function GameMediaStep({
             immediateUpload={false}
             name="desktopCover"
             onRemove={() => onDeleteMainImage?.("desktopCover", setDesktopCoverPreview)}
+            profilePreview
             preview={desktopCoverPreview}
             uploadState={imageUploadState.desktopCover}
             setThumbnail={(file) => {
@@ -782,45 +795,47 @@ export function RelationsStep({
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_56px_48px]">
-        <MultiSelectDropdown label="پلتفرم" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
-        <button
-          aria-label="افزودن ژانر"
-          className="mt-5 inline-flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 !text-white dark:border-blue-700 dark:bg-blue-600 [&_svg]:!text-white"
-          onClick={() => onQuickCreate?.("genre", { field: "genres" })}
-          title="افزودن ژانر"
-          type="button"
-        >
-          <Plus className="h-7 w-7 !text-white" style={{ color: "#fff" }} />
-        </button>
-        <button
-          aria-label={form.showGenresInCategories ? "تغییر نمایش ژانرها در دسته‌بندی" : "تغییر نمایش ژانرها در دسته‌بندی"}
-          className={`mt-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border transition ${
-            form.showGenresInCategories
-              ? "border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300"
-              : "border-zinc-200 bg-white text-zinc-600 hover:border-emerald-500 hover:text-emerald-600 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:border-blue-500 dark:hover:text-blue-300"
-          }`}
-          onClick={toggleGenresVisibility}
-          title={form.showGenresInCategories ? "تغییر نمایش ژانرها در دسته‌بندی" : "تغییر نمایش ژانرها در دسته‌بندی"}
-          type="button"
-        >
-          {form.showGenresInCategories ? <OutlineEyeInvisible className="h-5 w-5" /> : <OutlineEye className="h-5 w-5" />}
-        </button>
+      <div>
+        <div className="relative">
+          <MultiSelectDropdown controlClassName="pl-24" iconClassName={borderlessIconClass} label="ژانر" onChange={(value) => setArrayField("genres", value)} options={genreOptions} value={form.genres} />
+          <button
+            aria-label="افزودن ژانر"
+            className="absolute bottom-0 left-10 flex h-10 w-10 items-center justify-center border-0 border-r border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            onClick={() => onQuickCreate?.("genre", { field: "genres" })}
+            title="افزودن ژانر"
+            type="button"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+          <button
+            aria-label={form.showGenresInCategories ? "تغییر نمایش ژانرها در دسته‌بندی" : "تغییر نمایش ژانرها در دسته‌بندی"}
+            className={`absolute bottom-0 left-0 flex h-10 w-10 items-center justify-center rounded-l-full rounded-r-none border-0 border-r border-gray-300 shadow-sm dark:border-gray-600 ${
+              form.showGenresInCategories
+                ? "bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300"
+                : "bg-gray-200 text-gray-700 hover:text-emerald-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:text-blue-300"
+            }`}
+            onClick={toggleGenresVisibility}
+            title={form.showGenresInCategories ? "تغییر نمایش ژانرها در دسته‌بندی" : "تغییر نمایش ژانرها در دسته‌بندی"}
+            type="button"
+          >
+            {form.showGenresInCategories ? <OutlineEyeInvisible className="h-5 w-5" /> : <OutlineEye className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
       <QuickCreateField label="دسته‌بندی" onCreate={() => onQuickCreate?.("category", { field: "category" })}>
-        <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
+        <SingleSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="دسته‌بندی" name="category" onChange={onChange} options={categoryOptions} value={form.category} />
       </QuickCreateField>
-      <QuickCreateField label="پلتفرم" onCreate={() => onQuickCreate?.("gameCollection", { field: "collections" })}>
-        <MultiSelectDropdown label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
+      <QuickCreateField label="کالکشن بازی" onCreate={() => onQuickCreate?.("gameCollection", { field: "collections" })}>
+        <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="کالکشن‌های نمایش" onChange={(value) => setArrayField("collections", value)} options={collectionOptions} value={form.collections} />
       </QuickCreateField>
       <QuickCreateField label="کلمات کلیدی بازی" onCreate={() => onQuickCreate?.("gameKeyword", { field: "gameKeywords" })}>
-        <MultiSelectDropdown label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
+        <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
       </QuickCreateField>
       <QuickCreateField label="سازنده‌ها" onCreate={() => onQuickCreate?.("company", { field: "developers" })}>
-        <MultiSelectDropdown label="دسته‌بندی" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
+        <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
       </QuickCreateField>
-      <QuickCreateField label="سازنده‌ها" onCreate={() => onQuickCreate?.("company", { field: "publishers" })}>
-        <MultiSelectDropdown label="پلتفرم" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
+      <QuickCreateField label="ناشرها" onCreate={() => onQuickCreate?.("company", { field: "publishers" })}>
+        <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="ناشرها" onChange={(value) => setArrayField("publishers", value)} options={companyOptions} value={form.publishers} />
       </QuickCreateField>
     </div>
   );
@@ -839,52 +854,52 @@ export function PlatformReleasesStep({ form, onQuickCreate, platformOptions, set
 
 export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayField }) {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 md:grid-cols-5 md:items-end">
       <SingleSelectDropdown
+        controlClassName={borderlessControlClass}
+        iconClassName={borderlessIconClass}
         label="بازیکنان آفلاین"
         name="offlinePlayers"
         onChange={(event) => setArrayField("offlinePlayers", event.target.value ? [event.target.value] : [])}
         options={offlinePlayerOptions}
         value={form.offlinePlayers?.[0] || ""}
       />
-      <div className="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
-          <StatusSwitch
-            checked={form.hasOnlineMode}
-            id="hasOnlineMode"
-            label="حالت آنلاین"
-            name="hasOnlineMode"
-            onChange={onChange}
-          />
-          {form.hasOnlineMode ? (
-            <TextField
-              label=""
-              name="onlinePlayerCount"
-              onChange={onChange}
-              placeholder="مثلا ۲ تا ۸ نفر"
-              value={form.onlinePlayerCount}
-            />
-          ) : null}
-        </div>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
-          <StatusSwitch
-            checked={form.hasMultiplayerMode}
-            id="hasMultiplayerMode"
-            label="کلمات کلیدی بازی"
-            name="hasMultiplayerMode"
-            onChange={onChange}
-          />
-          {form.hasMultiplayerMode ? (
-            <TextField
-              label=""
-              name="multiplayerPlayerCount"
-              onChange={onChange}
-              placeholder="مثلا ۲ تا ۸ نفر"
-              value={form.multiplayerPlayerCount}
-            />
-          ) : null}
-        </div>
-      </div>
+      <StatusSwitch
+        checked={form.hasOnlineMode}
+        className={borderlessSwitchClass}
+        id="hasOnlineMode"
+        label="حالت آنلاین"
+        name="hasOnlineMode"
+        onChange={onChange}
+      />
+      <TextField
+        disabled={!form.hasOnlineMode}
+        className={borderlessControlClass}
+        iconClassName={borderlessIconClass}
+        label=""
+        name="onlinePlayerCount"
+        onChange={onChange}
+        placeholder="مثلا ۲ تا ۸ نفر"
+        value={form.onlinePlayerCount}
+      />
+      <StatusSwitch
+        checked={form.hasMultiplayerMode}
+        className={borderlessSwitchClass}
+        id="hasMultiplayerMode"
+        label="حالت چندنفره"
+        name="hasMultiplayerMode"
+        onChange={onChange}
+      />
+      <TextField
+        disabled={!form.hasMultiplayerMode}
+        className={borderlessControlClass}
+        iconClassName={borderlessIconClass}
+        label=""
+        name="multiplayerPlayerCount"
+        onChange={onChange}
+        placeholder="مثلا ۲ تا ۸ نفر"
+        value={form.multiplayerPlayerCount}
+      />
     </div>
   );
 }
@@ -904,28 +919,28 @@ export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
 
 export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <SingleSelectDropdown label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
-      <TextField label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
-      <TextField label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
-      <TextField dir="ltr" label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
-      <div className="md:col-span-3">
-        <StatusSwitch checked={form.isFeatured} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
-      </div>
-      <div className="md:col-span-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4 space-y-3">
-        <StatusSwitch checked={form.hasDubbing} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
-        <StatusSwitch checked={form.hasSubtitle} id="hasSubtitle" label="وب‌سایت رسمی" name="hasSubtitle" onChange={onChange} />
+    <div className="grid gap-4 md:grid-cols-4">
+      <SingleSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
+      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
+      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
+      <TextField className={borderlessControlClass} dir="ltr" iconClassName={borderlessIconClass} label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
+      <div className="md:col-span-4 grid gap-4 md:grid-cols-5">
+        <StatusSwitch checked={form.isFeatured} className={borderlessSwitchClass} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
+        <StatusSwitch checked={form.hasDubbing} className={borderlessSwitchClass} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
+        <StatusSwitch checked={form.hasSubtitle} className={borderlessSwitchClass} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />
         <StatusSwitch
           checked={form.hasFreePersianSubtitle}
+          className={borderlessSwitchClass}
           id="hasFreePersianSubtitle"
-          label="زیرنویس فارسی رایگان"
+          label="زیرنویس  رایگان"
           name="hasFreePersianSubtitle"
           onChange={onChange}
         />
         <StatusSwitch
           checked={form.hasPaidPersianSubtitle}
+          className={borderlessSwitchClass}
           id="hasPaidPersianSubtitle"
-          label="زیرنویس فارسی پولی"
+          label="زیرنویس  پولی"
           name="hasPaidPersianSubtitle"
           onChange={onChange}
         />
@@ -1106,6 +1121,7 @@ export function PatchStep({ form, onChange, patchImagePreview, setForm, setPatch
         <ThumbnailUpload
             immediateUpload={false}
           name="patchImage"
+          profilePreview
           preview={patchImagePreview}
           setThumbnail={(file) => setForm((prev) => ({ ...prev, patchImage: file }))}
           setThumbnailPreview={setPatchImagePreview}
@@ -1355,9 +1371,9 @@ export function VideosStep({
 }) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تریلر</span>
           <ThumbnailUpload
             immediateUpload={false}
             accept="video/*"
@@ -1365,8 +1381,8 @@ export function VideosStep({
             imageSize={150}
             name="trailerVideo"
             poster={trailerThumbnailPreview}
+            profilePreview
             preview={trailerVideoPreview}
-            previewShape="square"
             setThumbnail={(file) => onVideoUpload?.("trailerVideo", file)}
             setThumbnailPreview={() => {}}
             title="انتخاب"
@@ -1374,11 +1390,12 @@ export function VideosStep({
           {isTrailerVideoUploading ? <p className="mt-3 text-xs text-amber-300">در حال آپلود تریلر روی Arvan...</p> : null}
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر تریلر</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر بندانگشتی</span>
           <ThumbnailUpload
             immediateUpload={false}
             imageSize={150}
             name="trailerThumbnail"
+            profilePreview
             preview={trailerThumbnailPreview}
             previewShape="square"
             setThumbnail={(file) => setForm((prev) => ({ ...prev, trailerThumbnail: file }))}

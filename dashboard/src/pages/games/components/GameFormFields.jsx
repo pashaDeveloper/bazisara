@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import AuthInput from "@/components/shared/AuthInput";
 import Calendar from "@/components/icons/Calendar";
+import Edit from "@/components/icons/Edit";
 import { formatDateForInput, parseInputDate } from "../gameFormUtils";
 
 function getDaysInMonth(year, month) {
@@ -11,16 +13,18 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function TextField({ label, name, onChange, placeholder, type = "text", value, dir, ...props }) {
+export function TextField({ icon = Edit, iconClassName = "", label, name, onChange, placeholder, type = "text", value, dir, ...props }) {
   return (
-    <label className="space-y-2">
-      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
-      <input
-        className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
+    <label className="flex flex-col gap-y-1">
+      <span className="text-sm text-zinc-700 dark:text-gray-100">{label}</span>
+      <AuthInput
         dir={dir}
+        icon={icon}
+        iconClassName={iconClassName}
+        id={name}
         name={name}
         onChange={onChange}
-        placeholder={placeholder}
+        placeholder={placeholder || label}
         type={type}
         value={value}
         {...props}
@@ -31,10 +35,10 @@ export function TextField({ label, name, onChange, placeholder, type = "text", v
 
 export function TextareaField({ label, name, onChange, rows = 4, value }) {
   return (
-    <label className="space-y-2">
-      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+    <label className="flex flex-col gap-y-1">
+      <span className="text-sm text-zinc-700 dark:text-gray-100">{label}</span>
       <textarea
-        className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
+        className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-8 text-zinc-900 outline-none transition focus:border-zinc-900 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-white dark:focus:border-blue-500"
         name={name}
         onChange={onChange}
         rows={rows}
@@ -189,11 +193,11 @@ export function DatePickerField({ label, onChange, value }) {
   };
 
   return (
-    <div className="space-y-2">
-      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+    <div className="flex flex-col gap-y-1">
+      <span className="text-sm text-zinc-700 dark:text-gray-100">{label}</span>
       <div className="relative">
         <input
-          className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-3 pr-11 text-sm text-zinc-950 dark:text-white outline-none transition focus:border-white"
+          className="h-10 w-full border bg-white py-2 pl-3 pr-14 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
           inputMode="numeric"
           placeholder="MM-DD-YYYY"
           value={textValue}
@@ -203,10 +207,10 @@ export function DatePickerField({ label, onChange, value }) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="absolute inset-y-0 right-0 flex h-full items-center justify-center rounded-r-xl border-l border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 px-3 text-zinc-600 dark:text-zinc-400 transition hover:text-zinc-950 dark:text-white"
+              className="absolute right-0 top-0 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
               aria-label="باز کردن تقویم"
             >
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-5 w-5" />
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[360px] border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3">
@@ -259,4 +263,3 @@ export function DatePickerField({ label, onChange, value }) {
     </div>
   );
 }
-

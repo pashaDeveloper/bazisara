@@ -145,6 +145,9 @@ const uploadImageWithProgress = (file, onProgress, options = {}) => {
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
   const formData = new FormData();
   formData.append("file", file);
+  if (options.entityType) formData.append("entityType", options.entityType);
+  if (options.entityName) formData.append("entityName", options.entityName);
+  if (options.requireEntityName) formData.append("requireEntityName", "true");
   if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
   if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));
   if (options.resizeFit) formData.append("resizeFit", String(options.resizeFit));
@@ -240,6 +243,28 @@ const quickCreateLabels = {
   platform: "پلتفرم",
 };
 
+const quickCreateUploadTypes = {
+  category: "category",
+  company: "company",
+  gameCollection: "game-collection",
+  gameKeyword: "game-keyword",
+  genre: "genre",
+  platform: "platform",
+  tag: "tag",
+};
+
+const getQuickCreateEntityName = (values) =>
+  [
+    values.name,
+    values.title_fa,
+    values.name_fa,
+    values.title_en,
+    values.name_en,
+    values.slug,
+  ]
+    .map((value) => String(value || "").trim())
+    .find(Boolean) || "";
+
 function QuickCreateImageUpload({ label = "تصویر", name, onRemove, onSelect, preview, state }) {
   const isUploading = state?.status === "uploading";
   const progress = Math.max(0, Math.min(100, Number(state?.progress || 0)));
@@ -248,7 +273,7 @@ function QuickCreateImageUpload({ label = "تصویر", name, onRemove, onSelect
     <div className="space-y-3 md:col-span-2">
       <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
       <div className="flex flex-wrap items-center gap-3">
-        <label className="inline-flex h-12 w-fit cursor-pointer flex-row items-center gap-x-2 rounded-secondary border border-green-900 bg-green-100 px-4 py-1 text-sm text-green-900 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm dark:border-blue-900 dark:bg-blue-100 dark:text-blue-700">
+        <label className="py-1 px-4 flex flex-row gap-x-2 dark:bg-blue-100 bg-green-100 border dark:text-blue-700 dark:border-blue-900 border-green-900 text-green-900 rounded-secondary w-fit text-sm cursor-pointer">
           <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
           <span>انتخاب {label}</span>
           <input
@@ -619,12 +644,25 @@ function GameForm({ mode = "create" }) {
       return;
     }
 
+    const entityName = getQuickCreateEntityName(quickCreateForm);
+    if (!entityName) {
+      toast.error("ابتدا نام را وارد کنید", { id: "quick-create-upload-name" });
+      return;
+    }
+
     const localPreview = URL.createObjectURL(file);
     setQuickCreateImagePreview(localPreview);
 
-    const media = await handleImageUpload(`quickCreate-${quickCreate?.type || field}-${field}`, file);
+    const media = await handleImageUpload(`quickCreate-${quickCreate?.type || field}-${field}`, file, {
+      entityName,
+      entityType: quickCreateUploadTypes[quickCreate?.type] || quickCreate?.type || field,
+      requireEntityName: true,
+    });
     URL.revokeObjectURL(localPreview);
-    if (!media) return;
+    if (!media) {
+      setQuickCreateImagePreview("");
+      return;
+    }
 
     setQuickCreateValue(field, media);
     setQuickCreateImagePreview(media.url);
@@ -780,6 +818,12 @@ function GameForm({ mode = "create" }) {
   const handleVideoUpload = async (field, file) => {
     if (!file) return;
 
+    const gameTitle = String(form.title || "").trim();
+    if (!gameTitle) {
+      toast.error("ابتدا نام بازی را وارد کنید", { id: `${field}-upload` });
+      return;
+    }
+
     const previousTempMedia = tempUploadedVideosRef.current.get(field);
     const localPreview = URL.createObjectURL(file);
 
@@ -789,6 +833,9 @@ function GameForm({ mode = "create" }) {
     try {
       const uploadFormData = new FormData();
       uploadFormData.append("file", file);
+      uploadFormData.append("entityType", "game");
+      uploadFormData.append("entityName", gameTitle);
+      uploadFormData.append("requireEntityName", "true");
       const response = await uploadFile(uploadFormData).unwrap();
       const media = normalizeUploadedMedia(response, "video");
 
@@ -824,8 +871,26 @@ function GameForm({ mode = "create" }) {
     }
   };
 
-  const handleImageUpload = async (uploadKey, file, { fallbackType = "image", resizeFit, resizeHeight, resizeWidth } = {}) => {
+  const handleImageUpload = async (
+    uploadKey,
+    file,
+    {
+      entityName,
+      entityType = "game",
+      fallbackType = "image",
+      requireEntityName = true,
+      resizeFit,
+      resizeHeight,
+      resizeWidth,
+    } = {}
+  ) => {
     if (!(file instanceof File)) return null;
+
+    const uploadEntityName = String(entityName || form.title || "").trim();
+    if (requireEntityName && !uploadEntityName) {
+      toast.error(entityType === "game" ? "ابتدا نام بازی را وارد کنید" : "ابتدا نام را وارد کنید", { id: `${uploadKey}-upload` });
+      return null;
+    }
 
     const previousTempMedia = tempUploadedImagesRef.current.get(uploadKey);
     const localPreview = URL.createObjectURL(file);
@@ -855,7 +920,14 @@ function GameForm({ mode = "create" }) {
             },
           }));
         },
-        { resizeFit, resizeHeight, resizeWidth }
+        {
+          entityName: uploadEntityName,
+          entityType,
+          requireEntityName,
+          resizeFit,
+          resizeHeight,
+          resizeWidth,
+        }
       );
       const media = normalizeUploadedMedia(response, fallbackType);
 
@@ -1252,40 +1324,38 @@ function GameForm({ mode = "create" }) {
             <div className="rounded-xl border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-black">در حال دریافت...</div>
           ) : (
             <>
-              <div className="space-y-5" dir="rtl">
-                <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-black dark:shadow-none">
-                  <div className="mb-4 flex flex-wrap items-center justify-start gap-3">
-                    <div className="order-first inline-flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-800 dark:bg-zinc-950">
-                      {previewTabs.map((tab) => {
-                        const isActive = activePreviewTab === tab.key;
+              <div className="space-y-0" dir="rtl">
+                <div className="sticky top-16 z-30 -mb-px flex justify-start rounded-t-xl border border-zinc-200 bg-white/95 p-1 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+                  <div className="inline-flex max-w-full overflow-x-auto">
+                    {previewTabs.map((tab) => {
+                      const isActive = activePreviewTab === tab.key;
 
-                        return (
-                          <button
-                            className={`min-w-20 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 ease-out ${
-                              isActive ? "bg-emerald-500 !text-white shadow-sm dark:bg-blue-500 dark:!text-white" : "text-zinc-600 hover:bg-white hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-black dark:hover:text-white"
-                            }`}
-                            key={tab.key}
-                            onClick={() => setActivePreviewTab(tab.key)}
-                            style={isActive ? { color: "#fff" } : undefined}
-                            type="button"
-                          >
-                            {tab.label}
-                          </button>
-                        );
-                      })}
+                      return (
+                        <button
+                          className={`min-w-16 shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 ease-out sm:min-w-20 ${
+                            isActive ? "bg-emerald-500 !text-white shadow-sm dark:bg-blue-500 dark:!text-white" : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-black dark:hover:text-white"
+                          }`}
+                          key={tab.key}
+                          onClick={() => setActivePreviewTab(tab.key)}
+                          style={isActive ? { color: "#fff" } : undefined}
+                          type="button"
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {activePreviewTab !== "form" ? (
+                  <div className="flex justify-center overflow-hidden rounded-b-xl rounded-t-none border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className={activePreviewTab === "desktop" ? "w-full max-w-5xl" : "w-full max-w-[390px]"}>
+                      {renderPreview()}
                     </div>
                   </div>
-                  {activePreviewTab !== "form" ? (
-                    <div className="flex justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                      <div className={activePreviewTab === "desktop" ? "w-full max-w-5xl" : "w-full max-w-[390px]"}>
-                        {renderPreview()}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+                ) : null}
 
                 {activePreviewTab === "form" ? (
-                <div className="relative space-y-10 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-black dark:shadow-none md:p-6" dir="rtl">
+                <div className="relative space-y-10 rounded-b-xl rounded-t-none border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-black dark:shadow-none md:p-6" dir="rtl">
                   <div className="mb-1 flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-500">فرم اطلاعات بازی</span>
                     <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] text-zinc-500">
