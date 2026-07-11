@@ -14,8 +14,6 @@ const router = express.Router();
 const gameAccess = [verify, authorize("owner", "superAdmin", "admin", "operator"), requireAdminProfileLevel(3)];
 const gameUploadFields = [
   { name: "cover", maxCount: 1 },
-  { name: "cardDesktopCover", maxCount: 1 },
-  { name: "cardMobileCover", maxCount: 1 },
   { name: "desktopCover", maxCount: 1 },
   { name: "mobileCover", maxCount: 1 },
   { name: "gallery", maxCount: 12 },

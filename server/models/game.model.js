@@ -62,6 +62,17 @@ const ageRatingSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const offlinePlayerSchema = new mongoose.Schema(
+  {
+    key: { type: String, trim: true, default: "" },
+    title_fa: { type: String, trim: true, default: "" },
+    title_en: { type: String, trim: true, default: "" },
+    min: { type: Number, default: null },
+    max: { type: Number, default: null },
+  },
+  { _id: false }
+);
+
 const gameFilterValueSchema = new mongoose.Schema(
   {
     priceMin: { type: Number, default: null },
@@ -103,6 +114,12 @@ const gameSchema = new mongoose.Schema(
       required: [true, "Game title is required"],
       trim: true,
       maxLength: [150, "Game title must be at most 150 characters"],
+    },
+    summary: {
+      type: String,
+      trim: true,
+      default: "",
+      maxLength: [160, "Game summary must be at most 160 characters"],
     },
     slug: {
       type: String,
@@ -180,7 +197,7 @@ const gameSchema = new mongoose.Schema(
     platformReleases: [platformReleaseSchema],
     platformSizes: [platformSizeSchema],
     gameModes: [{ type: String, trim: true }],
-    offlinePlayers: [{ type: String, trim: true }],
+    offlinePlayers: [offlinePlayerSchema],
     onlinePlayers: [{ type: String, trim: true }],
     hasOnlineMode: {
       type: Boolean,
@@ -262,9 +279,19 @@ const gameSchema = new mongoose.Schema(
       min: [0, "Score cannot be negative"],
       max: [100, "Score cannot be more than 100"],
     },
+    sonyScore: {
+      type: Number,
+      default: null,
+      min: [0, "Score cannot be negative"],
+      max: [100, "Score cannot be more than 100"],
+    },
+    steamScore: {
+      type: Number,
+      default: null,
+      min: [0, "Score cannot be negative"],
+      max: [100, "Score cannot be more than 100"],
+    },
     cover: mediaSchema,
-    cardDesktopCover: mediaSchema,
-    cardMobileCover: mediaSchema,
     desktopCover: mediaSchema,
     mobileCover: mediaSchema,
     gallery: [mediaSchema],

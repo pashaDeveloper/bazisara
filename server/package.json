@@ -22,6 +22,7 @@
     "seed:tags": "node scripts/seedTags.js",
     "seed:samples": "node scripts/seedCatalogSamples.js",
     "seed:game-collections": "node scripts/seedGameCollections.js",
+    "db:sync-indexes": "node scripts/syncIndexes.js",
     "seed:catalog": "npm run seed:icons && npm run seed:filters && npm run seed:categories && npm run seed:genres && npm run seed:companies && npm run seed:brands && npm run seed:platforms && npm run seed:category-filters && npm run seed:tags && npm run seed:samples && npm run seed:game-collections",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

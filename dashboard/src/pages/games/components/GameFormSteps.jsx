@@ -629,15 +629,6 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
 }
 
 export function BasicStep({
-  cardDesktopCoverPreview,
-  cardMobileCoverPreview,
-  coverPreview,
-  desktopCoverPreview,
-  setCardDesktopCoverPreview,
-  setCardMobileCoverPreview,
-  setCoverPreview,
-  setDesktopCoverPreview,
-  setDesktopCoverCropFile,
   form,
   onChange,
   setArrayField,
@@ -650,13 +641,21 @@ export function BasicStep({
         <TextField label="عنوان بازی *" name="title" onChange={onChange} value={form.title} />
         <TextField dir="ltr" label="اسلاگ بازی" name="slug" onChange={onChange} value={form.slug} />
       </div>
+      <TextField
+        label="خلاصه کوتاه"
+        maxLength={160}
+        name="summary"
+        onChange={onChange}
+        placeholder="حداکثر ۱۶۰ کاراکتر"
+        value={form.summary}
+      />
       <LegacySearchTitleRowsEditor
         items={form.searchTitles}
         onChange={(value) => setArrayField("searchTitles", value)}
         translateSearchTitleSlug={translateSearchTitleSlug}
       />
       <div className="min-w-0 space-y-2">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">خلاصه بازی</span>
+        <span className="text-sm text-zinc-700 dark:text-zinc-300">معرفی بازی</span>
         <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-gray-600 dark:bg-[#0a2d4d]">
           <MyEditor
             value={form.shortDescription}
@@ -669,8 +668,6 @@ export function BasicStep({
 }
 
 export function GameMediaStep({
-  cardDesktopCoverPreview,
-  cardMobileCoverPreview,
   coverPreview,
   desktopCoverPreview,
   galleryPreview,
@@ -680,12 +677,13 @@ export function GameMediaStep({
   onDeleteUploadedImage,
   onImageUpload,
   onVideoUpload,
-  setCardDesktopCoverPreview,
-  setCardMobileCoverPreview,
   setCoverPreview,
   setDesktopCoverCropFile,
+  setDesktopCoverPreview,
   setForm,
   setGalleryPreview,
+  mobileCoverPreview,
+  setMobileCoverPreview,
   setTrailerThumbnailPreview,
   trailerThumbnailPreview,
   trailerVideoPreview,
@@ -694,55 +692,55 @@ export function GameMediaStep({
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کاور اصلی *</span>
-          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1024 × 1024</p>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت مشترک *</span>
+          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 768 × 768</p>
           <ThumbnailUpload
             immediateUpload={false}
-            name="cardDesktopCover"
-            onRemove={() => onDeleteMainImage?.("cardDesktopCover", setCardDesktopCoverPreview)}
+            name="cover"
+            onRemove={() => onDeleteMainImage?.("cover", setCoverPreview)}
             profilePreview
-            preview={cardDesktopCoverPreview}
-            uploadState={imageUploadState.cardDesktopCover}
+            preview={coverPreview}
+            uploadState={imageUploadState.cover}
             setThumbnail={async (file) => {
-              const media = await onImageUpload?.("cardDesktopCover", file);
+              const media = await onImageUpload?.("cover", file, {
+                resizeFit: "cover",
+                resizeHeight: 768,
+                resizeWidth: 768,
+              });
               if (!media) return;
-              setForm((prev) => ({
-                ...prev,
-                cardDesktopCover: media,
-                cover: prev.cover || media,
-              }));
-              setCardDesktopCoverPreview(media.url);
-              if (!coverPreview) setCoverPreview(media.url);
+              setForm((prev) => ({ ...prev, cover: media }));
+              setCoverPreview(media.url);
             }}
-            setThumbnailPreview={(preview) => {
-              setCardDesktopCoverPreview(preview);
-              if (!coverPreview) setCoverPreview(preview);
-            }}
+            setThumbnailPreview={setCoverPreview}
             title="انتخاب"
           />
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت موبایل</span>
-          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1440 × 1080</p>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر اصلی موبایل</span>
+          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1080 × 810</p>
           <ThumbnailUpload
             immediateUpload={false}
-            name="cardMobileCover"
-            onRemove={() => onDeleteMainImage?.("cardMobileCover", setCardMobileCoverPreview)}
+            name="mobileCover"
+            onRemove={() => onDeleteMainImage?.("mobileCover", setMobileCoverPreview)}
             profilePreview
-            preview={cardMobileCoverPreview}
-            uploadState={imageUploadState.cardMobileCover}
+            preview={mobileCoverPreview}
+            uploadState={imageUploadState.mobileCover}
             setThumbnail={async (file) => {
-              const media = await onImageUpload?.("cardMobileCover", file);
+              const media = await onImageUpload?.("mobileCover", file, {
+                resizeFit: "cover",
+                resizeHeight: 810,
+                resizeWidth: 1080,
+              });
               if (!media) return;
-              setForm((prev) => ({ ...prev, cardMobileCover: media }));
-              setCardMobileCoverPreview(media.url);
+              setForm((prev) => ({ ...prev, mobileCover: media }));
+              setMobileCoverPreview(media.url);
             }}
-            setThumbnailPreview={setCardMobileCoverPreview}
+            setThumbnailPreview={setMobileCoverPreview}
             title="انتخاب"
           />
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
-          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت موبایل</span>
+          <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر اصلی دسکتاپ</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
           <ThumbnailUpload
             immediateUpload={false}
@@ -853,6 +851,8 @@ export function PlatformReleasesStep({ form, onQuickCreate, platformOptions, set
 }
 
 export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayField }) {
+  const selectedOfflinePlayerKey = form.offlinePlayers?.[0]?.key || "";
+
   return (
     <div className="grid gap-4 md:grid-cols-5 md:items-end">
       <SingleSelectDropdown
@@ -860,9 +860,25 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
         iconClassName={borderlessIconClass}
         label="بازیکنان آفلاین"
         name="offlinePlayers"
-        onChange={(event) => setArrayField("offlinePlayers", event.target.value ? [event.target.value] : [])}
+        onChange={(event) => {
+          const option = offlinePlayerOptions.find((item) => item.value === event.target.value);
+          setArrayField(
+            "offlinePlayers",
+            option
+              ? [
+                  {
+                    key: option.key,
+                    title_fa: option.title_fa,
+                    title_en: option.title_en,
+                    min: option.min,
+                    max: option.max,
+                  },
+                ]
+              : []
+          );
+        }}
         options={offlinePlayerOptions}
-        value={form.offlinePlayers?.[0] || ""}
+        value={selectedOfflinePlayerKey}
       />
       <StatusSwitch
         checked={form.hasOnlineMode}
@@ -919,12 +935,14 @@ export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
 
 export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-6">
       <SingleSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
       <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
       <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
+      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز سونی" name="sonyScore" onChange={onChange} type="number" value={form.sonyScore} />
+      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز استیم" name="steamScore" onChange={onChange} type="number" value={form.steamScore} />
       <TextField className={borderlessControlClass} dir="ltr" iconClassName={borderlessIconClass} label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
-      <div className="md:col-span-4 grid gap-4 md:grid-cols-5">
+      <div className="md:col-span-6 grid gap-4 md:grid-cols-5">
         <StatusSwitch checked={form.isFeatured} className={borderlessSwitchClass} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
         <StatusSwitch checked={form.hasDubbing} className={borderlessSwitchClass} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
         <StatusSwitch checked={form.hasSubtitle} className={borderlessSwitchClass} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />
@@ -1292,6 +1310,7 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
       <div className="grid gap-4">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
+          <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
           <ThumbnailUpload
             immediateUpload={false}
             multiple

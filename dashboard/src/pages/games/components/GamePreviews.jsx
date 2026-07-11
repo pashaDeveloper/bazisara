@@ -42,7 +42,6 @@ export function GameCardPreview({ coverPreview, form }) {
 
 export function GameDetailPreview({
   activeTab,
-  cardMobileCoverPreview = "",
   coverPreview,
   desktopCoverPreview = "",
   form,
@@ -54,15 +53,16 @@ export function GameDetailPreview({
   platformReleases = [],
   reviewItems = [],
   seoTags = [],
+  mobileCoverPreview = "",
   variant = "desktop",
 }) {
   const isMobile = variant === "mobile";
   const heroImage =
-    (isMobile ? cardMobileCoverPreview || coverPreview : desktopCoverPreview || coverPreview) ||
+    (isMobile ? mobileCoverPreview || coverPreview : desktopCoverPreview || coverPreview) ||
     galleryPreview[0]?.url ||
     "";
   const title = form.title.trim();
-  const description = stripHtml(form.description) || form.shortDescription.trim();
+  const description = form.summary?.trim() || stripHtml(form.description) || form.shortDescription.trim();
   const tabButtonRefs = useRef([]);
   const tabRowRef = useRef(null);
   const [localActiveTab, setLocalActiveTab] = useState("specs");
@@ -99,6 +99,8 @@ export function GameDetailPreview({
     ["رده سنی", ageRatingLabel],
     ["زمان تقریبی گیم‌پلی", form.gameplayTime],
     ["امتیاز متاکریتیک", form.metacriticScore],
+    ["امتیاز سونی", form.sonyScore],
+    ["امتیاز استیم", form.steamScore],
     ["ژانرها", genres.join("، ")],
   ];
 
@@ -125,7 +127,7 @@ export function GameDetailPreview({
       case "intro":
         return (
           <div className="space-y-3">
-            {form.shortDescription ? <p className="text-sm leading-7 text-zinc-300">{form.shortDescription}</p> : null}
+            {form.summary || form.shortDescription ? <p className="text-sm leading-7 text-zinc-300">{form.summary || form.shortDescription}</p> : null}
             {description ? (
               <p className="line-clamp-3 text-sm leading-7 text-zinc-300">{description}</p>
             ) : (

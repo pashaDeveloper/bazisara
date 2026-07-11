@@ -106,7 +106,7 @@ function buildApprovalItem(type, item) {
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
     slug: base.slug || "",
-    cover: base.cover || base.image || base.cardDesktopCover || (base.images?.main?.url?.[0] ? { url: base.images.main.url[0] } : null),
+    cover: base.cover || base.image || (base.images?.main?.url?.[0] ? { url: base.images.main.url[0] } : null),
     category: base.category || null,
     author: base.author || "",
     excerpt: base.excerpt || base.shortDescription || base.subtitle || base.summary || "",
@@ -170,7 +170,7 @@ async function getPendingApprovals() {
   const [games, products, articles, sliders, profileAdmins] = await Promise.all([
     Game.find({ isDeleted: false, status: "pending" })
       .sort({ updatedAt: -1 })
-      .select("title slug status createdAt updatedAt cover cardDesktopCover category shortDescription description approvalReview"),
+      .select("title slug status createdAt updatedAt cover category shortDescription description approvalReview"),
     Product.find({ isDeleted: false, status: "pending" })
       .sort({ updatedAt: -1 })
       .select("title status createdAt updatedAt images summary product_type statusProduct expert_reviews approvalReview"),
@@ -774,7 +774,7 @@ exports.getApprovalMessages = async (req, res) => {
   const [games, products, articles, sliders, profileAdmins] = await Promise.all([
     Game.find({ isDeleted: false, status: "inactive", "approvalReview.status": "rejected" })
       .sort({ "approvalReview.reviewedAt": -1 })
-      .select("title slug status createdAt updatedAt cover cardDesktopCover category shortDescription description approvalReview"),
+      .select("title slug status createdAt updatedAt cover category shortDescription description approvalReview"),
     Product.find({ isDeleted: false, status: "inactive", "approvalReview.status": "rejected" })
       .sort({ "approvalReview.reviewedAt": -1 })
       .select("title status createdAt updatedAt images summary product_type statusProduct expert_reviews approvalReview"),

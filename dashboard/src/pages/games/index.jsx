@@ -173,11 +173,11 @@ function Games() {
                     >
                       <td className="py-4 pl-3">
                         <div className="flex min-w-0 items-center gap-3">
-                          {(item.cardDesktopCover?.url || item.cover?.url) ? (
+                          {item.cover?.url ? (
                             <DisplayImages
                               galleryPreview={[{
-                                url: item.cardDesktopCover?.url || item.cover.url,
-                                type: item.cardDesktopCover?.type || item.cover?.type || "image",
+                                url: item.cover.url,
+                                type: item.cover?.type || "image",
                               }]}
                               imageSize={56}
                               className="mt-0"

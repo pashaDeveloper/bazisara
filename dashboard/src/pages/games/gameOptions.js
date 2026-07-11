@@ -10,12 +10,24 @@
 ];
 
 export const offlinePlayerOptions = [
-  { label: "ندارد", value: "offline_none" },
-  { label: "تک نفره", value: "offline_1" },
-  { label: "1-2 نفره", value: "offline_1_2" },
-  { label: "1-3 نفره", value: "offline_1_3" },
-  { label: "1-4 نفره", value: "offline_1_4" },
-  { label: "دو نفره", value: "offline_2" },
+  {
+    key: "single-player",
+    label: "تک‌نفره",
+    max: 1,
+    min: 1,
+    title_en: "Single-player",
+    title_fa: "تک‌نفره",
+    value: "single-player",
+  },
+  {
+    key: "up-to-4",
+    label: "تا ۴ نفر",
+    max: 4,
+    min: 1,
+    title_en: "Up to 4 players",
+    title_fa: "تا ۴ نفر",
+    value: "up-to-4",
+  },
 ];
 
 export const onlinePlayerOptions = [

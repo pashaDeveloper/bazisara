@@ -325,7 +325,7 @@ function populateArticle(query) {
     })
     .populate("creator", "name email avatar")
     .populate("tags", "name slug")
-    .populate("relatedGames", "title slug cover cardDesktopCover");
+    .populate("relatedGames", "title slug cover");
 }
 
 exports.generateArticleSlug = async (req, res) => {

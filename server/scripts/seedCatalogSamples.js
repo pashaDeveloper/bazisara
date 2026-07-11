@@ -117,7 +117,6 @@ async function seed() {
       description: "نسخه نمونه برای نمایش فیلترهای دسته‌بندی و کارت‌های ویژه در صفحه بازی‌ها.",
       category: playstation?._id || pc?._id,
       cover: sampleMedia("alan-wake-2.jpg"),
-      cardDesktopCover: sampleMedia("alan-wake-2.jpg"),
       isFeatured: true,
     },
     {
@@ -127,7 +126,6 @@ async function seed() {
       description: "نمونه‌ای برای دسته‌بندی ترسناک و نمایش کارت در فیلترهای شبیه products2.",
       category: xbox?._id || playstation?._id,
       cover: sampleMedia("dead-space.jpg"),
-      cardDesktopCover: sampleMedia("dead-space.jpg"),
       isFeatured: true,
     },
     {
@@ -137,7 +135,6 @@ async function seed() {
       description: "یک بازی نمونه برای فیلترهای ماجراجویی و پلتفرمر.",
       category: switchCategory?._id || playstation?._id,
       cover: sampleMedia("prince-of-persia-the-lost-crown.jpg"),
-      cardDesktopCover: sampleMedia("prince-of-persia-the-lost-crown.jpg"),
       isFeatured: false,
     },
     {
@@ -147,7 +144,6 @@ async function seed() {
       description: "نمونه‌ای خوب برای نشان دادن دسته‌بندی و کارت‌های بازی.",
       category: pc?._id || playstation?._id,
       cover: sampleMedia("the-quarry.png"),
-      cardDesktopCover: sampleMedia("the-quarry.png"),
       isFeatured: false,
     },
   ];

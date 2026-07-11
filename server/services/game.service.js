@@ -30,7 +30,7 @@ const populateGame = (query) =>
     .populate("filterDefinitions", "key label type options min max unit")
     .populate("filterValues.genres", "name icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
-    .populate("relatedGames", "title slug cover cardDesktopCover")
+    .populate("relatedGames", "title slug cover")
     .populate("creator", "name email avatar role adminId");
 
 const ageRatingCatalog = [
@@ -161,6 +161,80 @@ function parseArray(value) {
     .filter(Boolean);
 }
 
+const offlinePlayerCatalog = [
+  {
+    key: "single-player",
+    title_fa: "تک‌نفره",
+    title_en: "Single-player",
+    min: 1,
+    max: 1,
+    legacyValues: ["offline_1", "single_player", "تک نفره", "تک‌نفره", "1"],
+  },
+  {
+    key: "up-to-4",
+    title_fa: "تا ۴ نفر",
+    title_en: "Up to 4 players",
+    min: 1,
+    max: 4,
+    legacyValues: ["offline_1_4", "1-4 نفره", "تا 4 نفر", "تا ۴ نفر", "up_to_4"],
+  },
+];
+
+const offlinePlayerCatalogMap = new Map(
+  offlinePlayerCatalog.flatMap((item) =>
+    [item.key, item.title_fa, item.title_en, ...(item.legacyValues || [])].map((value) => [String(value).trim(), item])
+  )
+);
+
+function parseOfflinePlayerItem(value) {
+  if (!value) return null;
+
+  if (typeof value === "object") {
+    const key = String(value.key || value.value || "").trim();
+    const catalogItem = offlinePlayerCatalogMap.get(key);
+    return {
+      key: key || catalogItem?.key || "",
+      title_fa: String(value.title_fa || value.titleFa || value.label_fa || value.label || catalogItem?.title_fa || "").trim(),
+      title_en: String(value.title_en || value.titleEn || value.label_en || catalogItem?.title_en || "").trim(),
+      min: toNumber(value.min ?? catalogItem?.min),
+      max: toNumber(value.max ?? catalogItem?.max),
+    };
+  }
+
+  const text = String(value || "").trim();
+  const catalogItem = offlinePlayerCatalogMap.get(text);
+  if (catalogItem) {
+    const { legacyValues, ...item } = catalogItem;
+    return item;
+  }
+
+  return {
+    key: makeSlug(text),
+    title_fa: text,
+    title_en: "",
+    min: null,
+    max: null,
+  };
+}
+
+function parseOfflinePlayers(value) {
+  if (value === undefined || value === null || value === "") return [];
+
+  let items = value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      items = Array.isArray(parsed) ? parsed : [parsed];
+    } catch (_) {
+      items = value.split(",");
+    }
+  }
+
+  if (!Array.isArray(items)) items = [items];
+
+  return items.map(parseOfflinePlayerItem).filter((item) => item?.key || item?.title_fa || item?.title_en);
+}
+
 function parseSocialLinks(value) {
   if (value === undefined || value === null || value === "") return [];
   const rawItems = Array.isArray(value) ? value : (() => {
@@ -234,7 +308,7 @@ function parseFilterValues(value) {
     ageRatings: parseArray(raw.ageRatings),
     genres: parseArray(raw.genres),
     gameModes: parseArray(raw.gameModes),
-    offlinePlayers: parseArray(raw.offlinePlayers),
+    offlinePlayers: parseOfflinePlayers(raw.offlinePlayers).map((item) => item.key).filter(Boolean),
   };
 }
 
@@ -351,11 +425,15 @@ function applySeoFromContent(payload, currentGame = null) {
     payload.shortDescription !== undefined
       ? payload.shortDescription
       : currentGame?.shortDescription || "";
+  const summary =
+    payload.summary !== undefined
+      ? payload.summary
+      : currentGame?.summary || "";
 
-  if (payload.title !== undefined || payload.shortDescription !== undefined || !currentGame) {
+  if (payload.title !== undefined || payload.summary !== undefined || payload.shortDescription !== undefined || !currentGame) {
     payload.seoTitle = limitText(title, 160);
-    payload.seoDescription = limitText(shortDescription || title, 320);
-    payload.seoKeywords = [title, shortDescription]
+    payload.seoDescription = limitText(summary || shortDescription || title, 320);
+    payload.seoKeywords = [title, summary || shortDescription]
       .filter(Boolean)
       .map((item) => limitText(item, 80));
   }
@@ -388,6 +466,10 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   const slug = body.slug !== undefined ? String(body.slug).trim() : undefined;
   const payload = {
     title,
+    summary:
+      body.summary !== undefined
+        ? limitText(body.summary, 160)
+        : undefined,
     slug: slug !== undefined ? slug : title !== undefined ? "" : undefined,
     shortDescription:
       body.shortDescription !== undefined
@@ -431,7 +513,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     gameModes:
       body.gameModes !== undefined ? parseArray(body.gameModes) : undefined,
     offlinePlayers:
-      body.offlinePlayers !== undefined ? parseArray(body.offlinePlayers) : undefined,
+      body.offlinePlayers !== undefined ? parseOfflinePlayers(body.offlinePlayers) : undefined,
     onlinePlayers:
       body.onlinePlayers !== undefined ? parseArray(body.onlinePlayers) : undefined,
     hasOnlineMode:
@@ -509,6 +591,10 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.reviewLink !== undefined ? String(body.reviewLink).trim() : undefined,
     metacriticScore:
       body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
+    sonyScore:
+      body.sonyScore !== undefined ? toNumber(body.sonyScore) : undefined,
+    steamScore:
+      body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
   };
@@ -516,14 +602,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
   else if (body.cover !== undefined) payload.cover = parseMediaValue(body.cover, "image");
-
-  const cardDesktopCover = buildMedia(uploadedFiles?.cardDesktopCover?.[0]);
-  if (cardDesktopCover) payload.cardDesktopCover = cardDesktopCover;
-  else if (body.cardDesktopCover !== undefined) payload.cardDesktopCover = parseMediaValue(body.cardDesktopCover, "image");
-
-  const cardMobileCover = buildMedia(uploadedFiles?.cardMobileCover?.[0]);
-  if (cardMobileCover) payload.cardMobileCover = cardMobileCover;
-  else if (body.cardMobileCover !== undefined) payload.cardMobileCover = parseMediaValue(body.cardMobileCover, "image");
+  else if (body.cardDesktopCover !== undefined) payload.cover = parseMediaValue(body.cardDesktopCover, "image");
 
   const desktopCover = buildMedia(uploadedFiles?.desktopCover?.[0]);
   if (desktopCover) payload.desktopCover = desktopCover;
@@ -531,6 +610,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
 
   const mobileCover = buildMedia(uploadedFiles?.mobileCover?.[0]);
   if (mobileCover) payload.mobileCover = mobileCover;
+  else if (body.mobileCover !== undefined) payload.mobileCover = parseMediaValue(body.mobileCover, "image");
+  else if (body.cardMobileCover !== undefined) payload.mobileCover = parseMediaValue(body.cardMobileCover, "image");
 
   const gallery = normalizeGalleryItems(body.galleryItems, uploadedFiles, currentGame);
   if (gallery !== undefined) payload.gallery = gallery;

@@ -50,6 +50,7 @@ import {
 
 const initialForm = {
   title: "",
+  summary: "",
   slug: "",
   shortDescription: "",
   description: "",
@@ -89,6 +90,8 @@ const initialForm = {
   ageRating: "",
   gameplayTime: "",
   metacriticScore: "",
+  sonyScore: "",
+  steamScore: "",
   isFeatured: false,
   socialLinks: [],
   trailerVideo: null,
@@ -96,9 +99,8 @@ const initialForm = {
   patchTitle: "",
   patchImage: null,
   cover: null,
-  cardDesktopCover: null,
-  cardMobileCover: null,
   desktopCover: null,
+  mobileCover: null,
   gallery: [],
 };
 
@@ -106,6 +108,44 @@ const isFile = (value) => value instanceof File;
 
 const isMediaObject = (value) => Boolean(value && typeof value === "object" && !(value instanceof File) && value.url);
 const deletedMediaValue = "__delete__";
+
+const normalizeOfflinePlayers = (value) => {
+  const items = Array.isArray(value) ? value : value ? [value] : [];
+
+  return items
+    .map((item) => {
+      if (item && typeof item === "object") {
+        const key = String(item.key || item.value || "").trim();
+        const option = offlinePlayerOptions.find((current) => current.value === key || current.key === key);
+        return {
+          key: key || option?.key || "",
+          title_fa: String(item.title_fa || item.titleFa || item.label || option?.title_fa || "").trim(),
+          title_en: String(item.title_en || item.titleEn || option?.title_en || "").trim(),
+          min: item.min ?? option?.min ?? null,
+          max: item.max ?? option?.max ?? null,
+        };
+      }
+
+      const key = String(item || "").trim();
+      const legacyMap = {
+        offline_1: "single-player",
+        offline_1_4: "up-to-4",
+      };
+      const optionKey = legacyMap[key] || key;
+      const option = offlinePlayerOptions.find((current) => current.value === optionKey || current.key === optionKey);
+
+      return option
+        ? {
+            key: option.key,
+            title_fa: option.title_fa,
+            title_en: option.title_en,
+            min: option.min,
+            max: option.max,
+          }
+        : null;
+    })
+    .filter(Boolean);
+};
 
 const normalizeUploadedMedia = (response, fallbackType = "video") => {
   const file = response?.data || response;
@@ -413,9 +453,8 @@ function GameForm({ mode = "create" }) {
   const isEdit = mode === "edit";
   const [form, setForm] = useState(initialForm);
   const [coverPreview, setCoverPreview] = useState("");
-  const [cardDesktopCoverPreview, setCardDesktopCoverPreview] = useState("");
-  const [cardMobileCoverPreview, setCardMobileCoverPreview] = useState("");
   const [desktopCoverPreview, setDesktopCoverPreview] = useState("");
+  const [mobileCoverPreview, setMobileCoverPreview] = useState("");
   const [desktopCoverCropFile, setDesktopCoverCropFile] = useState(null);
   const [galleryPreview, setGalleryPreview] = useState([]);
   const [trailerVideoPreview, setTrailerVideoPreview] = useState("");
@@ -520,6 +559,7 @@ function GameForm({ mode = "create" }) {
     setForm({
       ...initialForm,
       title: game.title || "",
+      summary: game.summary || "",
       slug: game.slug || "",
       shortDescription: game.shortDescription || "",
       description: game.description || "",
@@ -540,7 +580,7 @@ function GameForm({ mode = "create" }) {
       platformReleases: toPlatformReleaseArray(game.platformReleases, game.platforms, game.releaseDate),
       platformSizes: toObjectArray(game.platformSizes),
       gameModes: game.gameModes || [],
-      offlinePlayers: game.offlinePlayers || [],
+      offlinePlayers: normalizeOfflinePlayers(game.offlinePlayers),
       onlinePlayers: game.onlinePlayers || [],
       hasOnlineMode: Boolean(game.hasOnlineMode),
       onlinePlayerCount: game.onlinePlayerCount || "",
@@ -573,6 +613,8 @@ function GameForm({ mode = "create" }) {
       ageRating: normalizeOptionValue(game.ageRating, ageRatingOptions),
       gameplayTime: game.gameplayTime || "",
       metacriticScore: game.metacriticScore ?? "",
+      sonyScore: game.sonyScore ?? "",
+      steamScore: game.steamScore ?? "",
       isFeatured: Boolean(game.isFeatured),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
@@ -580,15 +622,13 @@ function GameForm({ mode = "create" }) {
       patchTitle: game.patchTitle || "",
       patchImage: null,
       cover: null,
-      cardDesktopCover: null,
-      cardMobileCover: null,
       desktopCover: null,
+      mobileCover: null,
       gallery: existingGallery,
     });
-    setCoverPreview(game.cover?.url || "");
-    setCardDesktopCoverPreview(game.cardDesktopCover?.url || game.cover?.url || "");
-    setCardMobileCoverPreview(game.cardMobileCover?.url || game.cover?.url || "");
+    setCoverPreview(game.cover?.url || game.cardDesktopCover?.url || "");
     setDesktopCoverPreview(game.desktopCover?.url || "");
+    setMobileCoverPreview(game.mobileCover?.url || game.cardMobileCover?.url || "");
     setGalleryPreview(existingGallery);
     setTrailerVideoPreview(game.trailerVideo?.url || "");
     setTrailerThumbnailPreview(game.trailerThumbnail?.url || "");
@@ -999,10 +1039,6 @@ function GameForm({ mode = "create" }) {
     setForm((prev) => ({ ...prev, [field]: deletedMediaValue }));
     setPreview("");
 
-    if (field === "cardDesktopCover") {
-      setCoverPreview("");
-      setForm((prev) => ({ ...prev, cover: deletedMediaValue }));
-    }
   };
 
   useEffect(() => {
@@ -1061,7 +1097,7 @@ function GameForm({ mode = "create" }) {
     };
 
     Object.entries(normalizedForm).forEach(([key, value]) => {
-      if (key === "cover" || key === "cardDesktopCover" || key === "cardMobileCover" || key === "desktopCover" || key === "patchImage") {
+      if (key === "cover" || key === "desktopCover" || key === "mobileCover" || key === "patchImage") {
         if (value instanceof File) formData.append(key, value);
         else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
         else if (value === deletedMediaValue) formData.append(key, deletedMediaValue);
@@ -1197,10 +1233,9 @@ function GameForm({ mode = "create" }) {
       case "media":
         return (
           <GameMediaStep
-            cardDesktopCoverPreview={cardDesktopCoverPreview}
-            cardMobileCoverPreview={cardMobileCoverPreview}
             coverPreview={coverPreview}
             desktopCoverPreview={desktopCoverPreview}
+            mobileCoverPreview={mobileCoverPreview}
             galleryPreview={galleryPreview}
             imageUploadState={imageUploadState}
             isTrailerVideoUploading={videoUploadState.trailerVideo}
@@ -1208,10 +1243,9 @@ function GameForm({ mode = "create" }) {
             onDeleteUploadedImage={deleteUploadedImage}
             onImageUpload={handleImageUpload}
             onVideoUpload={handleVideoUpload}
-            setCardDesktopCoverPreview={setCardDesktopCoverPreview}
-            setCardMobileCoverPreview={setCardMobileCoverPreview}
             setCoverPreview={setCoverPreview}
             setDesktopCoverPreview={setDesktopCoverPreview}
+            setMobileCoverPreview={setMobileCoverPreview}
             setDesktopCoverCropFile={setDesktopCoverCropFile}
             setForm={setForm}
             setGalleryPreview={setGalleryPreview}
@@ -1283,16 +1317,16 @@ function GameForm({ mode = "create" }) {
     if (activePreviewTab === "card") {
       return (
         <div className="flex justify-center">
-          <GameCardPreview coverPreview={cardDesktopCoverPreview || coverPreview} form={form} genres={selectedGenreLabels} platforms={selectedPlatformLabels} />
+          <GameCardPreview coverPreview={coverPreview} form={form} genres={selectedGenreLabels} platforms={selectedPlatformLabels} />
         </div>
       );
     }
 
     return (
       <GameDetailPreview
-        cardMobileCoverPreview={cardMobileCoverPreview}
         coverPreview={coverPreview}
         desktopCoverPreview={desktopCoverPreview}
+        mobileCoverPreview={mobileCoverPreview}
         form={form}
         galleryPreview={galleryPreview}
         genres={selectedGenreLabels}

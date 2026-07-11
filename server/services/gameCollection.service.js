@@ -49,7 +49,7 @@ function parseGames(value) {
 }
 
 const populateCollection = (query) =>
-  query.populate("games.game", "title slug cover cardDesktopCover status");
+  query.populate("games.game", "title slug cover status");
 
 async function ensureGames(items) {
   const ids = items.map((item) => item.game).filter(Boolean);
