@@ -44,6 +44,7 @@ const navItems = [
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const hideMobileHeader = Boolean(pathname?.startsWith("/games/") && pathname.split("/").length >= 4);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -58,6 +59,7 @@ export function SiteHeader() {
         pathname?.startsWith("/products2") ? "border-b-0" : "border-b border-[#e6e9ee]"
       }`}
     >
+      {!hideMobileHeader ? (
       <div className="mx-auto max-w-[1440px] px-4 py-3 lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <button
@@ -82,8 +84,9 @@ export function SiteHeader() {
           />
         </div>
       </div>
+      ) : null}
 
-      {menuOpen ? (
+      {menuOpen && !hideMobileHeader ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"

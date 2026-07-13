@@ -13,6 +13,8 @@ import {
   useCreateGameMutation,
   useGetGameQuery,
   useGetGamesQuery,
+  useImportGameScoresMutation,
+  useTranslateGameIntroMutation,
   useTranslateGameSearchTitleSlugMutation,
   useUpdateGameMutation,
 } from "../../services/gameApi";
@@ -73,9 +75,7 @@ const initialForm = {
   gameModes: [],
   offlinePlayers: [],
   onlinePlayers: [],
-  hasOnlineMode: false,
   onlinePlayerCount: "",
-  hasMultiplayerMode: false,
   multiplayerPlayerCount: "",
   relatedGames: [],
   launcher: [],
@@ -92,6 +92,7 @@ const initialForm = {
   metacriticScore: "",
   sonyScore: "",
   steamScore: "",
+  xboxScore: "",
   isFeatured: false,
   socialLinks: [],
   trailerVideo: null,
@@ -115,7 +116,14 @@ const normalizeOfflinePlayers = (value) => {
   return items
     .map((item) => {
       if (item && typeof item === "object") {
-        const key = String(item.key || item.value || "").trim();
+        const rawKey = String(item.key || item.value || "").trim();
+        const legacyMap = {
+          offline_1: "single-player",
+          offline_1_4: "3-4",
+          up_to_4: "3-4",
+          "up-to-4": "3-4",
+        };
+        const key = legacyMap[rawKey] || rawKey;
         const option = offlinePlayerOptions.find((current) => current.value === key || current.key === key);
         return {
           key: key || option?.key || "",
@@ -129,7 +137,9 @@ const normalizeOfflinePlayers = (value) => {
       const key = String(item || "").trim();
       const legacyMap = {
         offline_1: "single-player",
-        offline_1_4: "up-to-4",
+        offline_1_4: "3-4",
+        up_to_4: "3-4",
+        "up-to-4": "3-4",
       };
       const optionKey = legacyMap[key] || key;
       const option = offlinePlayerOptions.find((current) => current.value === optionKey || current.key === optionKey);
@@ -461,6 +471,7 @@ function GameForm({ mode = "create" }) {
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
   const [activePreviewTab, setActivePreviewTab] = useState("form");
   const [isSlugTouched, setIsSlugTouched] = useState(false);
+  const [scoreImportState, setScoreImportState] = useState({ message: "", status: "idle", title: "" });
   const [quickCreate, setQuickCreate] = useState(null);
   const [quickCreateForm, setQuickCreateForm] = useState(quickCreateInitialValues);
   const [quickCreateImagePreview, setQuickCreateImagePreview] = useState("");
@@ -497,7 +508,63 @@ function GameForm({ mode = "create" }) {
   const [createPlatform, createPlatformState] = useCreatePlatformMutation();
   const [createGame, createState] = useCreateGameMutation();
   const [updateGame, updateState] = useUpdateGameMutation();
+  const [importGameScores] = useImportGameScoresMutation();
+  const [translateGameIntro] = useTranslateGameIntroMutation();
   const [translateSearchTitleSlug] = useTranslateGameSearchTitleSlugMutation();
+
+  useEffect(() => {
+    const title = String(form.title || "").trim();
+    if (title.length < 3) {
+      setScoreImportState((prev) => (prev.status === "idle" ? prev : { message: "", status: "idle", title: "" }));
+      return undefined;
+    }
+
+    if (scoreImportState.title === title && scoreImportState.status !== "idle") {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setScoreImportState({ message: "در حال دریافت خودکار امتیازها...", status: "loading", title });
+      try {
+        const response = await importGameScores({ source: "all", title }).unwrap();
+        const data = response?.data || {};
+        const labels = [];
+        setForm((prev) => {
+          const next = { ...prev };
+          if (data.metacriticScore !== null && data.metacriticScore !== undefined) {
+            next.metacriticScore = data.metacriticScore;
+            labels.push("متاکریتیک");
+          }
+          if (data.steamScore !== null && data.steamScore !== undefined) {
+            next.steamScore = data.steamScore;
+            labels.push("استیم");
+          }
+          if (data.xboxScore !== null && data.xboxScore !== undefined) {
+            next.xboxScore = data.xboxScore;
+            labels.push("Xbox");
+          }
+          if (data.sonyScore !== null && data.sonyScore !== undefined) {
+            next.sonyScore = data.sonyScore;
+            labels.push("سونی");
+          }
+          return next;
+        });
+        setScoreImportState({
+          message: labels.length ? `${labels.join("، ")} خودکار دریافت شد` : "امتیازی برای این عنوان پیدا نشد",
+          status: labels.length ? "success" : "error",
+          title,
+        });
+      } catch (error) {
+        setScoreImportState({
+          message: error?.data?.description || "دریافت خودکار امتیازها انجام نشد",
+          status: "error",
+          title,
+        });
+      }
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [form.title, importGameScores, scoreImportState.status, scoreImportState.title]);
 
   const categories = categoriesData?.data || [];
   const genres = genresData?.data || [];
@@ -582,9 +649,7 @@ function GameForm({ mode = "create" }) {
       gameModes: game.gameModes || [],
       offlinePlayers: normalizeOfflinePlayers(game.offlinePlayers),
       onlinePlayers: game.onlinePlayers || [],
-      hasOnlineMode: Boolean(game.hasOnlineMode),
       onlinePlayerCount: game.onlinePlayerCount || "",
-      hasMultiplayerMode: Boolean(game.hasMultiplayerMode),
       multiplayerPlayerCount: game.multiplayerPlayerCount || "",
       relatedGames: toIdArray(game.relatedGames),
       launcher: normalizeOptionValue(game.launcher, launcherOptions, []),
@@ -615,6 +680,7 @@ function GameForm({ mode = "create" }) {
       metacriticScore: game.metacriticScore ?? "",
       sonyScore: game.sonyScore ?? "",
       steamScore: game.steamScore ?? "",
+      xboxScore: game.xboxScore ?? "",
       isFeatured: Boolean(game.isFeatured),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
@@ -1227,6 +1293,7 @@ function GameForm({ mode = "create" }) {
             onChange={handleChange}
             setArrayField={setArrayField}
             setForm={setForm}
+            translateGameIntro={translateGameIntro}
             translateSearchTitleSlug={translateSearchTitleSlug}
           />
         );
@@ -1275,7 +1342,7 @@ function GameForm({ mode = "create" }) {
               onChange={handleChange}
               setArrayField={setArrayField}
             />
-            <ReleaseStep ageRatingOptions={ageRatingOptions} form={form} onChange={handleChange} setForm={setForm} />
+            <ReleaseStep ageRatingOptions={ageRatingOptions} form={form} onChange={handleChange} scoreImportState={scoreImportState} setForm={setForm} />
           </div>
         );
       case "sizes":

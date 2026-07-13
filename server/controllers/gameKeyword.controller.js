@@ -8,6 +8,14 @@ exports.createKeyword = async (req, res, next) => {
   }
 };
 
+exports.generateKeywordSlug = async (req, res, next) => {
+  try {
+    await service.generateKeywordSlug(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getKeywords = async (req, res, next) => {
   try {
     await service.getKeywords(req, res);

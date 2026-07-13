@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const axios = require("axios");
 const translate = require("google-translate-api-x");
 const Game = require("../models/game.model");
 const Category = require("../models/category.model");
@@ -123,6 +124,208 @@ async function translateTitleToEnglishSlug(value) {
   return directSlug || makeSlug(source);
 }
 
+async function translateIntroToPersian(value) {
+  const source = String(value || "").trim();
+  if (!source) return "";
+  if (hasPersianLetters(source)) return source;
+
+  const translated = await translate(source, { from: "en", to: "fa" });
+  return String(Array.isArray(translated) ? translated[0]?.text || "" : translated?.text || "").trim();
+}
+
+function stripHtml(value) {
+  return String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n\s+/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function cleanStoreIntro(value) {
+  let text = stripHtml(value)
+    .replace(/To play this game on PS5[\s\S]*?more details\./i, "")
+    .replace(/This product entitles you to download both the digital PS4[™\s\S]*?version of this game\.?/i, "")
+    .replace(/If you already own the PS4[™\s\S]*?at no extra cost\./i, "")
+    .replace(/Owners of a PS4[™\s\S]*?no extra cost\.?/i, "")
+    .replace(/See PlayStation\.com\/bc for more details\./i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const grabIndex = text.search(/\bgrab your\b/i);
+  if (grabIndex > 0 && grabIndex < 220) {
+    text = text.slice(grabIndex).trim();
+  }
+
+  return text.slice(0, 5000);
+}
+
+function normalizeStoreTitle(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[™®©]/g, "")
+    .replace(/[^a-z0-9\u0600-\u06ff]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchPlayStationIntro(title) {
+  const query = encodeURIComponent(title);
+  const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${query}?size=8&suggested_size=0`;
+  const { data: searchData } = await axios.get(searchUrl, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    timeout: 15000,
+  });
+
+  const items = Array.isArray(searchData?.links) ? searchData.links : [];
+  const normalizedTitle = normalizeStoreTitle(title);
+  const selected =
+    items.find((item) => normalizeStoreTitle(item.title_name || item.name).includes(normalizedTitle)) ||
+    items.find((item) => item?.id && item?.container_type === "product") ||
+    items.find((item) => item?.id);
+
+  if (!selected?.id) throw new Error("PlayStation product not found");
+
+  const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(selected.id)}`;
+  const { data: detail } = await axios.get(detailUrl, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    timeout: 15000,
+  });
+
+  const intro = cleanStoreIntro(detail?.long_desc || detail?.short_desc || "");
+  if (!intro) throw new Error("PlayStation intro not found");
+
+  return {
+    intro: `Buy ${detail?.title_name || detail?.name || selected.name || title} on PlayStation Store. ${intro}`,
+    score: detail?.star_rating?.score ? Number(detail.star_rating.score) : null,
+    sourceTitle: detail?.name || selected.name || "",
+  };
+}
+
+async function fetchXboxIntro(title) {
+  const query = encodeURIComponent(title);
+  const suggestUrl = `https://displaycatalog.mp.microsoft.com/v7.0/productFamilies/autosuggest?market=US&languages=en-US&query=${query}&productFamilyNames=Games&top=8`;
+  const { data: suggestData } = await axios.get(suggestUrl, { timeout: 15000 });
+  const products = (suggestData?.Results || []).flatMap((group) => group?.Products || []);
+  const normalizedTitle = normalizeStoreTitle(title);
+  const selected =
+    products.find((item) => normalizeStoreTitle(item.Title).includes(normalizedTitle)) ||
+    products[0];
+
+  if (!selected?.ProductId) throw new Error("Xbox product not found");
+
+  const detailUrl = `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${encodeURIComponent(selected.ProductId)}&market=US&languages=en-US&MS-CV=DGU1mcuYo0WMMp`;
+  const { data: detailData } = await axios.get(detailUrl, { timeout: 15000 });
+  const product = detailData?.Products?.[0];
+  const localized = product?.LocalizedProperties?.[0] || {};
+  const intro = cleanStoreIntro(localized.ProductDescription || localized.ShortDescription || "");
+  if (!intro) throw new Error("Xbox intro not found");
+
+  const allTimeRating = (product?.MarketProperties?.[0]?.UsageData || []).find(
+    (item) => item?.AggregateTimeSpan === "AllTime"
+  );
+
+  return {
+    intro,
+    score: allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null,
+    sourceTitle: localized.ProductTitle || selected.Title || "",
+  };
+}
+
+function normalizeScore100(value) {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return null;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function normalizeScore5To100(value) {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return null;
+  return Math.max(0, Math.min(100, Math.round(score * 20)));
+}
+
+async function fetchSteamScores(title) {
+  const { data: searchData } = await axios.get("https://store.steampowered.com/api/storesearch/", {
+    params: { cc: "us", l: "en", term: title },
+    timeout: 15000,
+  });
+
+  const items = Array.isArray(searchData?.items) ? searchData.items : [];
+  const normalizedTitle = normalizeStoreTitle(title);
+  const selected =
+    items.find((item) => normalizeStoreTitle(item.name) === normalizedTitle) ||
+    items.find((item) => normalizeStoreTitle(item.name).includes(normalizedTitle)) ||
+    items[0];
+
+  if (!selected?.id) throw new Error("Steam product not found");
+
+  const appid = selected.id;
+  const [{ data: detailData }, { data: reviewData }] = await Promise.all([
+    axios.get("https://store.steampowered.com/api/appdetails", {
+      params: { appids: appid, cc: "us", l: "en" },
+      timeout: 15000,
+    }),
+    axios.get(`https://store.steampowered.com/appreviews/${appid}`, {
+      params: { json: 1, language: "all", num_per_page: 0, purchase_type: "all" },
+      timeout: 15000,
+    }),
+  ]);
+
+  const detail = detailData?.[appid]?.data || {};
+  const reviewSummary = reviewData?.query_summary || {};
+  const totalPositive = Number(reviewSummary.total_positive || 0);
+  const totalReviews = Number(reviewSummary.total_reviews || 0);
+  const steamScore = totalReviews > 0 ? Math.round((totalPositive / totalReviews) * 100) : null;
+  const metacriticScore = normalizeScore100(detail?.metacritic?.score || selected?.metascore);
+
+  return {
+    appid,
+    metacriticScore,
+    sourceTitle: detail.name || selected.name || "",
+    steamScore,
+  };
+}
+
+async function fetchXboxScores(title) {
+  const data = await fetchXboxIntro(title);
+  return {
+    sourceTitle: data.sourceTitle,
+    xboxScore: normalizeScore5To100(data.score),
+  };
+}
+
+async function fetchPlayStationScores(title) {
+  const data = await fetchPlayStationIntro(title);
+  return {
+    sourceTitle: data.sourceTitle,
+    sonyScore: normalizeScore5To100(data.score),
+  };
+}
+
+async function fetchAllStoreScores(title) {
+  const [steamResult, xboxResult, playStationResult] = await Promise.allSettled([
+    fetchSteamScores(title),
+    fetchXboxScores(title),
+    fetchPlayStationScores(title),
+  ]);
+
+  const steamData = steamResult.status === "fulfilled" ? steamResult.value : {};
+  const xboxData = xboxResult.status === "fulfilled" ? xboxResult.value : {};
+  const playStationData = playStationResult.status === "fulfilled" ? playStationResult.value : {};
+
+  return {
+    metacriticScore: steamData.metacriticScore ?? null,
+    sourceTitle: steamData.sourceTitle || xboxData.sourceTitle || playStationData.sourceTitle || "",
+    sonyScore: playStationData.sonyScore ?? null,
+    steamScore: steamData.steamScore ?? null,
+    xboxScore: xboxData.xboxScore ?? null,
+  };
+}
+
 async function makeUniqueSlug(title, currentId = null) {
   const baseSlug = makeSlug(title);
   if (!baseSlug) return "";
@@ -180,8 +383,43 @@ const offlinePlayerCatalog = [
   },
 ];
 
+const normalizedOfflinePlayerCatalog = [
+  {
+    key: "none",
+    title_fa: "ندارد",
+    title_en: "No offline players",
+    min: 0,
+    max: 0,
+    legacyValues: ["no", "none", "0", "ندارد"],
+  },
+  {
+    key: "single-player",
+    title_fa: "تک‌نفره",
+    title_en: "Single-player",
+    min: 1,
+    max: 1,
+    legacyValues: ["offline_1", "single_player", "تک نفره", "تک‌نفره", "1"],
+  },
+  {
+    key: "1-2",
+    title_fa: "۱-۲ نفره",
+    title_en: "1-2 players",
+    min: 1,
+    max: 2,
+    legacyValues: ["1-2 نفره", "1 تا 2 نفر", "۱-۲ نفره", "۱ تا ۲ نفر"],
+  },
+  {
+    key: "3-4",
+    title_fa: "۳-۴ نفره",
+    title_en: "3-4 players",
+    min: 3,
+    max: 4,
+    legacyValues: ["offline_1_4", "1-4 نفره", "تا 4 نفر", "تا ۴ نفر", "up_to_4", "up-to-4", "3-4 نفره", "۳-۴ نفره"],
+  },
+];
+
 const offlinePlayerCatalogMap = new Map(
-  offlinePlayerCatalog.flatMap((item) =>
+  normalizedOfflinePlayerCatalog.flatMap((item) =>
     [item.key, item.title_fa, item.title_en, ...(item.legacyValues || [])].map((value) => [String(value).trim(), item])
   )
 );
@@ -193,9 +431,9 @@ function parseOfflinePlayerItem(value) {
     const key = String(value.key || value.value || "").trim();
     const catalogItem = offlinePlayerCatalogMap.get(key);
     return {
-      key: key || catalogItem?.key || "",
-      title_fa: String(value.title_fa || value.titleFa || value.label_fa || value.label || catalogItem?.title_fa || "").trim(),
-      title_en: String(value.title_en || value.titleEn || value.label_en || catalogItem?.title_en || "").trim(),
+      key: catalogItem?.key || key || "",
+      title_fa: String(catalogItem?.title_fa || value.title_fa || value.titleFa || value.label_fa || value.label || "").trim(),
+      title_en: String(catalogItem?.title_en || value.title_en || value.titleEn || value.label_en || "").trim(),
       min: toNumber(value.min ?? catalogItem?.min),
       max: toNumber(value.max ?? catalogItem?.max),
     };
@@ -516,12 +754,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.offlinePlayers !== undefined ? parseOfflinePlayers(body.offlinePlayers) : undefined,
     onlinePlayers:
       body.onlinePlayers !== undefined ? parseArray(body.onlinePlayers) : undefined,
-    hasOnlineMode:
-      body.hasOnlineMode !== undefined ? parseBoolean(body.hasOnlineMode) : undefined,
     onlinePlayerCount:
       body.onlinePlayerCount !== undefined ? String(body.onlinePlayerCount).trim() : undefined,
-    hasMultiplayerMode:
-      body.hasMultiplayerMode !== undefined ? parseBoolean(body.hasMultiplayerMode) : undefined,
     multiplayerPlayerCount:
       body.multiplayerPlayerCount !== undefined ? String(body.multiplayerPlayerCount).trim() : undefined,
     relatedGames:
@@ -595,6 +829,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.sonyScore !== undefined ? toNumber(body.sonyScore) : undefined,
     steamScore:
       body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
+    xboxScore:
+      body.xboxScore !== undefined ? toNumber(body.xboxScore) : undefined,
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
   };
@@ -717,6 +953,118 @@ exports.translateSearchTitleSlug = async (req, res) => {
     message: "OK",
     data: { slug },
   });
+};
+
+exports.translateIntro = async (req, res) => {
+  const text = String(req.body?.text || "").trim();
+  const title = String(req.body?.title || "").trim();
+  const source = String(req.body?.source || "").trim().toLowerCase();
+
+  if (!text && !title) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان بازی یا متن معرفی برای ترجمه الزامی است",
+    });
+  }
+
+  try {
+    let storeData = null;
+    let sourceText = text;
+
+    if (!sourceText) {
+      if (source === "playstation") {
+        storeData = await fetchPlayStationIntro(title);
+      } else if (source === "xbox") {
+        storeData = await fetchXboxIntro(title);
+      } else {
+        throw new Error("Unknown source");
+      }
+      sourceText = storeData.intro;
+    }
+
+    const translatedText = await translateIntroToPersian(sourceText);
+    if (!translatedText) throw new Error("Empty translation");
+
+    res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: "متن معرفی ترجمه شد",
+      data: {
+        score: storeData?.score ?? null,
+        source,
+        sourceText,
+        sourceTitle: storeData?.sourceTitle || "",
+        text: translatedText,
+      },
+    });
+  } catch (error) {
+    res.status(502).json({
+      acknowledgement: false,
+      message: "Translation Failed",
+      description:
+        source === "playstation"
+          ? "دریافت معرفی از PlayStation انجام نشد"
+          : source === "xbox"
+            ? "دریافت معرفی از Xbox انجام نشد"
+            : "ترجمه معرفی انجام نشد؛ اتصال یا سرویس ترجمه را بررسی کنید",
+    });
+  }
+};
+
+exports.importScores = async (req, res) => {
+  const title = String(req.body?.title || "").trim();
+  const source = String(req.body?.source || "").trim().toLowerCase();
+
+  if (!title) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان بازی برای دریافت امتیاز الزامی است",
+    });
+  }
+
+  try {
+    const data =
+      source === "steam"
+        ? await fetchSteamScores(title)
+        : source === "xbox"
+          ? await fetchXboxScores(title)
+          : source === "playstation" || source === "sony"
+            ? await fetchPlayStationScores(title)
+            : source === "all" || !source
+              ? await fetchAllStoreScores(title)
+              : null;
+
+    if (!data) {
+      return res.status(400).json({
+        acknowledgement: false,
+        message: "Bad Request",
+        description: "منبع امتیاز معتبر نیست",
+      });
+    }
+
+    const foundScores = Object.entries(data).filter(([key, value]) => key.endsWith("Score") && value !== null && value !== undefined);
+    if (!foundScores.length) throw new Error("No scores found");
+
+    res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: "امتیازها دریافت شد",
+      data,
+    });
+  } catch (error) {
+    res.status(502).json({
+      acknowledgement: false,
+      message: "Scores Import Failed",
+      description:
+        source === "steam"
+          ? "دریافت امتیاز از Steam انجام نشد"
+          : source === "xbox"
+            ? "دریافت امتیاز از Xbox انجام نشد"
+            : "دریافت امتیاز انجام نشد",
+    });
+  }
 };
 
 exports.createGame = async (req, res) => {

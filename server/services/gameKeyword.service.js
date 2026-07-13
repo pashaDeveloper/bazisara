@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const translate = require("google-translate-api-x");
 const GameKeyword = require("../models/gameKeyword.model");
 const {
   buildSearchQuery,
@@ -16,6 +17,53 @@ function makeSlug(value) {
     .replace(/[^a-z0-9\u0600-\u06ff-]+/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function makeEnglishSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function hasPersianLetters(value) {
+  return /[\u0600-\u06ff]/.test(String(value || ""));
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((word) => word.slice(0, 1).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+async function translateKeywordToEnglish(value) {
+  const source = String(value || "").trim();
+  if (!source) return { title_en: "", slug: "" };
+
+  const directSlug = makeEnglishSlug(source);
+  if (directSlug && !hasPersianLetters(source)) {
+    return { title_en: titleCase(source), slug: directSlug };
+  }
+
+  try {
+    const translated = await translate(source, { from: "fa", to: "en" });
+    const translatedText = String(Array.isArray(translated) ? translated[0]?.text || "" : translated?.text || "").trim();
+    const translatedSlug = makeEnglishSlug(translatedText);
+    if (translatedSlug) {
+      return {
+        title_en: titleCase(translatedText),
+        slug: translatedSlug,
+      };
+    }
+  } catch (_) {}
+
+  return { title_en: titleCase(source), slug: directSlug || makeSlug(source) };
 }
 
 function normalizePayload(body, uploadedFiles) {
@@ -43,6 +91,26 @@ async function slugExists(slug, currentId = null) {
     ...(currentId ? { _id: { $ne: currentId } } : {}),
   });
 }
+
+exports.generateKeywordSlug = async (req, res) => {
+  const title = String(req.body?.title || req.body?.name || "").trim();
+
+  if (!title) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان برای ترجمه الزامی است",
+    });
+  }
+
+  const data = await translateKeywordToEnglish(title);
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    data,
+  });
+};
 
 exports.createKeyword = async (req, res) => {
   const payload = normalizePayload(req.body || {}, req.uploadedFiles);

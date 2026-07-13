@@ -132,7 +132,7 @@ const gameSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
-      maxLength: [350, "Short description must be at most 350 characters"],
+      maxLength: [5000, "Short description must be at most 5000 characters"],
     },
     description: {
       type: String,
@@ -199,18 +199,10 @@ const gameSchema = new mongoose.Schema(
     gameModes: [{ type: String, trim: true }],
     offlinePlayers: [offlinePlayerSchema],
     onlinePlayers: [{ type: String, trim: true }],
-    hasOnlineMode: {
-      type: Boolean,
-      default: false,
-    },
     onlinePlayerCount: {
       type: String,
       trim: true,
       default: "",
-    },
-    hasMultiplayerMode: {
-      type: Boolean,
-      default: false,
     },
     multiplayerPlayerCount: {
       type: String,
@@ -291,6 +283,12 @@ const gameSchema = new mongoose.Schema(
       min: [0, "Score cannot be negative"],
       max: [100, "Score cannot be more than 100"],
     },
+    xboxScore: {
+      type: Number,
+      default: null,
+      min: [0, "Score cannot be negative"],
+      max: [100, "Score cannot be more than 100"],
+    },
     cover: mediaSchema,
     desktopCover: mediaSchema,
     mobileCover: mediaSchema,
@@ -346,6 +344,17 @@ const gameSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+gameSchema.virtual("hasOnlineMode").get(function () {
+  return Boolean(String(this.onlinePlayerCount || "").trim() || (Array.isArray(this.onlinePlayers) && this.onlinePlayers.length));
+});
+
+gameSchema.virtual("hasMultiplayerMode").get(function () {
+  return Boolean(String(this.multiplayerPlayerCount || "").trim());
+});
+
+gameSchema.set("toJSON", { virtuals: true });
+gameSchema.set("toObject", { virtuals: true });
 
 gameSchema.index(
   { slug: 1, isDeleted: 1 },

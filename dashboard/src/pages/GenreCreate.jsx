@@ -7,7 +7,18 @@ import {
 
 const genreFields = [
   { name: "name", title: "نام", label: "نام", placeholder: "مثلا ماجراجویی" },
-  { name: "image", title: "تصویر", label: "تصویر ژانر", type: "image" },
+  {
+    name: "image",
+    title: "تصویر",
+    label: "تصویر ژانر",
+    type: "image",
+    immediateUpload: true,
+    immediateUploadOptions: (form) => ({
+      entityName: form.name,
+      entityType: "genre",
+      requireEntityName: false,
+    }),
+  },
   { name: "icon", title: "آیکون", label: "آیکون", type: "icon" },
   {
     name: "description",
@@ -36,4 +47,3 @@ function GenreCreate({ mode = "create" }) {
 }
 
 export default GenreCreate;
-

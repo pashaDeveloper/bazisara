@@ -59,6 +59,7 @@ function ThumbnailUpload({
   className = "",
   disabled = false,
   immediateUpload = false,
+  immediateUploadOptions = {},
   onUploadError,
 }) {
   const inputRegistration = useMemo(() => register || {}, [register]);
@@ -89,13 +90,17 @@ function ThumbnailUpload({
       });
 
       try {
+        const resolvedUploadOptions =
+          typeof immediateUploadOptions === "function"
+            ? immediateUploadOptions(file)
+            : immediateUploadOptions;
         const response = await uploadImageWithProgress(file, (progress) => {
           setInternalUploadState((prev) => ({
             ...(prev || {}),
             progress,
             status: "uploading",
           }));
-        });
+        }, resolvedUploadOptions || {});
         const media = normalizeUploadedMedia(response, "image");
         if (!media) throw new Error("Uploaded image response is invalid");
 

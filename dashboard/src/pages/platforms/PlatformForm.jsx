@@ -8,6 +8,7 @@ import SendButton from "@/components/shared/button/SendButton";
 import SkeletonImage from "@/components/shared/skeleton/SkeletonImage";
 import { SingleSelectDropdown } from "@/components/shared/Dropdown";
 import CloudUpload from "@/components/icons/CloudUpload";
+import { getUploadErrorMessage, mediaToFormValue, normalizeUploadedMedia, uploadImageWithProgress } from "@/utils/immediateUpload";
 import { DatePickerField, TextField, TextareaField } from "../games/components/GameFormFields";
 import { useGetBrandsQuery } from "@/services/brandApi";
 import {
@@ -50,7 +51,7 @@ function makeSlug(value) {
 }
 
 function PlatformImageField({ imagePreview, isEdit, setForm, setImagePreview }) {
-  const handleImageSelection = (event) => {
+  const handleImageSelection = async (event) => {
     const file = event.target.files?.[0] || null;
     setForm((prev) => ({ ...prev, image: file }));
 
@@ -62,6 +63,19 @@ function PlatformImageField({ imagePreview, isEdit, setForm, setImagePreview }) 
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
     reader.readAsDataURL(file);
+
+    try {
+      const response = await uploadImageWithProgress(file, null, {
+        entityType: "platform",
+        requireEntityName: false,
+      });
+      const media = normalizeUploadedMedia(response, "image");
+      if (!media) throw new Error("Uploaded image response is invalid");
+      setForm((prev) => ({ ...prev, image: media }));
+      setImagePreview(media.url);
+    } catch (error) {
+      toast.error(getUploadErrorMessage(error), { id: "platform-image-upload" });
+    }
   };
 
   return (
@@ -324,7 +338,8 @@ function PlatformForm({ mode = "create" }) {
     formData.append("brand", form.brand || "");
     formData.append("productionDate", form.productionDate || "");
     formData.append("description", form.description.trim());
-    if (form.image) formData.append("image", form.image);
+    const imageValue = mediaToFormValue(form.image);
+    if (imageValue) formData.append("image", imageValue);
     if (form.fontFile) formData.append("fontFile", form.fontFile);
     formData.append("svgIcon", form.svgIcon || "");
     return formData;

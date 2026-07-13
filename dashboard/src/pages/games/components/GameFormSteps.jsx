@@ -80,6 +80,26 @@ function UploadStateOverlay({ state }) {
   );
 }
 
+function PlayStationIcon({ className = "" }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9.5 3.2c2.8.8 5.3 1.8 5.3 5.3c0 3.2-1.9 4.5-4.2 3.5V6.6c0-.6-.1-1-.5-1.1c-.3-.1-.6.1-.6.7v13.2l-3.1-1V2.6c1 .2 2 .4 3.1.6Z" />
+      <path d="M12 16.3l5.1-1.8c.6-.2.7-.6.2-.8c-.5-.2-1.4-.1-2 .1L12 15v-2l.2-.1c1.4-.5 3.4-.8 4.9-.5c1.8.3 2.7 1.1 2.7 2.1c0 .9-.6 1.6-2 2.1L12 18.7v-2.4Z" />
+      <path d="M5.4 17.8c-1.7-.5-2.7-1.2-2.7-2.2c0-1.2 1.5-2.1 4.2-2.8v2.1l-1.1.4c-.6.2-.7.5-.2.7c.5.2 1.3.1 1.9-.1l.9-.3v2.1c-1.1.3-2.1.4-3 .1Z" />
+    </svg>
+  );
+}
+
+function XboxIcon({ className = "" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M6.7 6.8c2.2.5 4 1.8 5.3 3.7c1.3-1.9 3.1-3.2 5.3-3.7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M7.4 17.3c1.2-2 2.8-3.8 4.6-5.2c1.8 1.4 3.4 3.2 4.6 5.2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
 function imageUrl(value, uploadState) {
   if ((uploadState?.status === "uploading" || uploadState?.status === "error") && uploadState?.localPreview) return uploadState.localPreview;
   if (typeof value === "string") return value;
@@ -633,35 +653,152 @@ export function BasicStep({
   onChange,
   setArrayField,
   setForm,
+  translateGameIntro,
   translateSearchTitleSlug,
 }) {
+  const [introTranslateState, setIntroTranslateState] = React.useState({
+    message: "",
+    status: "idle",
+  });
+  const [descriptionImportState, setDescriptionImportState] = React.useState({
+    message: "",
+    status: "idle",
+  });
+
+  const handleIntroImport = async (source, target = "summary") => {
+    const title = form.title.trim();
+    const setStatus = target === "description" ? setDescriptionImportState : setIntroTranslateState;
+    if (!title) {
+      setStatus({ message: "ابتدا عنوان بازی را وارد کنید", status: "error" });
+      return;
+    }
+
+    setStatus({
+      message: source === "playstation" ? "در حال دریافت از PlayStation..." : "در حال دریافت از Xbox...",
+      status: "loading",
+    });
+
+    try {
+      const response = await translateGameIntro({ source, title }).unwrap();
+      const translatedText = response?.data?.text || "";
+      if (!translatedText) throw new Error("Empty translation");
+      setForm((prev) => ({
+        ...prev,
+        ...(source === "playstation" && response?.data?.score ? { sonyScore: response.data.score } : {}),
+        ...(target === "description"
+          ? { shortDescription: translatedText.slice(0, 5000) }
+          : { summary: translatedText.slice(0, 160) }),
+      }));
+      setStatus({
+        message: `${target === "description" ? "معرفی" : "خلاصه"} ${response?.data?.sourceTitle ? `«${response.data.sourceTitle}» ` : ""}درج شد؛ می‌توانید متن را ویرایش کنید`,
+        status: "success",
+      });
+    } catch (error) {
+      setStatus({
+        message: error?.data?.description || "ترجمه انجام نشد",
+        status: "error",
+      });
+    }
+  };
+
+  const statusClassName =
+    introTranslateState.status === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : introTranslateState.status === "error"
+        ? "text-red-500"
+        : "text-zinc-500";
+  const descriptionStatusClassName =
+    descriptionImportState.status === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : descriptionImportState.status === "error"
+        ? "text-red-500"
+        : "text-zinc-500";
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <TextField label="عنوان بازی *" name="title" onChange={onChange} value={form.title} />
         <TextField dir="ltr" label="اسلاگ بازی" name="slug" onChange={onChange} value={form.slug} />
       </div>
-      <TextField
-        label="خلاصه کوتاه"
-        maxLength={160}
-        name="summary"
-        onChange={onChange}
-        placeholder="حداکثر ۱۶۰ کاراکتر"
-        value={form.summary}
-      />
+      <label className="flex flex-col gap-y-1">
+        <span className="text-sm text-zinc-700 dark:text-gray-100">خلاصه کوتاه</span>
+        <div className="relative">
+          <input
+            className="h-10 w-full rounded-full border border-gray-300 bg-white py-2 pl-20 pr-14 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
+            maxLength={160}
+            name="summary"
+            onChange={onChange}
+            placeholder="حداکثر ۱۶۰ کاراکتر"
+            value={form.summary}
+          />
+          <span className="pointer-events-none absolute right-0 top-0 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+            <Edit className="h-5 w-5" />
+          </span>
+          <button
+            aria-label="دریافت از PlayStation"
+            className="absolute bottom-0 left-10 flex h-10 w-10 items-center justify-center border-0 border-r border-blue-700 bg-blue-600 !text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:!text-white"
+            disabled={introTranslateState.status === "loading"}
+            onClick={() => handleIntroImport("playstation")}
+            title="دریافت از PlayStation"
+            type="button"
+          >
+            <PlayStationIcon className="h-5 w-5 !text-white" />
+          </button>
+          <button
+            aria-label="دریافت از Xbox"
+            className="absolute bottom-0 left-0 flex h-10 w-10 items-center justify-center rounded-l-full rounded-r-none border-0 border-r border-emerald-700 bg-emerald-600 !text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:!text-white"
+            disabled={introTranslateState.status === "loading"}
+            onClick={() => handleIntroImport("xbox")}
+            title="دریافت از Xbox"
+            type="button"
+          >
+            <XboxIcon className="h-5 w-5 !text-white" />
+          </button>
+        </div>
+        {introTranslateState.message ? (
+          <p className={`text-xs ${statusClassName}`}>{introTranslateState.message}</p>
+        ) : null}
+      </label>
       <LegacySearchTitleRowsEditor
         items={form.searchTitles}
         onChange={(value) => setArrayField("searchTitles", value)}
         translateSearchTitleSlug={translateSearchTitleSlug}
       />
       <div className="min-w-0 space-y-2">
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">معرفی بازی</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-zinc-700 dark:text-zinc-300">معرفی بازی</span>
+          <div className="flex overflow-hidden rounded-full border border-gray-300 shadow-sm dark:border-gray-600">
+            <button
+              aria-label="دریافت معرفی از PlayStation"
+              className="flex h-9 w-10 items-center justify-center border-0 border-l border-blue-700 bg-blue-600 !text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:!text-white"
+              disabled={descriptionImportState.status === "loading"}
+              onClick={() => handleIntroImport("playstation", "description")}
+              title="دریافت معرفی از PlayStation"
+              type="button"
+            >
+              <PlayStationIcon className="h-5 w-5 !text-white" />
+            </button>
+            <button
+              aria-label="دریافت معرفی از Xbox"
+              className="flex h-9 w-10 items-center justify-center border-0 bg-emerald-600 !text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:!text-white"
+              disabled={descriptionImportState.status === "loading"}
+              onClick={() => handleIntroImport("xbox", "description")}
+              title="دریافت معرفی از Xbox"
+              type="button"
+            >
+              <XboxIcon className="h-5 w-5 !text-white" />
+            </button>
+          </div>
+        </div>
         <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-gray-600 dark:bg-[#0a2d4d]">
           <MyEditor
             value={form.shortDescription}
             onChange={(value) => setForm((prev) => ({ ...prev, shortDescription: value }))}
           />
         </div>
+        {descriptionImportState.message ? (
+          <p className={`text-xs ${descriptionStatusClassName}`}>{descriptionImportState.message}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -854,7 +991,7 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
   const selectedOfflinePlayerKey = form.offlinePlayers?.[0]?.key || "";
 
   return (
-    <div className="grid gap-4 md:grid-cols-5 md:items-end">
+    <div className="grid gap-4 md:grid-cols-3">
       <SingleSelectDropdown
         controlClassName={borderlessControlClass}
         iconClassName={borderlessIconClass}
@@ -880,37 +1017,19 @@ export function PlayersStep({ form, offlinePlayerOptions, onChange, setArrayFiel
         options={offlinePlayerOptions}
         value={selectedOfflinePlayerKey}
       />
-      <StatusSwitch
-        checked={form.hasOnlineMode}
-        className={borderlessSwitchClass}
-        id="hasOnlineMode"
-        label="حالت آنلاین"
-        name="hasOnlineMode"
-        onChange={onChange}
-      />
       <TextField
-        disabled={!form.hasOnlineMode}
         className={borderlessControlClass}
         iconClassName={borderlessIconClass}
-        label=""
+        label="بازیکنان آنلاین"
         name="onlinePlayerCount"
         onChange={onChange}
         placeholder="مثلا ۲ تا ۸ نفر"
         value={form.onlinePlayerCount}
       />
-      <StatusSwitch
-        checked={form.hasMultiplayerMode}
-        className={borderlessSwitchClass}
-        id="hasMultiplayerMode"
-        label="حالت چندنفره"
-        name="hasMultiplayerMode"
-        onChange={onChange}
-      />
       <TextField
-        disabled={!form.hasMultiplayerMode}
         className={borderlessControlClass}
         iconClassName={borderlessIconClass}
-        label=""
+        label="بازیکنان چندنفره"
         name="multiplayerPlayerCount"
         onChange={onChange}
         placeholder="مثلا ۲ تا ۸ نفر"
@@ -933,16 +1052,31 @@ export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
   );
 }
 
-export function ReleaseStep({ ageRatingOptions, form, onChange, setForm }) {
+export function ReleaseStep({ ageRatingOptions, form, onChange, scoreImportState, setForm }) {
+  const scoreStatusClassName =
+    scoreImportState?.status === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : scoreImportState?.status === "error"
+        ? "text-red-500"
+        : "text-zinc-500";
+
   return (
-    <div className="grid gap-4 md:grid-cols-6">
-      <SingleSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
-      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
-      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
-      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز سونی" name="sonyScore" onChange={onChange} type="number" value={form.sonyScore} />
-      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز استیم" name="steamScore" onChange={onChange} type="number" value={form.steamScore} />
-      <TextField className={borderlessControlClass} dir="ltr" iconClassName={borderlessIconClass} label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
-      <div className="md:col-span-6 grid gap-4 md:grid-cols-5">
+    <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
+        <SingleSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="رده سنی" name="ageRating" onChange={onChange} options={ageRatingOptions} value={form.ageRating} />
+        <TextField className={borderlessControlClass} dir="ltr" iconClassName={borderlessIconClass} label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز سونی" name="sonyScore" onChange={onChange} type="number" value={form.sonyScore} />
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز استیم" name="steamScore" onChange={onChange} type="number" value={form.steamScore} />
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز Xbox" name="xboxScore" onChange={onChange} type="number" value={form.xboxScore} />
+      </div>
+      {scoreImportState?.message ? (
+        <p className={`text-xs ${scoreStatusClassName}`}>{scoreImportState.message}</p>
+      ) : null}
+      <div className="grid gap-4 md:grid-cols-5">
         <StatusSwitch checked={form.isFeatured} className={borderlessSwitchClass} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
         <StatusSwitch checked={form.hasDubbing} className={borderlessSwitchClass} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
         <StatusSwitch checked={form.hasSubtitle} className={borderlessSwitchClass} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />

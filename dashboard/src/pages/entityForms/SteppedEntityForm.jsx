@@ -14,6 +14,7 @@ import SelectStep from "./SelectStep";
 import StarRatingStep from "./StarRatingStep";
 import TextareaStep from "./TextareaStep";
 import TextInputStep from "./TextInputStep";
+import { mediaToFormValue } from "@/utils/immediateUpload";
 
 function SteppedEntityForm({
   backPath,
@@ -143,7 +144,8 @@ function SteppedEntityForm({
     fields.forEach((field) => {
       const value = form[field.name];
       if (field.type === "image") {
-        if (value instanceof File) formData.append(field.name, value);
+        const mediaValue = mediaToFormValue(value);
+        if (mediaValue) formData.append(field.name, mediaValue);
         return;
       }
       if (field.type === "keywords") {
@@ -241,6 +243,12 @@ function SteppedEntityForm({
         <EntityImageStep
           fieldName={field.name}
           imagePreview={imagePreview}
+          immediateUpload={Boolean(field.immediateUpload)}
+          immediateUploadOptions={
+            typeof field.immediateUploadOptions === "function"
+              ? field.immediateUploadOptions(form)
+              : field.immediateUploadOptions
+          }
           label={field.label}
           setForm={setForm}
           setImagePreview={setImagePreview}

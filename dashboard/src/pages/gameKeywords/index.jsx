@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
 import DeleteModal from "@/components/shared/DeleteModal";
-import DisplayImages from "@/components/shared/DisplayImages";
 import Edit from "@/components/icons/Edit";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
@@ -12,6 +11,13 @@ import {
   useDeleteGameKeywordMutation,
   useGetGameKeywordsQuery,
 } from "@/services/gameKeywordApi";
+
+const getPlainDescription = (value) =>
+  String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 function GameKeywords() {
   const [search, setSearch] = useState("");
@@ -42,7 +48,7 @@ function GameKeywords() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs text-zinc-400">ارتباط داخلی بین بازی‌ها</p>
-              <h1 className="mt-1 text-2xl font-bold text-white">کلمات کلیدی بازی</h1>
+              <h1 className="mt-1 text-xl font-bold text-white">کلمات کلیدی بازی</h1>
               <p className="mt-2 max-w-2xl text-sm text-zinc-500">
                 این کلمات برای ارتباط و پیشنهاد بین بازی‌ها هستند و به سئو وابسته نیستند.
               </p>
@@ -64,31 +70,37 @@ function GameKeywords() {
             <table className="w-full table-fixed text-right text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500">
-                  <th className="pb-3 font-medium">عنوان</th>
-                  <th className="hidden pb-3 font-medium md:table-cell">توضیح</th>
-                  <th className="hidden w-24 pb-3 font-medium sm:table-cell">تصویر</th>
+                  <th className="w-24 pb-3 font-medium">تصویر</th>
+                  <th className="w-44 pb-3 font-medium">عنوان</th>
+                  <th className="hidden pb-3 font-medium md:table-cell">توضیحات</th>
                   <th className="w-24 pb-3 text-center font-medium">عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td className="py-6 text-center text-zinc-500" colSpan="4">در حال دریافت...</td></tr>
+                  <tr>
+                    <td className="py-6 text-center text-zinc-500" colSpan="4">در حال دریافت...</td>
+                  </tr>
                 ) : keywords.length ? (
                   keywords.map((item) => (
                     <tr className="border-b border-zinc-900 text-zinc-200" key={item._id}>
+                      <td className="py-4 pl-3">
+                        {item.image?.url ? (
+                          <div className="h-14 w-14 overflow-hidden rounded-xl border border-zinc-800 bg-black">
+                            <img alt={item.name || ""} className="h-full w-full object-cover" src={item.image.url} />
+                          </div>
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-zinc-800 bg-black text-[10px] text-zinc-500">
+                            ندارد
+                          </div>
+                        )}
+                      </td>
                       <td className="py-4 pl-3">
                         <span className="block truncate">{item.name}</span>
                         <span className="mt-1 block truncate text-xs text-zinc-500" dir="ltr">{item.slug}</span>
                       </td>
                       <td className="hidden py-4 pl-3 text-zinc-400 md:table-cell">
-                        <span className="block truncate">{item.description || item.title_en || "-"}</span>
-                      </td>
-                      <td className="hidden py-4 sm:table-cell">
-                        {item.image?.url ? (
-                          <DisplayImages galleryPreview={[{ url: item.image.url, type: "image" }]} imageSize={56} className="mt-0" />
-                        ) : (
-                          <span className="text-zinc-500">ندارد</span>
-                        )}
+                        <span className="block truncate">{getPlainDescription(item.description) || "-"}</span>
                       </td>
                       <td className="py-4">
                         <div className="flex items-center justify-center gap-2">
@@ -109,7 +121,9 @@ function GameKeywords() {
                     </tr>
                   ))
                 ) : (
-                  <tr><td className="py-6 text-center text-zinc-500" colSpan="4">هنوز کلمه کلیدی ثبت نشده است.</td></tr>
+                  <tr>
+                    <td className="py-6 text-center text-zinc-500" colSpan="4">هنوز کلمه کلیدی ثبت نشده است.</td>
+                  </tr>
                 )}
               </tbody>
             </table>

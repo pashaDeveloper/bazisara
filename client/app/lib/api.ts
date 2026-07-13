@@ -56,9 +56,7 @@ export type Game = {
   gameModes?: string[];
   offlinePlayers?: string[];
   onlinePlayers?: string[];
-  hasOnlineMode?: boolean;
   onlinePlayerCount?: string;
-  hasMultiplayerMode?: boolean;
   multiplayerPlayerCount?: string;
   relatedGames?: Game[];
   languages?: string[];
@@ -69,6 +67,9 @@ export type Game = {
   ageRating?: string;
   gameplayTime?: string;
   metacriticScore?: number | null;
+  sonyScore?: number | null;
+  steamScore?: number | null;
+  xboxScore?: number | null;
   cover?: Media;
   cardDesktopCover?: Media;
   cardMobileCover?: Media;

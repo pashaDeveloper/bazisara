@@ -47,6 +47,20 @@ export const gameApi = bazisaraApi.injectEndpoints({
         body: { title },
       }),
     }),
+    translateGameIntro: builder.mutation({
+      query: (body) => ({
+        url: "/games/translate-intro",
+        method: "POST",
+        body,
+      }),
+    }),
+    importGameScores: builder.mutation({
+      query: (body) => ({
+        url: "/games/import-scores",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -54,8 +68,10 @@ export const {
   useCreateGameMutation,
   useGetGamesQuery,
   useGetGameQuery,
+  useImportGameScoresMutation,
   useUpdateGameMutation,
   useDeleteGameMutation,
+  useTranslateGameIntroMutation,
   useTranslateGameSearchTitleSlugMutation,
 } = gameApi;
 

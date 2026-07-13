@@ -101,6 +101,7 @@ export function GameDetailPreview({
     ["امتیاز متاکریتیک", form.metacriticScore],
     ["امتیاز سونی", form.sonyScore],
     ["امتیاز استیم", form.steamScore],
+    ["امتیاز Xbox", form.xboxScore],
     ["ژانرها", genres.join("، ")],
   ];
 

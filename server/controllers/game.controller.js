@@ -16,6 +16,22 @@ exports.translateSearchTitleSlug = async (req, res, next) => {
   }
 };
 
+exports.translateIntro = async (req, res, next) => {
+  try {
+    await gameService.translateIntro(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.importScores = async (req, res, next) => {
+  try {
+    await gameService.importScores(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getGames = async (req, res, next) => {
   try {
     await gameService.getGames(req, res);

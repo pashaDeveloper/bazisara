@@ -14,6 +14,7 @@ const access = [verify, authorize("owner", "superAdmin", "admin", "operator"), r
 const uploadFields = [{ name: "image", maxCount: 1 }];
 
 router.get("/all", controller.getKeywords);
+router.post("/slug", ...access, controller.generateKeywordSlug);
 router.get("/:id", controller.getKeyword);
 
 registerStoragePost(router, "/create", access, "game-keywords", uploadFields, controller.createKeyword);

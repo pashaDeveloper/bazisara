@@ -26,6 +26,8 @@ const gameUploadFields = [
 
 router.get("/all", optionalVerifyAdmin, gameController.getGames);
 router.post("/search-title-slug", ...gameAccess, gameController.translateSearchTitleSlug);
+router.post("/translate-intro", ...gameAccess, gameController.translateIntro);
+router.post("/import-scores", ...gameAccess, gameController.importScores);
 router.get("/:id", optionalVerifyAdmin, gameController.getGame);
 
 registerStoragePost(

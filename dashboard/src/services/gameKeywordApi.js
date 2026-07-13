@@ -10,6 +10,13 @@ export const gameKeywordApi = bazisaraApi.injectEndpoints({
       }),
       invalidatesTags: ["GameKeyword"],
     }),
+    generateGameKeywordSlug: builder.mutation({
+      query: (title) => ({
+        url: "/game-keywords/slug",
+        method: "POST",
+        body: { title },
+      }),
+    }),
     getGameKeywords: builder.query({
       query: ({ page = 1, limit = 10, search = "" } = {}) => ({
         url: "/game-keywords/all",
@@ -46,6 +53,7 @@ export const gameKeywordApi = bazisaraApi.injectEndpoints({
 export const {
   useCreateGameKeywordMutation,
   useDeleteGameKeywordMutation,
+  useGenerateGameKeywordSlugMutation,
   useGetGameKeywordQuery,
   useGetGameKeywordsQuery,
   useUpdateGameKeywordMutation,

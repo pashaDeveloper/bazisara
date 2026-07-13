@@ -11,6 +11,15 @@
 
 export const offlinePlayerOptions = [
   {
+    key: "none",
+    label: "ندارد",
+    max: 0,
+    min: 0,
+    title_en: "No offline players",
+    title_fa: "ندارد",
+    value: "none",
+  },
+  {
     key: "single-player",
     label: "تک‌نفره",
     max: 1,
@@ -20,13 +29,22 @@ export const offlinePlayerOptions = [
     value: "single-player",
   },
   {
-    key: "up-to-4",
-    label: "تا ۴ نفر",
-    max: 4,
+    key: "1-2",
+    label: "۱-۲ نفره",
+    max: 2,
     min: 1,
-    title_en: "Up to 4 players",
-    title_fa: "تا ۴ نفر",
-    value: "up-to-4",
+    title_en: "1-2 players",
+    title_fa: "۱-۲ نفره",
+    value: "1-2",
+  },
+  {
+    key: "3-4",
+    label: "۳-۴ نفره",
+    max: 4,
+    min: 3,
+    title_en: "3-4 players",
+    title_fa: "۳-۴ نفره",
+    value: "3-4",
   },
 ];
 
