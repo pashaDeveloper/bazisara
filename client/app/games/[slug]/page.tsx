@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Game } from "../../lib/api";
-import { getApiItem } from "../../lib/api";
+import { gameRouteId, getApiItem } from "../../lib/api";
 import { slugify } from "../../lib/slug";
 
 export const dynamic = "force-dynamic";
@@ -18,5 +18,6 @@ export default async function GameLegacyRedirectPage({ params }: PageProps) {
     redirect("/games");
   }
 
-  redirect(`/games/${slugify(game.slug || game.title) || id}/${id}`);
+  const routeId = gameRouteId(game);
+  redirect(`/games/${slugify(game.slug || game.title) || routeId}/${routeId}`);
 }

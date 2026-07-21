@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Grid2x2, Menu, Phone, Search, ShoppingBasket, UserRound, X } from "lucide-react";
+import { ChevronDown, Grid2x2, Phone, Search, ShoppingBasket, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BrandWordmark } from "./brand-wordmark";
@@ -48,10 +48,26 @@ export function HomeTopHeader({
           <button
             type="button"
             aria-label="منو"
-            onClick={() => setMenuOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#d9deea] bg-white text-zinc-700"
+            onClick={() => setMenuOpen((current) => !current)}
+            className="relative z-[60] flex h-10 w-10 items-center justify-center rounded-xl border border-[#d9deea] bg-white text-zinc-700"
           >
-            <Menu className="h-5 w-5" />
+            <span className="relative h-4 w-5" aria-hidden="true">
+              <span
+                className={`absolute left-0 top-0 h-0.5 w-5 rounded-full bg-current transition-transform duration-300 ease-out ${
+                  menuOpen ? "translate-y-[7px] rotate-45" : ""
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-[7px] h-0.5 w-5 rounded-full bg-current transition-opacity duration-200 ease-out ${
+                  menuOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-[14px] h-0.5 w-5 rounded-full bg-current transition-transform duration-300 ease-out ${
+                  menuOpen ? "-translate-y-[7px] -rotate-45" : ""
+                }`}
+              />
+            </span>
           </button>
           <Link href="/" className="shrink-0">
             <BrandWordmark compact reverse />
@@ -70,20 +86,20 @@ export function HomeTopHeader({
         </div>
       </div>
 
-      {menuOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" aria-label="بستن منو" className="absolute inset-0 bg-black/35" onClick={() => setMenuOpen(false)} />
-          <aside className="absolute inset-y-0 right-0 flex w-[86vw] max-w-[360px] flex-col overflow-hidden bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#eef1f5] px-4 py-4">
-              <button
-                type="button"
-                aria-label="بستن"
-                onClick={() => setMenuOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#e4e7ec] bg-white text-zinc-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              <Link href="/" onClick={() => setMenuOpen(false)}>
+      <div
+        className={`fixed inset-0 z-50 transition-opacity duration-300 ease-out lg:hidden ${
+          menuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        aria-hidden={!menuOpen}
+      >
+          <button type="button" aria-label="بستن منو" className="absolute inset-0 bg-black/35" onClick={() => setMenuOpen(false)} tabIndex={menuOpen ? 0 : -1} />
+          <aside
+            className={`absolute inset-y-0 left-0 flex w-[86vw] max-w-[360px] flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out ${
+              menuOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <div className="flex items-center justify-start border-b border-[#eef1f5] px-4 py-4 pl-16">
+              <Link href="/" onClick={() => setMenuOpen(false)} tabIndex={menuOpen ? 0 : -1}>
                 <BrandWordmark compact reverse />
               </Link>
             </div>
@@ -105,6 +121,7 @@ export function HomeTopHeader({
                     href={item.href}
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center justify-between rounded-xl border border-[#eef1f5] bg-[#fafbfd] px-4 py-3 text-sm font-medium text-zinc-700"
+                    tabIndex={menuOpen ? 0 : -1}
                   >
                     <ChevronDown className="h-4 w-4 text-zinc-400" />
                     <span>{item.label}</span>
@@ -114,7 +131,6 @@ export function HomeTopHeader({
             </div>
           </aside>
         </div>
-      ) : null}
 
       <div className="hidden lg:block">
         <div className="mx-auto max-w-[1440px] px-5 py-4">

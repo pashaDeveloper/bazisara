@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const baseSchema = require("./baseSchema.model");
+const Counter = require("./counter");
 
 const mediaSchema = new mongoose.Schema(
   {
@@ -10,6 +11,7 @@ const mediaSchema = new mongoose.Schema(
       enum: ["", "cloudinary", "arvan", "local"],
       default: "",
     },
+    type: { type: String, enum: ["image", "video"], default: "image" },
   },
   { _id: false }
 );
@@ -18,12 +20,14 @@ const faqSchema = new mongoose.Schema(
   {
     question: { type: String, trim: true, default: "" },
     answer: { type: String, trim: true, default: "" },
+    media: [mediaSchema],
   },
   { _id: false }
 );
 
 const magazineSchema = new mongoose.Schema(
   {
+    magazineId: { type: Number, unique: true, sparse: true },
     title: {
       type: String,
       required: [true, "Magazine title is required"],
@@ -65,6 +69,7 @@ const magazineSchema = new mongoose.Schema(
       default: null,
     },
     tags: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tag" }],
+    platforms: [{ type: mongoose.Schema.Types.ObjectId, ref: "Platform" }],
     relatedGames: [{ type: mongoose.Schema.Types.ObjectId, ref: "Game" }],
     faqs: [faqSchema],
     cover: mediaSchema,
@@ -117,6 +122,23 @@ const magazineSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+magazineSchema.pre("save", async function (next) {
+  try {
+    if (!this.magazineId) {
+      const counter = await Counter.findOneAndUpdate(
+        { name: "magazineId" },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      this.magazineId = counter.seq;
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 magazineSchema.index(
   { slug: 1, isDeleted: 1 },

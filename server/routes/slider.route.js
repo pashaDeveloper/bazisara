@@ -12,7 +12,10 @@ const {
 
 const router = express.Router();
 const sliderAccess = [verify, authorize("owner", "superAdmin", "admin", "operator"), requireAdminProfileLevel(3)];
-const sliderUploadFields = [{ name: "image", maxCount: 1 }];
+const sliderUploadFields = [
+  { name: "image", maxCount: 1 },
+  { name: "mobileImage", maxCount: 1 },
+];
 
 router.get("/all", optionalVerifyAdmin, sliderController.getSliders);
 router.patch("/reorder", ...sliderAccess, sliderController.reorderSliders);

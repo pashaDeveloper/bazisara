@@ -30,6 +30,7 @@ export type NamedEntity = {
 
 export type Game = {
   _id: string;
+  gameId?: number;
   title: string;
   slug?: string;
   shortDescription?: string;
@@ -47,17 +48,38 @@ export type Game = {
   developers?: NamedEntity[];
   publishers?: NamedEntity[];
   tags?: NamedEntity[];
+  gameKeywords?: NamedEntity[];
   platforms?: Array<string | NamedEntity>;
   platformSizes?: Array<{
     platform?: string | NamedEntity;
     variant?: string;
     size?: string;
   }>;
+  dlcs?: Array<{
+    title?: string;
+    type?: string;
+    versionSize?: string;
+    image?: Media;
+  }>;
+  extraEditions?: Array<{
+    title?: string;
+    versionSize?: string;
+    items?: Array<{
+      platform?: string | NamedEntity;
+      capacityType?: string;
+      price?: number | null;
+      discountPercent?: number | null;
+      discountedPrice?: number | null;
+    }>;
+    image?: Media;
+  }>;
   gameModes?: string[];
   offlinePlayers?: string[];
   onlinePlayers?: string[];
   onlinePlayerCount?: string;
   multiplayerPlayerCount?: string;
+  hasOnlineMode?: boolean;
+  hasMultiplayerMode?: boolean;
   relatedGames?: Game[];
   languages?: string[];
   regions?: string[];
@@ -70,11 +92,14 @@ export type Game = {
   sonyScore?: number | null;
   steamScore?: number | null;
   xboxScore?: number | null;
+  playstationNpCommunicationId?: string;
   cover?: Media;
   cardDesktopCover?: Media;
   cardMobileCover?: Media;
   desktopCover?: Media;
   mobileCover?: Media;
+  trailerVideo?: Media;
+  trailerThumbnail?: Media;
   gallery?: Media[];
   isFeatured?: boolean;
   views?: number;
@@ -86,6 +111,7 @@ export type Game = {
 
 export type Article = {
   _id: string;
+  magazineId?: number;
   title: string;
   slug?: string;
   excerpt?: string;
@@ -100,10 +126,12 @@ export type Article = {
   readingTime?: string;
   category?: NamedEntity | null;
   tags?: NamedEntity[];
+  platforms?: NamedEntity[];
   relatedGames?: Game[];
   faqs?: Array<{
     question?: string;
     answer?: string;
+    media?: Media[];
   }>;
   cover?: Media;
   cardCover?: Media;
@@ -126,6 +154,7 @@ export type Slider = {
   order?: number;
   status?: string;
   image?: Media;
+  mobileImage?: Media;
   createdAt?: string;
 };
 
@@ -183,6 +212,14 @@ export async function getApiItem<T>(path: string, id: string) {
   } catch {
     return null;
   }
+}
+
+export function gameRouteId(game: Pick<Game, "_id" | "gameId">) {
+  return game.gameId ? String(game.gameId) : game._id;
+}
+
+export function articleRouteId(article: Pick<Article, "_id" | "magazineId">) {
+  return article.magazineId ? String(article.magazineId) : article._id;
 }
 
 export function formatPersianDate(value?: string | null) {

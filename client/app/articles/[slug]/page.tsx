@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Article } from "../../lib/api";
-import { getApiItem } from "../../lib/api";
+import { articleRouteId, getApiItem } from "../../lib/api";
 import { slugify } from "../../lib/slug";
 
 export const dynamic = "force-dynamic";
@@ -18,5 +18,6 @@ export default async function ArticleLegacyRedirectPage({ params }: PageProps) {
     redirect("/magazines");
   }
 
-  redirect(`/magazines/${slugify(article.slug || article.title) || id}/${id}`);
+  const routeId = articleRouteId(article);
+  redirect(`/magazines/${slugify(article.slug || article.title) || routeId}/${routeId}`);
 }

@@ -448,6 +448,16 @@ function decorateProduct(product) {
   };
 }
 
+function productIdentityFilter(id) {
+  const value = String(id || "").trim();
+  const filters = [];
+  if (/^\d+$/.test(value)) filters.push({ productId: Number(value) });
+  if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
+  if (filters.length > 1) return { $or: filters };
+  if (filters.length === 1) return filters[0];
+  return null;
+}
+
 exports.createProduct = async (req, res) => {
   const payload = await normalizeProductPayload(req, null, { defaultStatus: true });
   if (!payload.title || !payload.summary || !payload.category || !payload.brand) {
@@ -485,7 +495,12 @@ exports.getProducts = async (req, res) => {
 };
 
 exports.getProduct = async (req, res) => {
-  const product = await populateProduct(Product.findOne({ _id: req.params.id, isDeleted: false }));
+  const identityFilter = productIdentityFilter(req.params.id);
+  if (!identityFilter) {
+    return res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "Invalid product id" });
+  }
+
+  const product = await populateProduct(Product.findOne({ ...identityFilter, isDeleted: false }));
   if (!product) {
     return res.status(404).json({ acknowledgement: false, message: "Not Found", description: "محصول پیدا نشد" });
   }
@@ -493,7 +508,12 @@ exports.getProduct = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
-  const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
+  const identityFilter = productIdentityFilter(req.params.id);
+  if (!identityFilter) {
+    return res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "Invalid product id" });
+  }
+
+  const product = await Product.findOne({ ...identityFilter, isDeleted: false });
   if (!product) {
     return res.status(404).json({ acknowledgement: false, message: "Not Found", description: "محصول پیدا نشد" });
   }
@@ -514,8 +534,13 @@ exports.updateProduct = async (req, res) => {
 };
 
 exports.deleteProduct = async (req, res) => {
+  const identityFilter = productIdentityFilter(req.params.id);
+  if (!identityFilter) {
+    return res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "Invalid product id" });
+  }
+
   const product = await Product.findOneAndUpdate(
-    { _id: req.params.id, isDeleted: false },
+    { ...identityFilter, isDeleted: false },
     { isDeleted: true, deletedAt: new Date() },
     { new: true }
   );

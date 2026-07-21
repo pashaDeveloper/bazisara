@@ -1,5 +1,6 @@
 import { Gamepad2, House, Trophy } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
+import { slugify } from "../lib/slug";
 
 export type Platform =
   | "ps5"
@@ -307,4 +308,13 @@ export const products: Product[] = [
 
 export function formatPrice(value: number) {
   return new Intl.NumberFormat("fa-IR").format(value);
+}
+
+export function productRouteId(product: Pick<Product, "id">) {
+  return String(product.id);
+}
+
+export function productRoutePath(product: Pick<Product, "id" | "title">) {
+  const routeId = productRouteId(product);
+  return `/products2/${slugify(product.title) || routeId}/${routeId}`;
 }

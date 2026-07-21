@@ -1,5 +1,5 @@
 import type { ProductDetail } from "../../products2/detail-data";
-import { DesktopPurchaseCard } from "../../products2/[id]/purchase-actions";
+import { DesktopPurchaseCard } from "../../products2/[slug]/purchase-actions";
 import { REACTIONS, REACTION_LABELS } from "./constants";
 
 export function PurchaseSidebar({

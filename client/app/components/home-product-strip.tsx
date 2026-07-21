@@ -4,7 +4,7 @@ import { ChevronLeft, Percent } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { formatPrice, products } from "../products2/data";
+import { formatPrice, productRoutePath, products } from "../products2/data";
 
 function getDiscountPercent(product: (typeof products)[number]) {
   if (!product.oldPrice || product.oldPrice <= product.price) return null;
@@ -16,10 +16,10 @@ function ProductDealCard({ product }: { product: (typeof products)[number] }) {
 
   return (
     <Link
-      href={`/products2/${product.id}`}
-      className="group flex h-full w-[clamp(162px,48vw,188px)] shrink-0 flex-col overflow-hidden rounded-[10px] bg-white p-3 text-right shadow-[0_10px_24px_-20px_rgba(0,0,0,.35)] transition hover:-translate-y-0.5 sm:w-[clamp(172px,42vw,194px)] md:w-[195px] lg:h-[277px] lg:w-[198px]"
+      href={productRoutePath(product)}
+      className="group flex h-[252px] w-[212px] shrink-0 flex-col overflow-hidden rounded-[10px] bg-white p-3 text-right shadow-[0_10px_20px_-12px_rgba(29,39,64,.4)] transition hover:-translate-y-0.5 sm:w-[212px] md:w-[212px] lg:h-[277px] lg:w-[198px]"
     >
-      <div className="relative h-[120px] w-full lg:h-[150px]">
+      <div className="relative h-[132px] w-full lg:h-[150px]">
         <Image
           src={product.image}
           alt={product.title}
@@ -29,12 +29,12 @@ function ProductDealCard({ product }: { product: (typeof products)[number] }) {
         />
       </div>
 
-      <h3 className="mt-2 min-h-[44px] line-clamp-2 text-[13px] leading-6 text-[#4b557a]">
+      <h3 className="mt-2 min-h-[46px] line-clamp-2 text-[13px] leading-6 text-[#4b557a]">
         {product.title}
       </h3>
 
-      <div className="mt-3 flex items-end justify-between gap-2">
-        <div className="text-left">
+      <div className="mt-auto flex flex-row-reverse items-end justify-between gap-2">
+        <div className="text-right">
           {product.oldPrice ? (
             <div className="text-[11px] text-[#ff5d67] line-through">
               {formatPrice(product.oldPrice)} تومان
@@ -74,17 +74,19 @@ export function HomeProductStrip() {
   };
 
   return (
-    <section className="relative mx-4 mt-6 overflow-visible md:mx-6">
-      <div className="overflow-hidden rounded-[1.5rem] border border-[#f4b8c2] bg-[#f33b53] shadow-[0_20px_45px_-28px_rgba(0,0,0,.45)] lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-4 pt-4" dir="rtl">
+    <section className="relative mx-0 mt-6 overflow-visible md:mx-6">
+      <div className="relative overflow-hidden border-y border-[#f4b8c2] bg-[#f1304a] shadow-[0_20px_45px_-28px_rgba(0,0,0,.45)] md:rounded-[1.5rem] md:border lg:hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_80%_0%,rgba(255,255,255,.22)_0,rgba(255,255,255,.16)_18%,transparent_34%),radial-gradient(circle_at_35%_80%,rgba(255,255,255,.14)_0,transparent_32%)]" />
+        <div className="relative flex items-center justify-between gap-3 px-4 pt-4" dir="rtl">
           <h2 className="text-right text-[1.05rem] font-black leading-8 text-white">پیشنهادات شگفت‌انگیز!</h2>
-          <Link href="/products2" className="rounded-lg bg-white px-4 py-2 text-sm font-black text-[#cb2f46] shadow-[0_10px_20px_-16px_rgba(0,0,0,.35)]">
+          <Link href="/products2" className="inline-flex items-center gap-1 rounded-lg bg-[#d62b41] px-3 py-2 text-sm font-black !text-white shadow-[0_10px_20px_-16px_rgba(0,0,0,.35)] [&_*]:!text-white">
+            <ChevronLeft className="h-4 w-4" />
             مشاهده همه
           </Link>
         </div>
 
-        <div className="px-3 pb-4 pt-3">
-          <div className="flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" dir="ltr">
+        <div className="relative pb-4 pt-3">
+          <div className="flex gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" dir="rtl">
             {offerProducts.map((product) => (
               <ProductDealCard key={product.id} product={product} />
             ))}

@@ -32,6 +32,22 @@ exports.importScores = async (req, res, next) => {
   }
 };
 
+exports.fetchXboxAchievements = async (req, res, next) => {
+  try {
+    await gameService.fetchXboxAchievements(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.fetchPlayStationTrophies = async (req, res, next) => {
+  try {
+    await gameService.fetchPlayStationTrophies(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getGames = async (req, res, next) => {
   try {
     await gameService.getGames(req, res);

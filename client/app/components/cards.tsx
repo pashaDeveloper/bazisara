@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Article, Game } from "../lib/api";
-import { mediaUrl } from "../lib/api";
+import { articleRouteId, gameRouteId, mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
 
 export function SkeletonBlock({ className = "" }: { className?: string }) {
@@ -19,6 +19,7 @@ export function DashboardCardSkeleton() {
 }
 
 export function GameCard({ game }: { game: Game }) {
+  const routeId = gameRouteId(game);
   const image =
     mediaUrl(game.cardDesktopCover) ||
     mediaUrl(game.cover) ||
@@ -27,7 +28,7 @@ export function GameCard({ game }: { game: Game }) {
 
   return (
     <Link
-      href={`/games/${slugify(game.slug || game.title) || game._id}/${game._id}`}
+      href={`/games/${slugify(game.slug || game.title) || routeId}/${routeId}`}
       className="group block w-full space-y-2 transition hover:-translate-y-1"
       dir="ltr"
     >
@@ -50,11 +51,12 @@ export function GameCard({ game }: { game: Game }) {
 }
 
 export function ArticleCard({ article }: { article: Article }) {
+  const routeId = articleRouteId(article);
   const image = mediaUrl(article.cardCover) || mediaUrl(article.cover);
 
   return (
     <Link
-      href={`/magazines/${slugify(article.slug || article.title) || article._id}/${article._id}`}
+      href={`/magazines/${slugify(article.slug || article.title) || routeId}/${routeId}`}
       className="group block w-full space-y-2 transition hover:-translate-y-1"
       dir="rtl"
     >

@@ -8,7 +8,7 @@ function SliderSkeleton() {
   return (
     <section className="w-full overflow-hidden bg-white">
       <div className="px-4 py-3 lg:hidden">
-        <div className="h-36 animate-pulse rounded-2xl bg-[linear-gradient(90deg,#e8edf5_0%,#f5f7fb_45%,#e4e9f1_100%)]" />
+        <div className="aspect-square animate-pulse rounded-2xl bg-[linear-gradient(90deg,#e8edf5_0%,#f5f7fb_45%,#e4e9f1_100%)]" />
       </div>
       <div className="hidden md:block">
         <div className="relative h-[270px] w-full md:h-[397px]">
@@ -25,7 +25,11 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
   const visibleSliders = sliders
     .filter((slider) => slider.status !== "inactive")
-    .map((slider) => ({ ...slider, imageUrl: mediaUrl(slider.image) }))
+    .map((slider) => ({
+      ...slider,
+      imageUrl: mediaUrl(slider.image) || mediaUrl(slider.mobileImage),
+      mobileImageUrl: mediaUrl(slider.mobileImage) || mediaUrl(slider.image),
+    }))
     .filter((slider) => slider.imageUrl && !failedSlideIds.includes(slider._id));
 
   const loopedMobileSlides = [...visibleSliders, ...visibleSliders, ...visibleSliders];
@@ -62,10 +66,10 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
               key={`${slide._id}-${index}`}
               type="button"
               onClick={() => scrollToSlide(index % visibleSliders.length)}
-              className="relative h-[170px] w-[84vw] shrink-0 overflow-hidden rounded-[1.25rem] bg-white shadow-[0_16px_30px_-26px_rgba(0,0,0,.35)] sm:h-[188px] sm:w-[66vw]"
+              className="relative aspect-square w-[84vw] shrink-0 overflow-hidden rounded-[1.25rem] bg-white shadow-[0_16px_30px_-26px_rgba(0,0,0,.35)] sm:w-[66vw]"
             >
               <img
-                src={slide.imageUrl}
+                src={slide.mobileImageUrl}
                 alt={slide.title || ""}
                 className="h-full w-full object-cover object-center"
                 onError={() =>

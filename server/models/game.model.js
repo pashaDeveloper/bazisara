@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
+const Counter = require("./counter");
 
 const mediaSchema = new mongoose.Schema(
   {
@@ -97,11 +98,22 @@ const dlcSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const extraEditionItemSchema = new mongoose.Schema(
+  {
+    platform: { type: ObjectId, ref: "Platform", default: null },
+    capacityType: { type: String, trim: true, default: "" },
+    price: { type: Number, default: null, min: [0, "Price cannot be negative"] },
+    discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    discountedPrice: { type: Number, default: null, min: [0, "Discounted price cannot be negative"] },
+  },
+  { _id: false }
+);
+
 const extraEditionSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, default: "" },
     versionSize: { type: String, trim: true, default: "" },
-    price: { type: Number, default: null, min: [0, "Price cannot be negative"] },
+    items: [extraEditionItemSchema],
     image: mediaSchema,
   },
   { _id: false }
@@ -109,6 +121,7 @@ const extraEditionSchema = new mongoose.Schema(
 
 const gameSchema = new mongoose.Schema(
   {
+    gameId: { type: Number, unique: true, sparse: true },
     title: {
       type: String,
       required: [true, "Game title is required"],
@@ -289,6 +302,12 @@ const gameSchema = new mongoose.Schema(
       min: [0, "Score cannot be negative"],
       max: [100, "Score cannot be more than 100"],
     },
+    playstationNpCommunicationId: {
+      type: String,
+      trim: true,
+      default: "",
+      maxLength: [40, "PlayStation NP Communication ID must be at most 40 characters"],
+    },
     cover: mediaSchema,
     desktopCover: mediaSchema,
     mobileCover: mediaSchema,
@@ -344,6 +363,23 @@ const gameSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+gameSchema.pre("save", async function (next) {
+  try {
+    if (!this.gameId) {
+      const counter = await Counter.findOneAndUpdate(
+        { name: "gameId" },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      this.gameId = counter.seq;
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 gameSchema.virtual("hasOnlineMode").get(function () {
   return Boolean(String(this.onlinePlayerCount || "").trim() || (Array.isArray(this.onlinePlayers) && this.onlinePlayers.length));

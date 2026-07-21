@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 const axios = require("axios");
 const translate = require("google-translate-api-x");
+const {
+  exchangeAccessCodeForAuthTokens,
+  exchangeNpssoForAccessCode,
+  getTitleTrophies,
+  getUserTitles,
+} = require("psn-api");
 const Game = require("../models/game.model");
 const Category = require("../models/category.model");
 const Genre = require("../models/genre.model");
@@ -17,6 +23,72 @@ const {
   getSearchTerm,
 } = require("../utils/pagination.util");
 
+function makeServiceError(message, statusCode = 502, code = "") {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  if (code) error.code = code;
+  return error;
+}
+
+function getUpstreamStatus(error) {
+  return Number(error?.response?.status || error?.statusCode || error?.status || 0);
+}
+
+function mapXboxError(error) {
+  const status = getUpstreamStatus(error);
+  const code = String(error?.code || "");
+
+  if (error?.statusCode) return error;
+  if (status === 401 || status === 403) {
+    return makeServiceError("Xbox Live authorization is invalid or expired", 424, "XBOX_AUTH_EXPIRED");
+  }
+  if (status === 404) {
+    return makeServiceError("Xbox achievements were not found for this title", 404, "XBOX_ACHIEVEMENTS_NOT_FOUND");
+  }
+  if (code === "ECONNABORTED" || code === "ETIMEDOUT") {
+    return makeServiceError("Xbox Live request timed out", 504, "XBOX_TIMEOUT");
+  }
+
+  return makeServiceError(error?.message || "Xbox Live request failed", 502, "XBOX_UPSTREAM_FAILED");
+}
+
+function mapPlayStationError(error) {
+  const status = getUpstreamStatus(error);
+  const code = String(error?.code || "");
+
+  if (error?.statusCode) return error;
+  if (status === 401 || status === 403) {
+    return makeServiceError("PlayStation NPSSO is invalid or expired", 424, "PSN_AUTH_EXPIRED");
+  }
+  if (status === 404) {
+    return makeServiceError("PlayStation trophies were not found for this title", 404, "PSN_TROPHIES_NOT_FOUND");
+  }
+  if (code === "ECONNABORTED" || code === "ETIMEDOUT") {
+    return makeServiceError("PlayStation request timed out", 504, "PSN_TIMEOUT");
+  }
+
+  return makeServiceError(error?.message || "PlayStation request failed", 502, "PSN_UPSTREAM_FAILED");
+}
+
+function getXboxAchievementErrorDescription(error) {
+  if (error?.code === "XBOX_AUTH_NOT_CONFIGURED") return "توکن Xbox Live روی سرور تنظیم نشده است";
+  if (error?.code === "XBOX_AUTH_EXPIRED") return "توکن Xbox Live منقضی یا نامعتبر است؛ باید توکن جدید بگیرید";
+  if (error?.code === "XBOX_PRODUCT_NOT_FOUND") return "این عنوان در کاتالوگ Xbox پیدا نشد";
+  if (error?.code === "XBOX_TITLE_ID_NOT_FOUND") return "Title ID ایکس‌باکس برای این بازی پیدا نشد؛ اگر این بازی با اکانت Xbox تنظیم‌شده اجرا نشده، titleId را دستی بفرستید";
+  if (error?.code === "XBOX_ACHIEVEMENTS_NOT_FOUND") return "برای این عنوان اچیومنت Xbox پیدا نشد";
+  if (error?.code === "XBOX_TIMEOUT") return "درخواست Xbox Live بیش از حد طول کشید؛ دوباره تلاش کنید";
+  return "دریافت تروفی‌های Xbox انجام نشد";
+}
+
+function getPlayStationTrophyErrorDescription(error) {
+  if (error?.code === "PSN_AUTH_NOT_CONFIGURED") return "توکن NPSSO پلی‌استیشن روی سرور تنظیم نشده است";
+  if (error?.code === "PSN_AUTH_EXPIRED") return "توکن NPSSO پلی‌استیشن منقضی یا نامعتبر است؛ باید NPSSO جدید بگیرید";
+  if (error?.code === "PSN_TITLE_NOT_FOUND") return "این بازی در لیست تروفی‌های اکانت PlayStation پیدا نشد؛ NP Communication ID را دستی وارد کنید";
+  if (error?.code === "PSN_TROPHIES_NOT_FOUND") return "برای این NP Communication ID تروفی پیدا نشد";
+  if (error?.code === "PSN_TIMEOUT") return "درخواست PlayStation بیش از حد طول کشید؛ دوباره تلاش کنید";
+  return "دریافت تروفی‌های PlayStation انجام نشد";
+}
+
 const populateGame = (query) =>
   query
     .populate("category", "name")
@@ -24,6 +96,7 @@ const populateGame = (query) =>
     .populate("platforms", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("platformReleases.platform", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("platformSizes.platform", "name slug parent image fontFile svgIcon")
+    .populate("extraEditions.items.platform", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image")
@@ -31,8 +104,18 @@ const populateGame = (query) =>
     .populate("filterDefinitions", "key label type options min max unit")
     .populate("filterValues.genres", "name icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
-    .populate("relatedGames", "title slug cover")
+    .populate("relatedGames", "gameId title slug cover")
     .populate("creator", "name email avatar role adminId");
+
+function gameIdentityFilter(id) {
+  const value = String(id || "").trim();
+  const filters = [];
+  if (/^\d+$/.test(value)) filters.push({ gameId: Number(value) });
+  if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
+  if (filters.length > 1) return { $or: filters };
+  if (filters.length === 1) return filters[0];
+  return null;
+}
 
 const ageRatingCatalog = [
   { key: "everyone", title_fa: "همه سنین", title_en: "Everyone" },
@@ -216,7 +299,7 @@ async function fetchXboxIntro(title) {
     products.find((item) => normalizeStoreTitle(item.Title).includes(normalizedTitle)) ||
     products[0];
 
-  if (!selected?.ProductId) throw new Error("Xbox product not found");
+  if (!selected?.ProductId) throw makeServiceError("Xbox product not found", 404, "XBOX_PRODUCT_NOT_FOUND");
 
   const detailUrl = `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${encodeURIComponent(selected.ProductId)}&market=US&languages=en-US&MS-CV=DGU1mcuYo0WMMp`;
   const { data: detailData } = await axios.get(detailUrl, { timeout: 15000 });
@@ -233,6 +316,277 @@ async function fetchXboxIntro(title) {
     intro,
     score: allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null,
     sourceTitle: localized.ProductTitle || selected.Title || "",
+  };
+}
+
+async function findXboxCatalogGame(title) {
+  const query = encodeURIComponent(title);
+  const suggestUrl = `https://displaycatalog.mp.microsoft.com/v7.0/productFamilies/autosuggest?market=US&languages=en-US&query=${query}&productFamilyNames=Games&top=8`;
+  const { data: suggestData } = await axios.get(suggestUrl, { timeout: 15000 });
+  const products = (suggestData?.Results || []).flatMap((group) => group?.Products || []);
+  const normalizedTitle = normalizeStoreTitle(title);
+  const selected =
+    products.find((item) => normalizeStoreTitle(item.Title) === normalizedTitle) ||
+    products.find((item) => normalizeStoreTitle(item.Title).includes(normalizedTitle)) ||
+    products[0];
+
+  if (!selected?.ProductId) throw makeServiceError("Xbox product not found", 404, "XBOX_PRODUCT_NOT_FOUND");
+
+  const detailUrl = `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${encodeURIComponent(selected.ProductId)}&market=US&languages=en-US&MS-CV=DGU1mcuYo0WMMp`;
+  const { data: detailData } = await axios.get(detailUrl, { timeout: 15000 });
+  const product = detailData?.Products?.[0];
+  const localized = product?.LocalizedProperties?.[0] || {};
+  const titleId = (product?.AlternateIds || []).find((item) => item?.IdType === "XboxTitleId")?.Value;
+
+  return {
+    productId: selected.ProductId,
+    sourceTitle: localized.ProductTitle || selected.Title || title,
+    titleId: titleId || "",
+  };
+}
+
+function getXboxAuthorizationHeader() {
+  const directToken = String(process.env.XBOX_LIVE_AUTHORIZATION || "").trim();
+  if (directToken) return directToken.startsWith("XBL3.0") ? directToken : `XBL3.0 ${directToken}`;
+
+  const userHash = String(process.env.XBOX_LIVE_USER_HASH || "").trim();
+  const token = String(process.env.XBOX_LIVE_TOKEN || "").trim();
+  if (userHash && token) return `XBL3.0 x=${userHash};${token}`;
+
+  return "";
+}
+
+function normalizeXboxAchievement(item) {
+  const mediaAsset = (item?.mediaAssets || []).find((asset) => /icon/i.test(asset?.type || "")) || item?.mediaAssets?.[0] || {};
+  const gamerscore = (item?.rewards || []).find((reward) => /gamerscore/i.test(reward?.type || ""))?.value;
+  const name = item?.name || item?.localizedProperties?.name || "";
+  const description = item?.description || item?.unlockedDescription || item?.lockedDescription || "";
+
+  return {
+    id: item?.id || item?.serviceConfigId || name,
+    description,
+    gamerscore: gamerscore ?? null,
+    icon: mediaAsset?.url || "",
+    isSecret: Boolean(item?.isSecret),
+    name,
+    progressState: item?.progressState || "",
+    rarity: item?.rarity?.currentCategory || "",
+  };
+}
+
+function normalizeComparableTitle(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[™®©]/g, "")
+    .replace(/\b(ps4|ps5|playstation|standard|edition|deluxe|ultimate|complete|bundle|game|version)\b/g, " ")
+    .replace(/[^a-z0-9\u0600-\u06ff]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function titleMatches(sourceTitle, requestedTitle) {
+  const source = normalizeComparableTitle(sourceTitle);
+  const requested = normalizeComparableTitle(requestedTitle);
+  if (!source || !requested) return false;
+  return source === requested || source.includes(requested) || requested.includes(source);
+}
+
+async function findXboxUserTitle(authorization, xuid, title) {
+  let data;
+  try {
+    ({ data } = await axios.get(
+      `https://titlehub.xboxlive.com/users/xuid(${encodeURIComponent(xuid)})/titles/titlehistory/decoration/detail,scid,image,achievement`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: authorization,
+          "Accept-Language": "en-US",
+          "x-xbl-contract-version": "2",
+        },
+        params: { maxItems: 1000 },
+        timeout: 15000,
+      }
+    ));
+  } catch (error) {
+    throw mapXboxError(error);
+  }
+
+  const titles = Array.isArray(data?.titles) ? data.titles : [];
+  const selected =
+    titles.find((item) => titleMatches(item?.name || item?.titleName, title)) ||
+    titles.find((item) => normalizeComparableTitle(item?.name || item?.titleName).includes(normalizeComparableTitle(title)));
+
+  if (!selected?.titleId) throw makeServiceError("Xbox title id not found", 404, "XBOX_TITLE_ID_NOT_FOUND");
+
+  return {
+    sourceTitle: selected.name || selected.titleName || title,
+    titleId: String(selected.titleId),
+  };
+}
+
+async function fetchXboxAchievements(title, requestedTitleId = "") {
+  const authorization = getXboxAuthorizationHeader();
+  const xuid = String(process.env.XBOX_LIVE_XUID || "").trim();
+
+  if (!authorization || !xuid) {
+    throw makeServiceError("Xbox Live credentials are not configured", 424, "XBOX_AUTH_NOT_CONFIGURED");
+  }
+
+  const manualTitleId = String(requestedTitleId || "").trim();
+  const catalogGame = manualTitleId
+    ? { productId: "", sourceTitle: title, titleId: manualTitleId }
+    : await findXboxCatalogGame(title);
+  if (!catalogGame.titleId) {
+    const userTitle = await findXboxUserTitle(authorization, xuid, title);
+    catalogGame.sourceTitle = userTitle.sourceTitle || catalogGame.sourceTitle;
+    catalogGame.titleId = userTitle.titleId;
+  }
+
+  let data;
+  try {
+    ({ data } = await axios.get(
+      `https://achievements.xboxlive.com/users/xuid(${encodeURIComponent(xuid)})/achievements`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: authorization,
+          "Accept-Language": "en-US",
+          "x-xbl-contract-version": "2",
+        },
+        params: {
+          maxItems: 100,
+          titleId: catalogGame.titleId,
+        },
+        timeout: 15000,
+      }
+    ));
+  } catch (error) {
+    throw mapXboxError(error);
+  }
+
+  const achievements = Array.isArray(data?.achievements) ? data.achievements.map(normalizeXboxAchievement) : [];
+
+  return {
+    achievements,
+    productId: catalogGame.productId,
+    sourceTitle: catalogGame.sourceTitle,
+    titleId: catalogGame.titleId,
+    total: Number(data?.pagingInfo?.totalRecords || achievements.length || 0),
+  };
+}
+
+async function getPlayStationAuthorization() {
+  const npsso = String(process.env.PSN_NPSSO || "").trim();
+  if (!npsso) {
+    throw makeServiceError("PlayStation NPSSO is not configured", 424, "PSN_AUTH_NOT_CONFIGURED");
+  }
+
+  try {
+    const accessCode = await exchangeNpssoForAccessCode(npsso);
+    const authorization = await exchangeAccessCodeForAuthTokens(accessCode);
+    return { accessToken: authorization.accessToken };
+  } catch (error) {
+    throw mapPlayStationError(error);
+  }
+}
+
+function normalizePlayStationTrophy(item) {
+  return {
+    id: item?.trophyId ?? item?.trophyName ?? "",
+    description: item?.trophyDetail || "",
+    icon: item?.trophyIconUrl || "",
+    isSecret: Boolean(item?.trophyHidden),
+    name: item?.trophyName || "",
+    rarity: item?.trophyRare ?? null,
+    type: item?.trophyType || "",
+  };
+}
+
+function normalizeNpCommunicationId(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  const match = raw.match(/NPWR[-_\s]?(\d{5,})(?:[-_\s]?(\d{2}))?/);
+  if (!match) return "";
+  return `NPWR${match[1]}_${match[2] || "00"}`;
+}
+
+async function getPlayStationTitleTrophies(authorization, npCommunicationId, options = {}) {
+  const attempts = [];
+  if (options.platform === "PS5") attempts.push(undefined, "trophy");
+  else if (options.platform) attempts.push("trophy", undefined);
+  else attempts.push("trophy", undefined);
+
+  let lastError = null;
+  for (const npServiceName of attempts) {
+    try {
+      const trophiesData = await getTitleTrophies(authorization, npCommunicationId, "all", {
+        headerOverrides: { "Accept-Language": "en-US" },
+        limit: 200,
+        npServiceName,
+      });
+      if (Array.isArray(trophiesData?.trophies) && trophiesData.trophies.length) return trophiesData;
+      if (Number(trophiesData?.totalItemCount || 0) > 0) return trophiesData;
+      lastError = new Error("PlayStation title trophies returned empty");
+    } catch (error) {
+      lastError = mapPlayStationError(error);
+    }
+  }
+
+  throw lastError || new Error("PlayStation title trophies not found");
+}
+
+async function resolvePlayStationTrophyTitle(authorization, title, npCommunicationId) {
+  const directNpCommunicationId = normalizeNpCommunicationId(npCommunicationId || title);
+  if (directNpCommunicationId) {
+    return {
+      npCommunicationId: directNpCommunicationId,
+      resolveSource: "manual",
+      trophyTitleName: title || directNpCommunicationId,
+      trophyTitlePlatform: "",
+    };
+  }
+
+  let titlesData;
+  try {
+    titlesData = await getUserTitles(authorization, "me", {
+      headerOverrides: { "Accept-Language": "en-US" },
+      limit: 800,
+    });
+  } catch (error) {
+    throw mapPlayStationError(error);
+  }
+  const titles = Array.isArray(titlesData?.trophyTitles) ? titlesData.trophyTitles : [];
+  const selected =
+    titles.find((item) => titleMatches(item?.trophyTitleName, title)) ||
+    titles.find((item) => normalizeComparableTitle(item?.trophyTitleName).includes(normalizeComparableTitle(title)));
+
+  if (selected?.npCommunicationId) {
+    return { ...selected, resolveSource: "account" };
+  }
+
+  throw makeServiceError("PlayStation trophy title not found", 404, "PSN_TITLE_NOT_FOUND");
+}
+
+async function fetchPlayStationTrophies(title, npCommunicationId = "") {
+  const authorization = await getPlayStationAuthorization();
+  const selected = await resolvePlayStationTrophyTitle(authorization, title, npCommunicationId);
+  const trophiesData = await getPlayStationTitleTrophies(authorization, selected.npCommunicationId, {
+    platform: selected.trophyTitlePlatform,
+  });
+  const trophies = Array.isArray(trophiesData?.trophies) ? trophiesData.trophies.map(normalizePlayStationTrophy) : [];
+
+  return {
+    npCommunicationId: selected.npCommunicationId,
+    platform: selected.trophyTitlePlatform || "",
+    resolveSource: selected.resolveSource || "account",
+    sourceTitle: selected.trophyTitleName || title,
+    trophies,
+    total:
+      Number(trophiesData?.totalItemCount || 0) ||
+      Number(selected?.definedTrophies?.bronze || 0) +
+        Number(selected?.definedTrophies?.silver || 0) +
+        Number(selected?.definedTrophies?.gold || 0) +
+        Number(selected?.definedTrophies?.platinum || 0) ||
+      trophies.length,
   };
 }
 
@@ -583,6 +937,38 @@ function toNumber(value, fallback = null) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function normalizeDiscountPercent(value) {
+  const number = toNumber(value, 0);
+  return Math.max(0, Math.min(100, number || 0));
+}
+
+function calculateDiscountedPrice(price, discountPercent) {
+  const numericPrice = toNumber(price);
+  if (numericPrice === null) return null;
+  const discount = normalizeDiscountPercent(discountPercent);
+  return Math.max(0, Math.round(numericPrice - (numericPrice * discount) / 100));
+}
+
+function parseExtraEditionItems(value) {
+  return parseObjectArray(value, (item) => {
+    const price = toNumber(item?.price);
+    const discountPercent = normalizeDiscountPercent(item?.discountPercent);
+    return {
+      platform: String(item?.platform || "").trim() || null,
+      capacityType: String(item?.capacityType || "").trim(),
+      price,
+      discountPercent,
+      discountedPrice: calculateDiscountedPrice(price, discountPercent),
+    };
+  }).filter(
+    (item) =>
+      item.platform ||
+      item.capacityType ||
+      item.price !== null ||
+      item.discountPercent
+  );
+}
+
 function buildMedia(file) {
   if (!file) return undefined;
 
@@ -782,7 +1168,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         ? parseObjectArray(body.extraEditions, (item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
-            price: typeof item === "string" ? null : toNumber(item?.price),
+            items: typeof item === "string" ? [] : parseExtraEditionItems(item?.items),
             image: typeof item === "string" ? "" : item?.image || "",
           }))
         : undefined,
@@ -831,6 +1217,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
     xboxScore:
       body.xboxScore !== undefined ? toNumber(body.xboxScore) : undefined,
+    playstationNpCommunicationId:
+      body.playstationNpCommunicationId !== undefined ? normalizeNpCommunicationId(body.playstationNpCommunicationId) : undefined,
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
   };
@@ -1067,6 +1455,84 @@ exports.importScores = async (req, res) => {
   }
 };
 
+exports.fetchXboxAchievements = async (req, res) => {
+  const title = String(req.body?.title || req.query?.title || "").trim();
+  const titleId = String(req.body?.titleId || req.body?.xboxTitleId || req.query?.titleId || "").trim();
+
+  if (!title && !titleId) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان بازی برای دریافت تروفی‌های Xbox الزامی است",
+    });
+  }
+
+  try {
+    const data = await fetchXboxAchievements(title, titleId);
+    res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: "تروفی‌های Xbox دریافت شد",
+      data,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 502).json({
+      acknowledgement: false,
+      message: "Xbox Achievements Failed",
+      description: getXboxAchievementErrorDescription(error),
+    });
+
+    res.status(error.statusCode || 502).json({
+      acknowledgement: false,
+      message: "Xbox Achievements Failed",
+      description:
+        error.statusCode === 424
+          ? "توکن Xbox Live روی سرور تنظیم نشده است"
+          : "دریافت تروفی‌های Xbox انجام نشد",
+    });
+  }
+};
+
+exports.fetchPlayStationTrophies = async (req, res) => {
+  const title = String(req.body?.title || req.query?.title || "").trim();
+  const npCommunicationId = normalizeNpCommunicationId(req.body?.npCommunicationId || req.body?.playstationNpCommunicationId || req.query?.npCommunicationId);
+
+  if (!title && !npCommunicationId) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان بازی یا NP Communication ID برای دریافت تروفی‌های PlayStation الزامی است",
+    });
+  }
+
+  try {
+    const data = await fetchPlayStationTrophies(title, npCommunicationId);
+    res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: "تروفی‌های PlayStation دریافت شد",
+      data,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 502).json({
+      acknowledgement: false,
+      message: "PlayStation Trophies Failed",
+      description: getPlayStationTrophyErrorDescription(error),
+    });
+
+    res.status(error.statusCode || 502).json({
+      acknowledgement: false,
+      message: "PlayStation Trophies Failed",
+      description:
+        error.statusCode === 424
+          ? "توکن NPSSO پلی‌استیشن روی سرور تنظیم نشده است"
+          : error.statusCode === 404
+            ? "این بازی در لیست تروفی‌های اکانت PlayStation پیدا نشد؛ NP Communication ID را دستی وارد کنید"
+            : "دریافت تروفی‌های PlayStation انجام نشد",
+    });
+  }
+};
+
 exports.createGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles);
   payload.creator = req.admin?._id || null;
@@ -1147,8 +1613,9 @@ exports.getGames = async (req, res) => {
 
 exports.getGame = async (req, res) => {
   const { id } = req.params;
+  const identityFilter = gameIdentityFilter(id);
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!identityFilter) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -1158,7 +1625,7 @@ exports.getGame = async (req, res) => {
 
   const game = await populateGame(
     Game.findOne({
-      _id: id,
+      ...identityFilter,
       isDeleted: false,
       ...(req.adminRecord ? {} : { status: "active" }),
     })
@@ -1182,8 +1649,9 @@ exports.getGame = async (req, res) => {
 
 exports.updateGame = async (req, res) => {
   const { id } = req.params;
+  const identityFilter = gameIdentityFilter(id);
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!identityFilter) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -1191,7 +1659,7 @@ exports.updateGame = async (req, res) => {
     });
   }
 
-  const game = await Game.findOne({ _id: id, isDeleted: false });
+  const game = await Game.findOne({ ...identityFilter, isDeleted: false });
   if (!game) {
     return res.status(404).json({
       acknowledgement: false,
@@ -1203,7 +1671,7 @@ exports.updateGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles, game);
   const previousCollections = game.collections || [];
   if (payload.title !== undefined || payload.slug !== undefined) {
-    payload.slug = await makeUniqueSlug(payload.slug || payload.title || game.title, id);
+    payload.slug = await makeUniqueSlug(payload.slug || payload.title || game.title, game._id);
   }
   await validatePayload(payload);
   Object.assign(game, payload);
@@ -1224,8 +1692,9 @@ exports.updateGame = async (req, res) => {
 
 exports.deleteGame = async (req, res) => {
   const { id } = req.params;
+  const identityFilter = gameIdentityFilter(id);
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!identityFilter) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -1234,7 +1703,7 @@ exports.deleteGame = async (req, res) => {
   }
 
   const game = await Game.findOneAndUpdate(
-    { _id: id, isDeleted: false },
+    { ...identityFilter, isDeleted: false },
     { isDeleted: true, deletedAt: Date.now(), status: "inactive" },
     { new: true }
   );
@@ -1247,8 +1716,8 @@ exports.deleteGame = async (req, res) => {
     });
   }
   await GameCollection.updateMany(
-    { "games.game": id },
-    { $pull: { games: { game: id } } }
+    { "games.game": game._id },
+    { $pull: { games: { game: game._id } } }
   );
 
   res.status(200).json({

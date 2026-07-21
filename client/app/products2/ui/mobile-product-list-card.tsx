@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { formatPrice } from "../data";
+import { formatPrice, productRoutePath } from "../data";
 import type { Product } from "../data";
 
 export function MobilePosterCard({ product }: { product: Product }) {
@@ -17,7 +17,7 @@ export function MobileProductListCard({
   isPriority?: boolean;
 }) {
   return (
-    <Link href={`/products2/${product.id}`} className="flex min-h-[190px] flex-row-reverse items-center gap-4 border-b border-[#eef1f5] bg-white px-5 py-6">
+    <Link href={productRoutePath(product)} className="flex min-h-[190px] flex-row-reverse items-center gap-4 border-b border-[#eef1f5] bg-white px-5 py-6">
       <div className="relative h-36 w-32 shrink-0">
         <Image
           src={product.image}

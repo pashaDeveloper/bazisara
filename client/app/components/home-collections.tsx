@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Article, Game } from "../lib/api";
-import { mediaUrl } from "../lib/api";
+import { articleRouteId, gameRouteId, mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
 import { DashboardCardSkeleton } from "./cards";
 
@@ -169,7 +169,7 @@ function FilteredSection<T extends Article | Game>({
             <ContentCard
               key={item._id}
               align={align}
-              href={`${href.replace(/\/$/, "")}/${slugify(item.slug || item.title) || item._id}/${item._id}`}
+              href={`${href.replace(/\/$/, "")}/${slugify(item.slug || item.title) || item._id}/${"magazineId" in item ? articleRouteId(item) : gameRouteId(item)}`}
               image={getImage(item)}
               title={item.title}
             />
@@ -197,7 +197,8 @@ const articlePlatformTabs = [
 ];
 
 function articleHref(article: Article) {
-  return `/magazines/${slugify(article.slug || article.title) || article._id}/${article._id}`;
+  const routeId = articleRouteId(article);
+  return `/magazines/${slugify(article.slug || article.title) || routeId}/${routeId}`;
 }
 
 function formatArticleTime(article: Article) {
@@ -210,10 +211,10 @@ function ArticleListCard({ article }: { article: Article }) {
   return (
     <Link
       href={articleHref(article)}
-      className="grid min-h-[154px] grid-cols-[150px_minmax(0,1fr)] items-center gap-5 rounded-[2rem] border border-[#e2e7f0] bg-white px-4 py-3 transition hover:-translate-y-0.5 hover:border-[#cfd7e5] hover:shadow-[0_18px_36px_-32px_rgba(15,23,42,.35)]"
+      className="grid min-h-[154px] grid-cols-1 items-start gap-3 rounded-[1.4rem] border border-[#e2e7f0] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#cfd7e5] hover:shadow-[0_18px_36px_-32px_rgba(15,23,42,.35)] lg:grid-cols-[150px_minmax(0,1fr)] lg:items-center lg:gap-5 lg:rounded-[2rem] lg:px-4 lg:py-3"
       dir="rtl"
     >
-      <div className="relative h-[124px] w-[124px] overflow-hidden rounded-[1.7rem] border border-[#e1e7f1] bg-white">
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.2rem] border border-[#e1e7f1] bg-white lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]">
         {image ? (
           <img alt={article.title} className="h-full w-full object-cover" src={image} />
         ) : (
@@ -221,10 +222,10 @@ function ArticleListCard({ article }: { article: Article }) {
         )}
       </div>
       <div className="min-w-0 text-right">
-        <h3 className="line-clamp-2 text-[1.35rem] font-black leading-8 text-[#303542]">
+        <h3 className="line-clamp-2 text-[1rem] font-black leading-7 text-[#303542] lg:text-[1.35rem] lg:leading-8">
           {article.title}
         </h3>
-        <div className="mt-5 flex items-center justify-end gap-3 text-sm font-bold text-[#8a91a0]">
+        <div className="mt-3 flex items-center justify-end gap-3 text-xs font-bold text-[#8a91a0] lg:mt-5 lg:text-sm">
           <span>{formatArticleTime(article)}</span>
           <span className="h-5 w-px bg-[#c6ccd7]" />
           <span>{article.views ? article.views.toLocaleString("fa-IR") : "۰"} دیدگاه</span>
@@ -268,11 +269,11 @@ function HomeArticlesSection({ articles }: { articles: Article[] }) {
   };
 
   return (
-    <section className="mx-4 mt-10 rounded-[1.6rem] border border-[#e5e9f1] bg-[#fbfbfd] px-9 py-8 shadow-[0_18px_48px_-42px_rgba(15,23,42,.25)]" dir="rtl">
-      <h2 className="mb-4 text-right text-2xl font-black text-[#25335f]">از ما بخوانید</h2>
+    <section className="mx-4 mt-10 rounded-[1.3rem] border border-[#e5e9f1] bg-[#fbfbfd] px-3 py-5 shadow-[0_18px_48px_-42px_rgba(15,23,42,.25)] lg:rounded-[1.6rem] lg:px-9 lg:py-8" dir="rtl">
+      <h2 className="mb-4 text-right text-[1.35rem] font-black text-[#25335f] lg:text-2xl">از ما بخوانید</h2>
 
       <div className="mb-4 rounded-2xl border border-[#e7ebf2] bg-white px-4 py-2">
-        <div className="flex flex-row flex-wrap items-center justify-start gap-3" dir="rtl">
+        <div className="flex flex-row flex-nowrap items-center justify-start gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap" dir="rtl">
           {[...articleTopicChips, ...categories.map((category) => category.name)].slice(0, 7).map((chip) => {
             const active = activeChip === chip;
 
@@ -281,7 +282,7 @@ function HomeArticlesSection({ articles }: { articles: Article[] }) {
                 key={chip}
                 type="button"
                 onClick={() => setActiveChip(chip)}
-                className={`rounded-full border px-5 py-2 text-sm font-black transition-all duration-200 ease-out ${
+                className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-5 py-2 text-sm font-black transition-all duration-200 ease-out ${
                   active
                     ? "border-[#2f3340] bg-[#2f3340] text-white"
                     : "border-[#edf0f5] bg-white text-[#4d5361] hover:border-[#d6dce7] hover:text-[#222734]"
@@ -294,7 +295,7 @@ function HomeArticlesSection({ articles }: { articles: Article[] }) {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-5 gap-3">
+      <div className="mb-6 flex flex-nowrap gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-5 lg:overflow-visible">
         {articlePlatformTabs.map((platform) => {
           const active = activePlatform === platform.title;
 
@@ -303,13 +304,13 @@ function HomeArticlesSection({ articles }: { articles: Article[] }) {
               key={platform.title}
               type="button"
               onClick={() => setActivePlatform(platform.title)}
-              className={`flex h-[76px] items-center justify-center gap-3 rounded-xl border transition-all duration-200 ease-out ${
+              className={`flex h-[76px] min-w-[78px] shrink-0 flex-col-reverse items-center justify-center gap-1 rounded-xl border transition-all duration-200 ease-out lg:min-w-0 lg:flex-row lg:gap-3 ${
                 active
                   ? "border-[#303030] bg-[#333] text-white"
                   : "border-[#edf0f5] bg-white text-[#111] hover:border-[#d7dde8]"
               }`}
             >
-              <span className="relative h-12 w-16">
+              <span className="relative h-7 w-9 lg:h-12 lg:w-16">
                 <Image
                   alt={platform.title}
                   fill
@@ -318,7 +319,7 @@ function HomeArticlesSection({ articles }: { articles: Article[] }) {
                   className="object-contain"
                 />
               </span>
-              <span className="text-lg font-black">{platform.title}</span>
+              <span className="text-[14px] font-black leading-4 lg:text-lg">{platform.title}</span>
             </button>
           );
         })}

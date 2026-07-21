@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { formatPrice } from "../data";
+import { formatPrice, productRoutePath } from "../data";
 import type { Product } from "../data";
 
 export function ProductCard({
@@ -13,7 +13,7 @@ export function ProductCard({
   isPriority?: boolean;
 }) {
   return (
-    <Link href={`/products2/${product.id}`} className="group block w-full" dir="rtl">
+    <Link href={productRoutePath(product)} className="group block w-full" dir="rtl">
       <div className="rounded-xl border border-[#e8ecf1] bg-white p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[#dce3eb] hover:shadow-[0_18px_32px_-28px_rgba(24,35,55,.28)]">
         <div className="relative aspect-square overflow-hidden rounded-xl bg-[#eef2f7]">
           <Image

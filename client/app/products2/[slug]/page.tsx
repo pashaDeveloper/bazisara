@@ -4,16 +4,16 @@ import { getProductDetail } from "../detail-data";
 import { ProductDetailView } from "./detail-view";
 
 export async function generateStaticParams() {
-  return products.map((product) => ({ id: product.id.toString() }));
+  return products.map((product) => ({ slug: product.id.toString() }));
 }
 
 export default async function ProductDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
-  const detail = getProductDetail(Number(id));
+  const { slug } = await params;
+  const detail = getProductDetail(Number(slug));
 
   if (!detail) {
     notFound();

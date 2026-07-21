@@ -11,6 +11,8 @@ import { useCreateGenreMutation, useGetGenresQuery } from "../../services/genreA
 import { useCreateTagMutation, useGetTagsQuery } from "../../services/tagApi";
 import {
   useCreateGameMutation,
+  useFetchPlayStationTrophiesMutation,
+  useFetchXboxAchievementsMutation,
   useGetGameQuery,
   useGetGamesQuery,
   useImportGameScoresMutation,
@@ -93,6 +95,7 @@ const initialForm = {
   sonyScore: "",
   steamScore: "",
   xboxScore: "",
+  playstationNpCommunicationId: "",
   isFeatured: false,
   socialLinks: [],
   trailerVideo: null,
@@ -109,6 +112,14 @@ const isFile = (value) => value instanceof File;
 
 const isMediaObject = (value) => Boolean(value && typeof value === "object" && !(value instanceof File) && value.url);
 const deletedMediaValue = "__delete__";
+
+const normalizeNpCommunicationId = (value) => {
+  const match = String(value || "")
+    .trim()
+    .toUpperCase()
+    .match(/NPWR[-_\s]?(\d{5,})(?:[-_\s]?(\d{2}))?/);
+  return match ? `NPWR${match[1]}_${match[2] || "00"}` : "";
+};
 
 const normalizeOfflinePlayers = (value) => {
   const items = Array.isArray(value) ? value : value ? [value] : [];
@@ -472,6 +483,25 @@ function GameForm({ mode = "create" }) {
   const [activePreviewTab, setActivePreviewTab] = useState("form");
   const [isSlugTouched, setIsSlugTouched] = useState(false);
   const [scoreImportState, setScoreImportState] = useState({ message: "", status: "idle", title: "" });
+  const [xboxAchievementsState, setXboxAchievementsState] = useState({
+    achievements: [],
+    message: "",
+    sourceTitle: "",
+    status: "idle",
+    title: "",
+    titleId: "",
+    total: 0,
+  });
+  const [playStationTrophiesState, setPlayStationTrophiesState] = useState({
+    achievements: [],
+    message: "",
+    npCommunicationId: "",
+    platform: "",
+    sourceTitle: "",
+    status: "idle",
+    title: "",
+    total: 0,
+  });
   const [quickCreate, setQuickCreate] = useState(null);
   const [quickCreateForm, setQuickCreateForm] = useState(quickCreateInitialValues);
   const [quickCreateImagePreview, setQuickCreateImagePreview] = useState("");
@@ -509,6 +539,8 @@ function GameForm({ mode = "create" }) {
   const [createGame, createState] = useCreateGameMutation();
   const [updateGame, updateState] = useUpdateGameMutation();
   const [importGameScores] = useImportGameScoresMutation();
+  const [fetchXboxAchievements] = useFetchXboxAchievementsMutation();
+  const [fetchPlayStationTrophies] = useFetchPlayStationTrophiesMutation();
   const [translateGameIntro] = useTranslateGameIntroMutation();
   const [translateSearchTitleSlug] = useTranslateGameSearchTitleSlugMutation();
 
@@ -565,6 +597,138 @@ function GameForm({ mode = "create" }) {
 
     return () => window.clearTimeout(timer);
   }, [form.title, importGameScores, scoreImportState.status, scoreImportState.title]);
+
+  useEffect(() => {
+    const title = String(form.title || "").trim();
+    if (title.length < 3) {
+      setXboxAchievementsState((prev) =>
+        prev.status === "idle"
+          ? prev
+          : { achievements: [], message: "", sourceTitle: "", status: "idle", title: "", titleId: "", total: 0 }
+      );
+      return undefined;
+    }
+
+    if (xboxAchievementsState.title === title && xboxAchievementsState.status !== "idle") {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setXboxAchievementsState((prev) => ({
+        ...prev,
+        achievements: [],
+        message: "در حال دریافت تروفی‌های Xbox...",
+        sourceTitle: "",
+        status: "loading",
+        title,
+        titleId: "",
+        total: 0,
+      }));
+
+      try {
+        const response = await fetchXboxAchievements({ title }).unwrap();
+        const data = response?.data || {};
+        const achievements = Array.isArray(data.achievements) ? data.achievements : [];
+
+        setXboxAchievementsState({
+          achievements,
+          message: achievements.length ? `${achievements.length} تروفی دریافت شد` : "برای این عنوان تروفی پیدا نشد",
+          sourceTitle: data.sourceTitle || "",
+          status: achievements.length ? "success" : "error",
+          title,
+          titleId: data.titleId || "",
+          total: data.total || achievements.length || 0,
+        });
+      } catch (error) {
+        setXboxAchievementsState({
+          achievements: [],
+          message: error?.data?.description || "دریافت تروفی‌های Xbox انجام نشد",
+          sourceTitle: "",
+          status: "error",
+          title,
+          titleId: "",
+          total: 0,
+        });
+      }
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchXboxAchievements, form.title, xboxAchievementsState.status, xboxAchievementsState.title]);
+
+  useEffect(() => {
+    const title = String(form.title || "").trim();
+    const npCommunicationId = normalizeNpCommunicationId(form.playstationNpCommunicationId);
+    if (title.length < 3 && !npCommunicationId) {
+      setPlayStationTrophiesState((prev) =>
+        prev.status === "idle"
+          ? prev
+          : { achievements: [], message: "", npCommunicationId: "", platform: "", sourceTitle: "", status: "idle", title: "", total: 0 }
+      );
+      return undefined;
+    }
+
+    if (
+      playStationTrophiesState.title === title &&
+      playStationTrophiesState.npCommunicationId === npCommunicationId &&
+      playStationTrophiesState.status !== "idle"
+    ) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setPlayStationTrophiesState((prev) => ({
+        ...prev,
+        achievements: [],
+        message: "در حال دریافت تروفی‌های PlayStation...",
+        npCommunicationId,
+        platform: "",
+        sourceTitle: "",
+        status: "loading",
+        title,
+        total: 0,
+      }));
+
+      try {
+        const response = await fetchPlayStationTrophies({
+          npCommunicationId,
+          title,
+        }).unwrap();
+        const data = response?.data || {};
+        const achievements = Array.isArray(data.trophies) ? data.trophies : [];
+
+        setPlayStationTrophiesState({
+          achievements,
+          message: achievements.length ? `${achievements.length} تروفی دریافت شد` : "برای این عنوان تروفی پیدا نشد",
+          npCommunicationId: data.npCommunicationId || "",
+          platform: data.platform || "",
+          sourceTitle: data.sourceTitle || "",
+          status: achievements.length ? "success" : "error",
+          title,
+          total: data.total || achievements.length || 0,
+        });
+      } catch (error) {
+        setPlayStationTrophiesState({
+          achievements: [],
+          message: error?.data?.description || "دریافت تروفی‌های PlayStation انجام نشد",
+          npCommunicationId: "",
+          platform: "",
+          sourceTitle: "",
+          status: "error",
+          title,
+          total: 0,
+        });
+      }
+    }, 1400);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchPlayStationTrophies,
+    form.playstationNpCommunicationId,
+    form.title,
+    playStationTrophiesState.npCommunicationId,
+    playStationTrophiesState.status,
+    playStationTrophiesState.title,
+  ]);
 
   const categories = categoriesData?.data || [];
   const genres = genresData?.data || [];
@@ -666,7 +830,15 @@ function GameForm({ mode = "create" }) {
         ? game.extraEditions.map((item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             versionSize: String(item?.versionSize || "").trim(),
-            price: item?.price ?? "",
+            items: Array.isArray(item?.items)
+              ? item.items.map((entry) => ({
+                  platform: entry?.platform?._id || entry?.platform || "",
+                  capacityType: String(entry?.capacityType || "").trim(),
+                  price: entry?.price ?? "",
+                  discountPercent: entry?.discountPercent ?? "",
+                  discountedPrice: entry?.discountedPrice ?? "",
+                }))
+              : [],
             image: item?.image?.url ? item.image : item?.image || "",
           }))
         : [],
@@ -681,6 +853,7 @@ function GameForm({ mode = "create" }) {
       sonyScore: game.sonyScore ?? "",
       steamScore: game.steamScore ?? "",
       xboxScore: game.xboxScore ?? "",
+      playstationNpCommunicationId: game.playstationNpCommunicationId || "",
       isFeatured: Boolean(game.isFeatured),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
@@ -1226,7 +1399,14 @@ function GameForm({ mode = "create" }) {
         const extraPayload = (value || []).map((item) => ({
           title: String(item?.title || "").trim(),
           versionSize: String(item?.versionSize || "").trim(),
-          price: item?.price ?? "",
+          items: Array.isArray(item?.items)
+            ? item.items.map((entry) => ({
+                platform: entry?.platform || "",
+                capacityType: String(entry?.capacityType || "").trim(),
+                price: entry?.price ?? "",
+                discountPercent: entry?.discountPercent ?? "",
+              }))
+            : [],
           image: isMediaObject(item?.image) ? item.image : typeof item?.image === "string" ? item.image : item?.image?.url || "",
         }));
         formData.append("extraEditions", JSON.stringify(extraPayload));
@@ -1295,6 +1475,8 @@ function GameForm({ mode = "create" }) {
             setForm={setForm}
             translateGameIntro={translateGameIntro}
             translateSearchTitleSlug={translateSearchTitleSlug}
+            playStationTrophiesState={playStationTrophiesState}
+            xboxAchievementsState={xboxAchievementsState}
           />
         );
       case "media":
@@ -1355,7 +1537,7 @@ function GameForm({ mode = "create" }) {
       case "dlc":
         return <DlcStep form={form} imageUploadState={imageUploadState} onDeleteUploadedImage={deleteUploadedImage} onImageUpload={handleImageUpload} setArrayField={setArrayField} />;
       case "editions":
-        return <EditionsStep form={form} imageUploadState={imageUploadState} onDeleteUploadedImage={deleteUploadedImage} onImageUpload={handleImageUpload} setArrayField={setArrayField} />;
+        return <EditionsStep form={form} imageUploadState={imageUploadState} onDeleteUploadedImage={deleteUploadedImage} onImageUpload={handleImageUpload} platformOptions={platformOptions} setArrayField={setArrayField} />;
       case "relatedGames":
         return <RelatedGamesStep form={form} relatedGameOptions={relatedGameOptions} setArrayField={setArrayField} />;
       case "review":

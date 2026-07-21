@@ -50,6 +50,13 @@ top:60px !important;
   color: #18181b;
 }
 
+.page-builder .block-toolbar button,
+.page-builder .block-toolbar button *,
+html.dark .page-builder .block-toolbar button,
+html.dark .page-builder .block-toolbar button * {
+  color: #ffffff !important;
+}
+
 .page-builder input:not([type="file"]),
 .page-builder textarea,
 .page-builder select {
@@ -97,7 +104,22 @@ top:60px !important;
 .page-builder .ck.ck-button,
 .page-builder .ck.ck-button .ck-button__label,
 .page-builder .ck.ck-dropdown .ck-button__label {
-  color: #18181b !important;
+  color: #ffffff !important;
+}
+
+.page-builder .ck.ck-button .ck-icon,
+.page-builder .ck.ck-button .ck-icon *,
+.page-builder .ck.ck-dropdown .ck-button .ck-icon,
+.page-builder .ck.ck-dropdown .ck-button .ck-icon * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.page-builder .ck.ck-button:hover,
+.page-builder .ck.ck-button.ck-on,
+.page-builder .ck.ck-dropdown__button:hover,
+.page-builder .ck.ck-dropdown__button.ck-on {
+  background-color: #334155 !important;
 }
 
 .page-builder .preview-content,
@@ -160,6 +182,14 @@ html.dark .page-builder .ck.ck-button,
 html.dark .page-builder .ck.ck-button .ck-button__label,
 html.dark .page-builder .ck.ck-dropdown .ck-button__label {
   color: #f8fafc !important;
+}
+
+html.dark .page-builder .ck.ck-button .ck-icon,
+html.dark .page-builder .ck.ck-button .ck-icon *,
+html.dark .page-builder .ck.ck-dropdown .ck-button .ck-icon,
+html.dark .page-builder .ck.ck-dropdown .ck-button .ck-icon * {
+  color: #f8fafc !important;
+  fill: #f8fafc !important;
 }
 
 html.dark .page-builder .preview-content,

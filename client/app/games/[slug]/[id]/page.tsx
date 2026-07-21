@@ -1,20 +1,17 @@
 import {
   ArrowLeft,
   ArrowRight,
-  BadgeCheck,
-  Bell,
   Download,
   Filter,
   Gamepad2,
   Heart,
   Home,
   MessageCircle,
-  Package,
+  Play,
   Search,
   Share2,
   ShoppingBag,
   Smile,
-  Star,
   ThumbsDown,
   ThumbsUp,
   UserRound,
@@ -22,9 +19,9 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SkeletonBlock } from "../../../components/cards";
-import { products } from "../../../products2/data";
+import { productRoutePath, products } from "../../../products2/data";
 import type { Game, NamedEntity } from "../../../lib/api";
-import { formatPersianDate, getApiItem, getApiList, mediaUrl } from "../../../lib/api";
+import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +42,13 @@ const reactionItems = [
   { label: "Neutral", icon: Smile },
   { label: "Like", icon: ThumbsUp },
   { label: "Love", icon: Heart },
+];
+
+const gameIconBadges = [
+  { label: "DLC", src: "/games/icons/dlc.svg" },
+  { label: "Steam", src: "/games/icons/steam.svg" },
+  { label: "PlayStation", src: "/games/icons/ps.svg" },
+  { label: "Xbox", src: "/games/icons/xbox.svg" },
 ];
 
 const comments = [
@@ -112,6 +116,14 @@ function joinMixed(values?: unknown[]) {
   return values?.map(mixedLabel).filter(Boolean).join("، ") || "";
 }
 
+function formatGameEditions(game: Game) {
+  const editions = game.extraEditions
+    ?.map((item) => [item.title, item.versionSize].filter(Boolean).join(" - "))
+    .filter(Boolean);
+
+  return editions?.join("، ") || "";
+}
+
 function latinToPersian(value: string | number) {
   return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 }
@@ -148,43 +160,96 @@ function compactValue(value?: string | number | null) {
   return latinToPersian(value);
 }
 
-function IconStat({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: typeof Star;
-  value?: string | number | null;
-  label: string;
-}) {
+function GameIconBadges() {
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1 text-center">
-      <div className="flex items-center gap-1 text-[13px] font-black text-[#15234a]">
-        <Icon className="h-5 w-5 text-[#136ed3]" strokeWidth={2.4} />
-        <span>{compactValue(value)}</span>
-      </div>
-      <span className="text-[11px] font-medium text-[#8a94a7]">{label}</span>
+    <div className="grid grid-cols-4 gap-2" dir="ltr">
+      {gameIconBadges.map((item) => (
+        <div
+          key={item.label}
+          className="flex h-14 min-w-0 items-center justify-center rounded-lg border border-[#e6ebf2] bg-[#f8fafc] px-2 shadow-[0_12px_24px_-22px_rgba(15,23,42,.55)]"
+        >
+          <img src={item.src} alt={item.label} className="h-8 w-8 object-contain" />
+        </div>
+      ))}
     </div>
   );
 }
 
-function PlatformPills({ platforms }: { platforms: string[] }) {
+function formatBadgeScore(value?: number | null) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
+  return new Intl.NumberFormat("fa-IR").format(Number(value));
+}
+
+function HeroCornerBadges({
+  metacriticScore,
+  flush = false,
+}: {
+  metacriticScore?: number | null;
+  flush?: boolean;
+}) {
   return (
-    <div className="flex flex-wrap justify-end gap-2">
-      {(platforms.length ? platforms : ["PS5", "PS4"]).slice(0, 4).map((platform) => (
+    <div
+      className={`absolute z-10 flex items-end gap-1.5 ${
+        flush ? "bottom-0 right-0" : "bottom-5 right-5 lg:bottom-8 lg:right-8"
+      }`}
+      dir="ltr"
+    >
+      <span className="grid h-[58px] w-10 overflow-hidden rounded-lg bg-black/25 text-center text-white  backdrop-blur-md">
+        <span className="flex h-9 items-center justify-center ">
+          <img src="/games/icons/dlc.svg" alt="" className="h-7 w-7 object-contain" />
+        </span>
+        <span className="flex items-center justify-center text-[14px] font-medium leading-none">DLC</span>
+      </span>
+      <span className="grid h-[58px] w-10 overflow-hidden rounded-lg bg-black/25 text-center text-white  backdrop-blur-md">
+        <span className="flex h-9 items-center justify-center">
+          <img src="/games/icons/Metacritic.svg" alt="" className="h-7 w-7 object-contain" />
+        </span>
+        <span className="flex items-center justify-center text-[14px] font-black leading-none">
+          {formatBadgeScore(metacriticScore)}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function PillRow({
+  items,
+  fallback,
+  dir = "rtl",
+}: {
+  items: string[];
+  fallback?: string[];
+  dir?: "rtl" | "ltr";
+}) {
+  const visibleItems = (items.length ? items : fallback || []).slice(0, 4);
+
+  if (!visibleItems.length) return null;
+
+  return (
+    <div className="flex flex-wrap justify-start gap-2">
+      {visibleItems.map((item) => (
         <span
-          key={platform}
-          className="rounded-md border border-[#e6ebf2] bg-[#f6f8fb] px-2 py-1 text-[10px] font-black uppercase text-[#8a92a3]"
-          dir="ltr"
+          key={item}
+          className="rounded-full border border-[#e6ebf2] bg-[#f6f8fb] px-3 py-1 text-[10px] font-black uppercase text-[#8a92a3]"
+          dir={dir}
         >
-          {platform}
+          {item}
         </span>
       ))}
     </div>
   );
 }
 
-function HeroActions() {
+function DetailPills({ platforms, keywords }: { platforms: string[]; keywords: string[] }) {
+  return (
+    <div className="grid gap-2">
+      <PillRow items={platforms} fallback={["PS5", "PS4"]} dir="ltr" />
+      <PillRow items={keywords} />
+    </div>
+  );
+}
+
+function HeroActions({ trailerUrl }: { trailerUrl?: string }) {
   return (
     <div className="grid grid-cols-2 gap-3" dir="ltr">
       <button
@@ -192,23 +257,31 @@ function HeroActions() {
         className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[#ff3f68] px-2 text-[12px] font-black text-white shadow-[0_10px_22px_-16px_rgba(255,63,104,.75)] sm:text-[13px]"
         dir="rtl"
       >
-        <ShoppingBag className="h-4 w-4" />
-        خرید و فروش طلا
-      </button>
-      <button
-        type="button"
-        className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[#ff3f68] px-2 text-[12px] font-black text-white shadow-[0_10px_22px_-16px_rgba(255,63,104,.75)] sm:text-[13px]"
-        dir="rtl"
-      >
         <Download className="h-4 w-4" />
-        دانلود و نصب یالو
+        دانلود بازی
       </button>
+      <a
+        href={trailerUrl || "#"}
+        aria-disabled={!trailerUrl}
+        className={`flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-[12px] font-black shadow-[0_10px_22px_-16px_rgba(21,35,74,.55)] sm:text-[13px] ${
+          trailerUrl
+            ? "bg-[#ff3f68] text-white shadow-[0_10px_22px_-16px_rgba(255,63,104,.75)]"
+            : "pointer-events-none bg-[#d8dee8] text-[#748094]"
+        }`}
+        dir="rtl"
+        target={trailerUrl ? "_blank" : undefined}
+        rel={trailerUrl ? "noreferrer" : undefined}
+      >
+        <Play className="h-4 w-4" />
+        تماشای تریلر
+      </a>
     </div>
   );
 }
 
-function DesktopHero({ game, platforms }: { game: Game; platforms: string[] }) {
+function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: string[]; keywords: string[] }) {
   const heroImage = gameImage(game, "desktop");
+  const trailerUrl = mediaUrl(game.trailerVideo);
 
   return (
     <section className="relative hidden h-[480px] overflow-hidden bg-[#dbe5ed] lg:block" dir="ltr">
@@ -222,15 +295,14 @@ function DesktopHero({ game, platforms }: { game: Game; platforms: string[] }) {
 
       <div className="mx-auto flex h-full max-w-[1440px] items-center px-5">
         <div className="w-[392px] rounded-xl border border-white/75 bg-white/92 p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)] backdrop-blur" dir="rtl">
-          <h1 className="line-clamp-2 text-[21px] font-black leading-8 text-[#29467c]">{game.title}</h1>
-          <div className="mt-5 grid grid-cols-3 gap-4">
-            <IconStat icon={ShoppingBag} value="۴.۵" label="رای ۱۷" />
-            <IconStat icon={Package} value="۳.۹" label="رای ۱۲,۴۰۱" />
-            <IconStat icon={BadgeCheck} value="۴.۹" label="رای ۱۸,۱۷۵" />
+          <h1 className="line-clamp-2 text-left text-[21px] font-black leading-8 text-[#29467c]" dir="ltr">
+            {game.title}
+          </h1>
+          <div className="mt-5">
+            <GameIconBadges />
           </div>
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <PlatformPills platforms={platforms} />
-            <span className="rounded-full bg-[#f4f6fa] px-3 py-1.5 text-[11px] font-bold text-[#586275]">اکشن</span>
+          <div className="mt-4">
+            <DetailPills platforms={platforms} keywords={keywords} />
           </div>
           <div className="mt-8 text-[12px] font-bold text-[#30384d]">محتوای همه</div>
           <div className="mt-3 grid grid-cols-4 gap-2">
@@ -239,26 +311,19 @@ function DesktopHero({ game, platforms }: { game: Game; platforms: string[] }) {
             ))}
           </div>
           <div className="mt-5">
-            <HeroActions />
+            <HeroActions trailerUrl={trailerUrl} />
           </div>
         </div>
       </div>
 
-      <div className="absolute bottom-8 right-8 flex gap-2">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/70 text-[#2e477d] backdrop-blur">
-          DLC
-        </span>
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1f2937]/85 text-white backdrop-blur">
-          <Bell className="h-5 w-5 text-[#f5d34d]" />
-        </span>
-      </div>
+      <HeroCornerBadges metacriticScore={game.metacriticScore} />
     </section>
   );
 }
 
-function MobileHero({ game, platforms }: { game: Game; platforms: string[] }) {
+function MobileHero({ game, platforms, keywords }: { game: Game; platforms: string[]; keywords: string[] }) {
   const heroImage = gameImage(game, "mobile") || gameImage(game, "desktop");
-  const tags = game.genres?.map(entityLabel).filter(Boolean).slice(0, 3) || [];
+  const trailerUrl = mediaUrl(game.trailerVideo);
 
   return (
     <section className="lg:hidden" dir="rtl">
@@ -275,22 +340,15 @@ function MobileHero({ game, platforms }: { game: Game; platforms: string[] }) {
 
       <div className="relative overflow-hidden bg-[#f2f5f8] px-5 pb-5 pt-3">
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="relative mx-auto aspect-square max-w-[360px] overflow-hidden rounded-full bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
+        <div className="relative mx-auto aspect-[4/3] w-full max-w-[360px] overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
-            <img alt={game.title} className="h-full w-full object-cover" src={heroImage} />
+            <img alt={game.title} className="h-full w-full object-contain" src={heroImage} />
           ) : (
-            <SkeletonBlock className="h-full w-full rounded-full" />
+            <SkeletonBlock className="h-full w-full rounded-none" />
           )}
+          <HeroCornerBadges metacriticScore={game.metacriticScore} flush />
         </div>
-        <div className="absolute bottom-5 left-5 flex gap-1">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/80 text-[10px] font-black text-[#324366] shadow-sm">
-            DLC
-          </span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#232a37]/85 text-white shadow-sm">
-            <Bell className="h-4 w-4 text-[#f5d34d]" />
-          </span>
-        </div>
-        <div className="absolute bottom-5 right-5">
+        <div className="absolute bottom-5 left-5">
           <button type="button" className="rounded-lg bg-[#ff3f68] px-4 py-2 text-[10px] font-black text-white">
             خبرم کن
           </button>
@@ -306,23 +364,14 @@ function MobileHero({ game, platforms }: { game: Game; platforms: string[] }) {
         <h1 className="break-words pt-4 text-left text-[24px] font-black leading-8 text-[#2b477d]" dir="ltr">
           {game.title}
         </h1>
-        <div className="mt-5 grid grid-cols-3 gap-3" dir="ltr">
-          <IconStat icon={ShoppingBag} value="۴.۵" label="رای ۱۷" />
-          <IconStat icon={Package} value="۳.۹" label="رای ۱۲,۴۰۱" />
-          <IconStat icon={BadgeCheck} value="۴.۹" label="رای ۱۸,۱۷۵" />
+        <div className="mt-5">
+          <GameIconBadges />
         </div>
         <div className="mt-4 flex justify-end">
-          <PlatformPills platforms={platforms} />
-        </div>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          {(tags.length ? tags : ["ماجراجویی", "ریسینگ", "اکشن"]).map((tag) => (
-            <span key={tag} className="rounded-full border border-[#edf0f5] bg-[#f9fafc] px-4 py-2 text-[12px] font-bold text-[#667086]">
-              {tag}
-            </span>
-          ))}
+          <DetailPills platforms={platforms} keywords={keywords} />
         </div>
         <div className="mt-5">
-          <HeroActions />
+          <HeroActions trailerUrl={trailerUrl} />
         </div>
       </div>
     </section>
@@ -382,7 +431,7 @@ function TabsBar({ active = "معرفی" }: { active?: string }) {
   ];
 
   return (
-    <nav className="sticky top-12 z-10 flex justify-start gap-8 overflow-x-auto border-y border-[#edf1f6] bg-white px-4 text-[13px] font-bold text-[#7c8598] lg:top-0 lg:mx-auto lg:max-w-[1440px] lg:rounded-xl lg:border lg:px-8" dir="rtl">
+    <nav className="sticky top-12 mt-4 z-10 flex justify-start gap-8 overflow-x-auto border-y border-[#edf1f6] bg-white px-4 text-[13px] font-bold text-[#7c8598] lg:top-0 lg:mx-auto lg:max-w-[1440px] lg:rounded-xl lg:border lg:px-8" dir="rtl">
       {tabs.map((tab) => (
         <a
           key={tab.label}
@@ -422,7 +471,7 @@ function ProductRail() {
         {related.map((product) => (
           <Link
             key={product.id}
-            href={`/products2/${product.id}`}
+            href={productRoutePath(product)}
             className="w-[150px] shrink-0 rounded-lg border border-[#e4e9f1] bg-white p-3 shadow-[0_14px_30px_-28px_rgba(15,23,42,.45)] lg:w-[180px]"
           >
             <div className="relative mx-auto aspect-square w-full">
@@ -447,11 +496,12 @@ function GameRail({ title, games }: { title: string; games: Game[] }) {
       <h2 className="mb-4 text-[15px] font-black text-[#29467c]">{title}</h2>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {games.slice(0, 8).map((item) => {
+          const routeId = gameRouteId(item);
           const image = gameImage(item, "card");
           return (
             <Link
               key={item._id}
-              href={`/games/${slugify(item.slug || item.title) || item._id}/${item._id}`}
+              href={`/games/${slugify(item.slug || item.title) || routeId}/${routeId}`}
               className="w-[150px] shrink-0 rounded-lg border border-[#e4e9f1] bg-white p-3 shadow-[0_14px_30px_-28px_rgba(15,23,42,.45)] lg:w-[180px]"
               dir="ltr"
             >
@@ -583,6 +633,7 @@ export default async function GameDetailPage({ params }: PageProps) {
 
   const description = stripHtml(game.description) || game.shortDescription || "";
   const platforms = game.platforms?.map(entityLabel).filter(Boolean) || [];
+  const keywords = game.gameKeywords?.map(entityLabel).filter(Boolean) || [];
   const genres = game.showGenresInCategories ? "" : game.genres?.map(entityLabel).filter(Boolean).join("، ") || "";
   const platformSizes = game.platformSizes
     ?.map((item) => {
@@ -591,6 +642,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     })
     .filter(Boolean)
     .join("، ");
+  const extraEditions = formatGameEditions(game);
   const relatedGames =
     game.relatedGames?.length
       ? game.relatedGames
@@ -613,12 +665,13 @@ export default async function GameDetailPage({ params }: PageProps) {
     { label: "زبان‌ها", value: joinText(game.languages) },
     { label: "ریجن", value: joinText(game.regions) },
     { label: "حجم نسخه‌ها", value: platformSizes },
+    { label: "نسخه‌های بازی", value: extraEditions },
   ].filter((item) => item.value !== "");
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f6f8fb] pb-16 text-zinc-950 lg:pb-0" dir="ltr">
-      <DesktopHero game={game} platforms={platforms} />
-      <MobileHero game={game} platforms={platforms} />
+      <DesktopHero game={game} platforms={platforms} keywords={keywords} />
+      <MobileHero game={game} platforms={platforms} keywords={keywords} />
 
       <main dir="rtl">
         <TabsBar />

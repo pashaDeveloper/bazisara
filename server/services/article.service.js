@@ -235,8 +235,18 @@ function normalizeFaqs(value) {
     .map((item) => ({
       question: String(item?.question || "").trim(),
       answer: String(item?.answer || "").trim(),
+      media: Array.isArray(item?.media)
+        ? item.media
+            .map((media) => ({
+              url: String(media?.url || "").trim(),
+              public_id: String(media?.public_id || "").trim(),
+              storage: String(media?.storage || "").trim(),
+              type: String(media?.type || "image").trim() === "video" ? "video" : "image",
+            }))
+            .filter((media) => media.url)
+        : [],
     }))
-    .filter((item) => item.question || item.answer);
+    .filter((item) => item.question || item.answer || item.media.length);
 }
 
 function normalizeDate(value) {
@@ -261,6 +271,19 @@ function buildMedia(file) {
   };
 }
 
+function parseMediaValue(value) {
+  if (value === undefined) return undefined;
+  if (!value || value === "__delete__") return { url: "", public_id: "", storage: "" };
+  if (typeof value === "object") return value?.url ? value : undefined;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed?.url ? parsed : undefined;
+  } catch (_) {
+    return undefined;
+  }
+}
+
 function normalizeArticlePayload(body, uploadedFiles) {
   const title = body.title !== undefined ? String(body.title).trim() : undefined;
   const slugSource = body.slug !== undefined ? body.slug : title;
@@ -278,6 +301,7 @@ function normalizeArticlePayload(body, uploadedFiles) {
           ? null
           : undefined,
     tags: normalizeObjectIds(body.tags),
+    platforms: normalizeObjectIds(body.platforms),
     relatedGames: normalizeObjectIds(body.relatedGames),
     faqs: normalizeFaqs(body.faqs),
     seoTitle: body.seoTitle !== undefined ? String(body.seoTitle).trim() : undefined,
@@ -290,10 +314,22 @@ function normalizeArticlePayload(body, uploadedFiles) {
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
+  else {
+    const media = parseMediaValue(body.cover);
+    if (media !== undefined) payload.cover = media;
+  }
   const cardCover = buildMedia(uploadedFiles?.cardCover?.[0]);
   if (cardCover) payload.cardCover = cardCover;
+  else {
+    const media = parseMediaValue(body.cardCover);
+    if (media !== undefined) payload.cardCover = media;
+  }
   const contentCover = buildMedia(uploadedFiles?.contentCover?.[0]);
   if (contentCover) payload.contentCover = contentCover;
+  else {
+    const media = parseMediaValue(body.contentCover);
+    if (media !== undefined) payload.contentCover = media;
+  }
   if (!body._keepStatus) payload.status = payload.status || "active";
 
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
@@ -325,7 +361,18 @@ function populateArticle(query) {
     })
     .populate("creator", "name email avatar")
     .populate("tags", "name slug")
-    .populate("relatedGames", "title slug cover");
+    .populate("platforms", "name name_fa name_en slug image")
+    .populate("relatedGames", "gameId title slug cover");
+}
+
+function articleIdentityFilter(id) {
+  const value = String(id || "").trim();
+  const filters = [];
+  if (/^\d+$/.test(value)) filters.push({ magazineId: Number(value) });
+  if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
+  if (filters.length > 1) return { $or: filters };
+  if (filters.length === 1) return filters[0];
+  return null;
 }
 
 exports.generateArticleSlug = async (req, res) => {
@@ -438,8 +485,9 @@ exports.getArticles = async (req, res) => {
 
 exports.getArticle = async (req, res) => {
   const { id } = req.params;
+  const identityFilter = articleIdentityFilter(id);
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!identityFilter) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -449,7 +497,7 @@ exports.getArticle = async (req, res) => {
 
   const article = await populateArticle(
     Article.findOne({
-      _id: id,
+      ...identityFilter,
       isDeleted: false,
       ...(req.adminRecord ? {} : { status: { $in: ["active", "pending"] } }),
     })
@@ -473,8 +521,9 @@ exports.getArticle = async (req, res) => {
 
 exports.updateArticle = async (req, res) => {
   const { id } = req.params;
+  const identityFilter = articleIdentityFilter(id);
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!identityFilter) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -482,7 +531,7 @@ exports.updateArticle = async (req, res) => {
     });
   }
 
-  const article = await Article.findOne({ _id: id, isDeleted: false });
+  const article = await Article.findOne({ ...identityFilter, isDeleted: false });
   if (!article) {
     return res.status(404).json({
       acknowledgement: false,
@@ -493,7 +542,7 @@ exports.updateArticle = async (req, res) => {
 
   const payload = normalizeArticlePayload({ ...req.body, _keepStatus: true }, req.uploadedFiles);
 
-  if (payload.slug && (await articleSlugExists(payload.slug, id))) {
+  if (payload.slug && (await articleSlugExists(payload.slug, article._id))) {
     return res.status(409).json({
       acknowledgement: false,
       message: "Conflict",
@@ -515,8 +564,9 @@ exports.updateArticle = async (req, res) => {
 
 exports.deleteArticle = async (req, res) => {
   const { id } = req.params;
+  const identityFilter = articleIdentityFilter(id);
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!identityFilter) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -525,7 +575,7 @@ exports.deleteArticle = async (req, res) => {
   }
 
   const article = await Article.findOneAndUpdate(
-    { _id: id, isDeleted: false },
+    { ...identityFilter, isDeleted: false },
     { isDeleted: true, deletedAt: Date.now(), status: "inactive" },
     { new: true }
   );

@@ -37,6 +37,8 @@ function normalizeSliderPayload(body, uploadedFiles) {
 
   const image = buildMedia(uploadedFiles?.image?.[0]);
   if (image) payload.image = image;
+  const mobileImage = buildMedia(uploadedFiles?.mobileImage?.[0]);
+  if (mobileImage) payload.mobileImage = mobileImage;
   payload.status = "pending";
 
   return Object.fromEntries(

@@ -42,6 +42,122 @@ function QuickCreateField({ children, label, onCreate }) {
   );
 }
 
+function splitListValue(value) {
+  return String(value || "")
+    .split(/[،,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function joinListValue(items) {
+  return items.map((item) => String(item || "").trim()).filter(Boolean).join("، ");
+}
+
+function ListTextField({ label, name, onChange, placeholder, value }) {
+  const [draft, setDraft] = React.useState("");
+  const [isOpen, setIsOpen] = React.useState(false);
+  const rootRef = React.useRef(null);
+  const items = splitListValue(value);
+
+  const emit = (nextItems) => onChange?.(joinListValue(nextItems));
+
+  const addDraft = () => {
+    const nextValue = draft.trim();
+    if (!nextValue) return;
+    emit([...items, nextValue]);
+    setDraft("");
+    setIsOpen(true);
+  };
+
+  const removeItem = (index) => {
+    emit(items.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  React.useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setIsOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
+  return (
+    <div className="relative flex flex-col gap-y-1" ref={rootRef}>
+      <span className="text-sm text-zinc-700 dark:text-gray-100">{label}</span>
+      <div className="relative">
+        <button
+          aria-label={`باز کردن ${label}`}
+          className="absolute right-0 top-0 z-10 flex h-full w-12 items-center justify-center rounded-r-primary rounded-l-none border border-l border-gray-300 bg-gray-200 text-gray-700 shadow-sm transition hover:bg-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
+          onClick={() => setIsOpen((current) => !current)}
+          type="button"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+        <input
+          className="h-10 w-full cursor-default border bg-white py-2 pl-3 pr-14 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
+          name={name}
+          onClick={() => setIsOpen(true)}
+          placeholder={placeholder || label}
+          readOnly
+          value={items.length ? items.join("، ") : ""}
+        />
+      </div>
+      {isOpen ? (
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-gray-600 dark:bg-[#08243d]">
+          <div className="max-h-44 space-y-1 overflow-y-auto">
+            {items.length ? (
+              items.map((item, index) => (
+                <div
+                  className="flex min-h-9 items-center justify-between gap-2 rounded-lg bg-zinc-50 px-2 text-sm text-zinc-800 dark:bg-gray-800 dark:text-gray-100"
+                  key={`${name}-dropdown-item-${index}-${item}`}
+                >
+                  <span className="min-w-0 flex-1 truncate">{item}</span>
+                  <button
+                    aria-label="حذف مورد"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-red-100 hover:text-red-600 dark:text-gray-300 dark:hover:bg-red-950"
+                    onClick={() => removeItem(index)}
+                    type="button"
+                  >
+                    <Trash className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg bg-zinc-50 px-2 py-2 text-xs text-zinc-500 dark:bg-gray-800 dark:text-gray-300">
+                موردی ثبت نشده است
+              </div>
+            )}
+          </div>
+          <div className="mt-2 flex gap-2 border-t border-zinc-100 pt-2 dark:border-gray-700">
+            <input
+              autoFocus
+              className="h-9 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-400 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100"
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addDraft();
+                }
+              }}
+              placeholder={placeholder || label}
+              value={draft}
+            />
+            <button
+              aria-label={`افزودن ${label}`}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-gray-100 text-zinc-700 transition hover:border-green-500 hover:text-green-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              onClick={addDraft}
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function formatFileSize(size) {
   const value = Number(size || 0);
   if (!value) return "";
@@ -97,6 +213,91 @@ function XboxIcon({ className = "" }) {
       <path d="M6.7 6.8c2.2.5 4 1.8 5.3 3.7c1.3-1.9 3.1-3.2 5.3-3.7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
       <path d="M7.4 17.3c1.2-2 2.8-3.8 4.6-5.2c1.8 1.4 3.4 3.2 4.6 5.2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
     </svg>
+  );
+}
+
+function PlatformTrophiesPreview({ platform = "xbox", state }) {
+  const achievements = Array.isArray(state?.achievements) ? state.achievements : [];
+  const visibleAchievements = achievements.slice(0, 12);
+  const isPlayStation = platform === "playstation";
+  const Icon = isPlayStation ? PlayStationIcon : XboxIcon;
+  const label = isPlayStation ? "تروفی‌های PlayStation" : "تروفی‌های Xbox";
+  const badgeClassName = isPlayStation ? "bg-blue-600 text-white" : "bg-emerald-600 text-white";
+  const fallbackIconClassName = isPlayStation ? "text-blue-600" : "text-emerald-600";
+  const meta = isPlayStation
+    ? [state?.sourceTitle, state?.platform, state?.npCommunicationId ? `NP: ${state.npCommunicationId}` : ""]
+    : [state?.sourceTitle, state?.titleId ? `Title ID: ${state.titleId}` : ""];
+  const statusClassName =
+    state?.status === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : state?.status === "error"
+        ? "text-red-500"
+        : "text-zinc-500";
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-black sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${badgeClassName}`}>
+            <Icon className="h-5 w-5 !text-white" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100">{label}</div>
+            {meta.some(Boolean) ? (
+              <div className="truncate text-[11px] text-zinc-500" dir="ltr">
+                {meta.filter(Boolean).join(" · ")}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {state?.total ? (
+          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+            {state.total}
+          </span>
+        ) : null}
+      </div>
+
+      {state?.message ? <p className={`mt-3 text-xs ${statusClassName}`}>{state.message}</p> : null}
+
+      {state?.status === "loading" ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="h-16 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-900" />
+          ))}
+        </div>
+      ) : null}
+
+      {visibleAchievements.length ? (
+        <div className="mt-3 grid max-h-80 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+          {visibleAchievements.map((item) => (
+            <div key={item.id || item.name} className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-zinc-100 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-zinc-900">
+                {item.icon ? (
+                  <img alt="" className="h-full w-full object-cover" src={item.icon} />
+                ) : (
+                  <Icon className={`h-5 w-5 ${fallbackIconClassName}`} />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-bold text-zinc-800 dark:text-zinc-100" dir="ltr">{item.name || (isPlayStation ? "Trophy" : "Achievement")}</div>
+                {item.description ? (
+                  <div className="mt-1 line-clamp-1 text-[11px] text-zinc-500" dir="ltr">{item.description}</div>
+                ) : null}
+              </div>
+              {item.gamerscore !== null && item.gamerscore !== undefined ? (
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                  {item.gamerscore}G
+                </span>
+              ) : item.type ? (
+                <span className="rounded-full bg-blue-100 px-2 py-1 text-[11px] font-bold capitalize text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                  {item.type}
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -196,10 +397,10 @@ function ObjectRowsEditor({ columns, items = [], onChange, onCreatePlatform, tit
               placeholder={columns[1].placeholder}
               value={item.variant}
             />
-            <TextField
+            <ListTextField
               label={columns[2].label}
               name={`${title}-size-${index}`}
-              onChange={(event) => updateItem(index, { size: event.target.value })}
+              onChange={(value) => updateItem(index, { size: value })}
               placeholder={columns[2].placeholder}
               value={item.size}
             />
@@ -356,11 +557,11 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
                 options={typeOptions}
                 value={item.type}
               />
-              <TextField
-                label="حجم نسخه"
+              <ListTextField
+                label="عناوین"
                 name={`${title}-versionSize-${index}`}
-                onChange={(event) => updateItem(index, { versionSize: event.target.value })}
-                placeholder="مثلا 12 GB"
+                onChange={(value) => updateItem(index, { versionSize: value })}
+                placeholder="عنوان را وارد کنید"
                 value={item.versionSize}
               />
               <InlineImageUploadButton
@@ -392,8 +593,16 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
   );
 }
 
-function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUploadedImage, onImageUpload, title }) {
-  const rows = items.length ? items : [{ title: "", versionSize: "", price: "", image: "" }];
+function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUploadedImage, onImageUpload, platformOptions = [], title }) {
+  const rows = items.length ? items : [{ title: "", versionSize: "", items: [], image: "" }];
+  const [selectedIndexes, setSelectedIndexes] = React.useState([]);
+  const [modalIndex, setModalIndex] = React.useState(null);
+  const [itemDraft, setItemDraft] = React.useState({
+    capacityType: "",
+    discountPercent: "",
+    platform: "",
+    price: "",
+  });
 
   const updateItem = (index, patch) => {
     const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
@@ -402,14 +611,49 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
         (item) =>
           String(item.title || "").trim() ||
           String(item.versionSize || "").trim() ||
-          String(item.price || "").trim() ||
+          (Array.isArray(item.items) && item.items.length) ||
           item.image
       )
     );
   };
 
-  const addItem = () => onChange?.([...rows, { title: "", versionSize: "", price: "", image: "" }]);
-  const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
+  const addItem = () => onChange?.([...rows, { title: "", versionSize: "", items: [], image: "" }]);
+  const removeItem = (index) => {
+    setSelectedIndexes([]);
+    onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
+  };
+  const toggleSelectedIndex = (index) => {
+    setSelectedIndexes((current) =>
+      current.includes(index) ? current.filter((item) => item !== index) : [...current, index]
+    );
+  };
+  const discountedPrice = (() => {
+    const price = Number(itemDraft.price || 0);
+    const discount = Math.max(0, Math.min(100, Number(itemDraft.discountPercent || 0)));
+    if (!Number.isFinite(price) || price <= 0) return "";
+    return Math.max(0, Math.round(price - (price * discount) / 100));
+  })();
+
+  const openModal = (index) => {
+    setModalIndex(index);
+    setItemDraft({ capacityType: "", discountPercent: "", platform: "", price: "" });
+  };
+
+  const addEditionItem = () => {
+    if (modalIndex === null) return;
+    const nextEntry = {
+      ...itemDraft,
+      discountedPrice,
+    };
+    const currentItems = Array.isArray(rows[modalIndex]?.items) ? rows[modalIndex].items : [];
+    updateItem(modalIndex, { items: [...currentItems, nextEntry] });
+    setModalIndex(null);
+  };
+
+  const removeEditionItem = (editionIndex, itemIndex) => {
+    const currentItems = Array.isArray(rows[editionIndex]?.items) ? rows[editionIndex].items : [];
+    updateItem(editionIndex, { items: currentItems.filter((_, index) => index !== itemIndex) });
+  };
 
   return (
     <div className="space-y-3  p-4">
@@ -426,7 +670,25 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
       <div className="space-y-3">
         {rows.map((item, index) => (
           <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4" key={`${title}-${index}`}>
-            <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
+            <div className="flex items-center gap-2">
+              <button
+                aria-label="انتخاب نسخه"
+                className={`h-5 w-5 rounded-full border transition ${selectedIndexes.includes(index) ? "border-green-500 bg-green-500" : "border-zinc-300 bg-white dark:border-zinc-700 dark:bg-black"}`}
+                onClick={() => toggleSelectedIndex(index)}
+                type="button"
+              />
+              {selectedIndexes.includes(index) ? (
+                <button
+                  aria-label="افزودن مورد نسخه"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-green-600 bg-green-50 text-green-700 transition hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
+                  onClick={() => openModal(index)}
+                  type="button"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
               <TextField
                 label="خلاصه"
                 name={`${title}-title-${index}`}
@@ -434,20 +696,12 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                 placeholder="مثلا Deluxe Edition"
                 value={item.title}
               />
-              <TextField
-                label="حجم نسخه"
+              <ListTextField
+                label="عناوین"
                 name={`${title}-versionSize-${index}`}
-                onChange={(event) => updateItem(index, { versionSize: event.target.value })}
-                placeholder="مثلا 12 GB"
+                onChange={(value) => updateItem(index, { versionSize: value })}
+                placeholder="عنوان را وارد کنید"
                 value={item.versionSize}
-              />
-              <TextField
-                label="سازنده‌ها"
-                name={`${title}-price-${index}`}
-                onChange={(event) => updateItem(index, { price: event.target.value })}
-                placeholder="مثلا 250000"
-                type="number"
-                value={item.price}
               />
               <InlineImageUploadButton
                 image={item.image}
@@ -471,9 +725,87 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                 <Trash className="h-4 w-4" />
               </button>
             </div>
+            {Array.isArray(item.items) && item.items.length ? (
+              <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-black">
+                {item.items.map((entry, entryIndex) => {
+                  const platformLabel = platformOptions.find((option) => option.value === entry.platform)?.label || entry.platform || "-";
+                  return (
+                    <div className="grid gap-2 rounded-lg bg-zinc-50 p-2 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 md:grid-cols-[1fr_1fr_1fr_1fr_32px]" key={`${index}-entry-${entryIndex}`}>
+                      <span>{platformLabel}</span>
+                      <span>{entry.capacityType || "-"}</span>
+                      <span>{entry.price ? Number(entry.price).toLocaleString("fa-IR") : "-"}</span>
+                      <span>{entry.discountedPrice ? Number(entry.discountedPrice).toLocaleString("fa-IR") : "-"}</span>
+                      <button
+                        aria-label="حذف مورد"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-red-100 hover:text-red-600"
+                        onClick={() => removeEditionItem(index, entryIndex)}
+                        type="button"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
+      {modalIndex !== null ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950" dir="rtl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">افزودن مورد نسخه</h3>
+              <button className="text-sm text-zinc-500" onClick={() => setModalIndex(null)} type="button">
+                بستن
+              </button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <SingleSelectDropdown
+                label="پلتفرم"
+                name="edition-item-platform"
+                onChange={(event) => setItemDraft((prev) => ({ ...prev, platform: event.target.value }))}
+                options={platformOptions}
+                value={itemDraft.platform}
+              />
+              <TextField
+                label="نوع ظرفیت"
+                name="edition-item-capacity"
+                onChange={(event) => setItemDraft((prev) => ({ ...prev, capacityType: event.target.value }))}
+                placeholder="مثلا ظرفیت ۱"
+                value={itemDraft.capacityType}
+              />
+              <TextField
+                label="قیمت"
+                name="edition-item-price"
+                onChange={(event) => setItemDraft((prev) => ({ ...prev, price: event.target.value }))}
+                placeholder="مثلا 250000"
+                type="number"
+                value={itemDraft.price}
+              />
+              <TextField
+                label="درصد تخفیف"
+                name="edition-item-discount"
+                onChange={(event) => setItemDraft((prev) => ({ ...prev, discountPercent: event.target.value }))}
+                placeholder="مثلا 20"
+                type="number"
+                value={itemDraft.discountPercent}
+              />
+            </div>
+            <div className="mt-4 rounded-xl bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+              قیمت با تخفیف: {discountedPrice ? discountedPrice.toLocaleString("fa-IR") : "-"}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="rounded-xl border border-zinc-200 px-4 py-2 text-sm dark:border-zinc-800" onClick={() => setModalIndex(null)} type="button">
+                انصراف
+              </button>
+              <button className="rounded-xl bg-green-600 px-4 py-2 text-sm text-white" onClick={addEditionItem} type="button">
+                افزودن
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -655,6 +987,8 @@ export function BasicStep({
   setForm,
   translateGameIntro,
   translateSearchTitleSlug,
+  playStationTrophiesState,
+  xboxAchievementsState,
 }) {
   const [introTranslateState, setIntroTranslateState] = React.useState({
     message: "",
@@ -719,6 +1053,18 @@ export function BasicStep({
       <div className="grid gap-4 md:grid-cols-2">
         <TextField label="عنوان بازی *" name="title" onChange={onChange} value={form.title} />
         <TextField dir="ltr" label="اسلاگ بازی" name="slug" onChange={onChange} value={form.slug} />
+      </div>
+      <TextField
+        dir="ltr"
+        label="PlayStation NP Communication ID"
+        name="playstationNpCommunicationId"
+        onChange={onChange}
+        placeholder="NPWR09412_00"
+        value={form.playstationNpCommunicationId}
+      />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <PlatformTrophiesPreview platform="xbox" state={xboxAchievementsState} />
+        <PlatformTrophiesPreview platform="playstation" state={playStationTrophiesState} />
       </div>
       <label className="flex flex-col gap-y-1">
         <span className="text-sm text-zinc-700 dark:text-gray-100">خلاصه کوتاه</span>
@@ -1108,12 +1454,12 @@ export function PlatformSizesStep({ form, onQuickCreate, platformOptions, setArr
         columns={[
           { label: "پلتفرم", options: platformOptions },
           { label: "نسخه", placeholder: "مثلا Standard / PS5" },
-          { label: "حجم", placeholder: "مثلا 78 GB" },
+          { label: "عناوین", placeholder: "عنوان را وارد کنید" },
         ]}
         items={form.platformSizes}
         onChange={(value) => setArrayField("platformSizes", value)}
         onCreatePlatform={(target) => onQuickCreate?.("platform", target)}
-        title="حجم نسخه‌های پلتفرم"
+        title="عناوین نسخه‌های پلتفرم"
       />
     </div>
   );
@@ -1200,7 +1546,7 @@ export function DiscoveryStep({
   );
 }
 
-export function DlcEditionStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, setArrayField }) {
+export function DlcEditionStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, platformOptions = [], setArrayField }) {
   return (
     <div className="space-y-4">
       <DlcRowsEditor
@@ -1219,6 +1565,7 @@ export function DlcEditionStep({ form, imageUploadState, onDeleteUploadedImage, 
         onChange={(value) => setArrayField("extraEditions", value)}
         onDeleteUploadedImage={onDeleteUploadedImage}
         onImageUpload={onImageUpload}
+        platformOptions={platformOptions}
       />
     </div>
   );
@@ -1238,16 +1585,17 @@ export function DlcStep({ form, imageUploadState, onDeleteUploadedImage, onImage
   );
 }
 
-export function EditionsStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, setArrayField }) {
+export function EditionsStep({ form, imageUploadState, onDeleteUploadedImage, onImageUpload, platformOptions = [], setArrayField }) {
   return (
     <EditionRowsEditor
       title="نسخه‌های اضافه"
       imageUploadState={imageUploadState}
       items={form.extraEditions}
-      onChange={(value) => setArrayField("extraEditions", value)}
-      onDeleteUploadedImage={onDeleteUploadedImage}
-      onImageUpload={onImageUpload}
-    />
+    onChange={(value) => setArrayField("extraEditions", value)}
+    onDeleteUploadedImage={onDeleteUploadedImage}
+    onImageUpload={onImageUpload}
+    platformOptions={platformOptions}
+  />
   );
 }
 

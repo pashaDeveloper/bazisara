@@ -61,14 +61,30 @@ export const gameApi = bazisaraApi.injectEndpoints({
         body,
       }),
     }),
+    fetchXboxAchievements: builder.mutation({
+      query: (body) => ({
+        url: "/games/xbox-achievements",
+        method: "POST",
+        body,
+      }),
+    }),
+    fetchPlayStationTrophies: builder.mutation({
+      query: (body) => ({
+        url: "/games/playstation-trophies",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
   useCreateGameMutation,
+  useFetchPlayStationTrophiesMutation,
   useGetGamesQuery,
   useGetGameQuery,
   useImportGameScoresMutation,
+  useFetchXboxAchievementsMutation,
   useUpdateGameMutation,
   useDeleteGameMutation,
   useTranslateGameIntroMutation,

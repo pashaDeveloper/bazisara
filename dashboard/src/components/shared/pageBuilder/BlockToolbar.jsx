@@ -22,12 +22,12 @@ const BlockToolbar = ({ onAddBlock }) => {
         <button
           key={blockType.type}
           type="button"
-          className="flex items-center gap-2 px-3 py-2 bg-blue-500 rounded hover:bg-blue-600"
-          style={{ color: 'var(--white, white)' }}
+          className="flex items-center gap-2 rounded bg-blue-500 px-3 py-2 !text-white hover:bg-blue-600"
+          style={{ color: "#fff" }}
           onClick={() => onAddBlock(blockType.type)}
         >
-          <span className="text-white">{blockType.icon}</span>
-          <span className="text-white">{blockType.label}</span>
+          <span className="!text-white" style={{ color: "#fff" }}>{blockType.icon}</span>
+          <span className="!text-white" style={{ color: "#fff" }}>{blockType.label}</span>
         </button>
       ))}
     </div>

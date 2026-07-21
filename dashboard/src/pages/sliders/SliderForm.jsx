@@ -19,6 +19,7 @@ const initialForm = {
   link: "",
   category: "",
   image: null,
+  mobileImage: null,
 };
 
 const steps = [
@@ -50,6 +51,7 @@ function SliderForm({ mode = "create" }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
   const [imagePreview, setImagePreview] = useState("");
+  const [mobileImagePreview, setMobileImagePreview] = useState("");
   const { data, isLoading } = useGetSliderQuery(id, { skip: !isEdit || !id });
   const { data: categoriesData } = useGetCategoriesQuery({ page: 1, limit: 200 });
   const [createSlider, createState] = useCreateSliderMutation();
@@ -87,6 +89,7 @@ function SliderForm({ mode = "create" }) {
       category: slider.category?._id || slider.category || "",
     });
     setImagePreview(slider.image?.url || "");
+    setMobileImagePreview(slider.mobileImage?.url || slider.image?.url || "");
   }, [data]);
 
   const handleChange = (event) => {
@@ -133,7 +136,7 @@ function SliderForm({ mode = "create" }) {
 
     const formData = new FormData();
     Object.entries(form).forEach(([key, value]) => {
-      if (key === "image") {
+      if (key === "image" || key === "mobileImage") {
         if (value instanceof File) formData.append(key, value);
         return;
       }
@@ -211,13 +214,22 @@ function SliderForm({ mode = "create" }) {
                 ) : null}
 
                 {currentStepKey === "media" ? (
-                  <ThumbnailUpload
-                    name="image"
-                    preview={imagePreview}
-                    setThumbnail={(file) => setForm((prev) => ({ ...prev, image: file }))}
-                    setThumbnailPreview={setImagePreview}
-                    title="تصویر اسلایدر"
-                  />
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <ThumbnailUpload
+                      name="image"
+                      preview={imagePreview}
+                      setThumbnail={(file) => setForm((prev) => ({ ...prev, image: file }))}
+                      setThumbnailPreview={setImagePreview}
+                      title="تصویر دسکتاپ اسلایدر"
+                    />
+                    <ThumbnailUpload
+                      name="mobileImage"
+                      preview={mobileImagePreview}
+                      setThumbnail={(file) => setForm((prev) => ({ ...prev, mobileImage: file }))}
+                      setThumbnailPreview={setMobileImagePreview}
+                      title="تصویر موبایل اسلایدر - 768x768"
+                    />
+                  </div>
                 ) : null}
 
                 <div className="flex items-center justify-between border-t border-zinc-800 pt-4">

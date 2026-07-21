@@ -181,8 +181,15 @@ function Sliders() {
                         </div>
                       </td>
                       <td className="hidden py-4 md:table-cell">
-                        {item.image?.url ? (
-                          <DisplayImages galleryPreview={[{ url: item.image.url, type: "image" }]} imageSize={64} className="mt-0" />
+                        {item.image?.url || item.mobileImage?.url ? (
+                          <DisplayImages
+                            galleryPreview={[
+                              ...(item.image?.url ? [{ url: item.image.url, type: "image" }] : []),
+                              ...(item.mobileImage?.url ? [{ url: item.mobileImage.url, type: "image" }] : []),
+                            ]}
+                            imageSize={64}
+                            className="mt-0"
+                          />
                         ) : (
                           <span className="text-zinc-500">ندارد</span>
                         )}

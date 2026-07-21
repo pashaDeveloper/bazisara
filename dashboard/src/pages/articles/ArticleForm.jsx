@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
+import CloudUpload from "@/components/icons/CloudUpload";
 import Cross from "@/components/icons/Cross";
+import IconPicker from "@/components/shared/IconPicker";
 import Minus from "@/components/icons/Minus";
 import Plus from "@/components/icons/Plus";
 import NavigationButton from "@/components/shared/button/NavigationButton";
@@ -15,10 +17,14 @@ import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
 import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/Dropdown";
 import { ArticleCardPreview, ArticleDetailPreview } from "./components/ArticlePreviews";
 import { DatePickerField } from "../games/components/GameFormFields";
+import { flattenPlatforms } from "../platforms/utils";
 import { useCreateCategoryMutation, useGetCategoriesQuery } from "@/services/category/categoryApi";
 import { useGetGamesQuery } from "@/services/gameApi";
+import { useGetPlatformsQuery } from "@/services/platformApi";
+import { useGetIconsQuery } from "@/services/iconApi";
 import { useCreateTagMutation, useGetTagsQuery } from "@/services/tagApi";
 import { useCreateArticleMutation, useGenerateArticleSlugMutation, useGetArticleQuery, useUpdateArticleMutation } from "@/services/articleApi";
+import { getUploadErrorMessage, normalizeUploadedMedia, uploadImageWithProgress } from "@/utils/immediateUpload";
 
 function getTodayDateInput() {
   const now = new Date();
@@ -37,6 +43,7 @@ const initialForm = {
   readingTime: "",
   category: "",
   tags: [],
+  platforms: [],
   relatedGames: [],
   faqs: [],
   publishedAt: getTodayDateInput(),
@@ -45,6 +52,26 @@ const initialForm = {
   cover: null,
   cardCover: null,
   contentCover: null,
+};
+
+const deletedMediaValue = "__delete__";
+const quickCreateInitialValues = {
+  description: "",
+  icon: "",
+  image: null,
+  name: "",
+  parent: "",
+  slug: "",
+};
+
+const quickCreateLabels = {
+  category: "دسته‌بندی",
+  tag: "تگ",
+};
+
+const quickCreateUploadTypes = {
+  category: "category",
+  tag: "tag",
 };
 
 const steps = [
@@ -109,27 +136,135 @@ function Textarea({ label, name, onChange, placeholder, rows = 4, value }) {
 }
 
 function QuickCreateField({ children, label, onCreate }) {
+  const child = React.isValidElement(children)
+    ? React.cloneElement(children, {
+        controlClassName: [children.props.controlClassName, "pl-14"].filter(Boolean).join(" "),
+      })
+    : children;
+
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_56px]">
-      {children}
+    <div className="relative">
+      {child}
       <button
         aria-label={`افزودن ${label}`}
-        className="mt-5 inline-flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 !text-white dark:border-blue-700 dark:bg-blue-600 [&_svg]:!text-white"
+        className="absolute bottom-0 left-0 flex h-10 w-12 items-center justify-center rounded-l-full rounded-r-none border-0 border-r border-gray-300 bg-gray-200 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
         onClick={onCreate}
         title={`افزودن ${label}`}
         type="button"
       >
-        <Plus className="h-7 w-7 !text-white" style={{ color: "#fff" }} />
+        <Plus className="h-5 w-5" />
       </button>
     </div>
   );
 }
 
+function isMediaObject(value) {
+  return Boolean(value && typeof value === "object" && !(value instanceof File) && value.url);
+}
+
+function ArticleImagePicker({
+  field,
+  label,
+  onChange,
+  preview,
+  resizeHeight,
+  resizeWidth,
+  setPreview,
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-800 dark:bg-black">
+      <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+      <p className="mb-3 text-xs text-zinc-500">
+        اندازه پیشنهادی: {resizeWidth} × {resizeHeight}
+      </p>
+      <ThumbnailUpload
+        immediateUpload
+        immediateUploadOptions={{
+          entityType: "magazines",
+          resizeFit: "cover",
+          resizeHeight,
+          resizeWidth,
+        }}
+        name={field}
+        onRemove={() => onChange(deletedMediaValue)}
+        profilePreview
+        preview={preview}
+        setThumbnail={onChange}
+        setThumbnailPreview={setPreview}
+        title="انتخاب"
+      />
+    </div>
+  );
+}
+
+function QuickCreateImageUpload({ label = "تصویر", name, onRemove, onSelect, preview }) {
+  return (
+    <div className="space-y-3 md:col-span-2">
+      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="py-1 px-4 flex flex-row gap-x-2 dark:bg-blue-100 bg-green-100 border dark:text-blue-700 dark:border-blue-900 border-green-900 text-green-900 rounded-secondary w-fit text-sm cursor-pointer">
+          <CloudUpload className="h-5 w-5 dark:!text-blue-700" />
+          <span>انتخاب {label}</span>
+          <input
+            accept="image/*"
+            className="hidden"
+            name={name}
+            onChange={(event) => onSelect?.(event.target.files?.[0] || null)}
+            type="file"
+          />
+        </label>
+        {preview ? (
+          <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
+            <img alt="" className="h-full w-full object-cover" src={preview} />
+            <button
+              aria-label="حذف تصویر"
+              className="absolute left-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-500 [&_svg]:!text-white"
+              onClick={onRemove}
+              type="button"
+            >
+              <Cross className="h-3 w-3" />
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function getFaqMediaType(file, media) {
+  const type = String(file?.type || media?.type || "").toLowerCase();
+  return type.startsWith("video") ? "video" : "image";
+}
+
+function splitFaqAnswerMedia(answer, existingMedia = []) {
+  const media = Array.isArray(existingMedia) ? existingMedia.filter((item) => item?.url) : [];
+  const cleanAnswer = String(answer || "").replace(
+    /<figure[^>]*class=["'][^"']*article-faq-media[^"']*["'][^>]*>[\s\S]*?<\/figure>/gi,
+    (figure) => {
+      const srcMatch = figure.match(/\s(?:src)=["']([^"']+)["']/i);
+      const url = srcMatch?.[1] || "";
+      if (url && !media.some((item) => item.url === url)) {
+        media.push({
+          url,
+          public_id: "",
+          storage: "",
+          type: /<video/i.test(figure) ? "video" : "image",
+        });
+      }
+      return "";
+    }
+  ).trim();
+
+  return { answer: cleanAnswer, media };
+}
+
 function FaqRowsEditor({ items = [], onChange }) {
-  const rows = Array.isArray(items) && items.length ? items : [{ question: "", answer: "" }];
+  const rows = Array.isArray(items) && items.length ? items : [{ question: "", answer: "", media: [] }];
+  const [uploadingIndex, setUploadingIndex] = useState(null);
+  const [dragIndex, setDragIndex] = useState(null);
 
   const handleAddItem = () => {
-    onChange?.([...rows, { question: "", answer: "" }]);
+    onChange?.([...rows, { question: "", answer: "", media: [] }]);
   };
 
   const handleRemoveItem = (index) => {
@@ -145,16 +280,54 @@ function FaqRowsEditor({ items = [], onChange }) {
     onChange?.(next);
   };
 
+  const addItemMedia = (index, mediaItems) => {
+    const nextMedia = mediaItems.filter((item) => item?.url).slice(0, 1);
+    handleItemChange(index, "media", nextMedia);
+  };
+
+  const removeItemMedia = (index, mediaIndex) => {
+    const nextMedia = (rows[index]?.media || []).filter((_, itemIndex) => itemIndex !== mediaIndex);
+    handleItemChange(index, "media", nextMedia);
+  };
+
+  const handleMediaFiles = async (index, fileList) => {
+    const files = Array.from(fileList || []).filter((file) => file?.type?.startsWith("image/") || file?.type?.startsWith("video/"));
+    if (!files.length) return;
+
+    setUploadingIndex(index);
+    toast.loading("در حال آپلود رسانه پاسخ...", { id: "faq-media-upload" });
+
+    try {
+      const mediaItems = [];
+      for (const file of files) {
+        const response = await uploadImageWithProgress(file, null, { entityType: "magazines" });
+        const media = normalizeUploadedMedia(response, getFaqMediaType(file));
+        if (media?.url) mediaItems.push({ ...media, type: getFaqMediaType(file, media) });
+      }
+
+      addItemMedia(index, mediaItems);
+      toast.success("رسانه به پاسخ اضافه شد", { id: "faq-media-upload" });
+    } catch (error) {
+      toast.error(getUploadErrorMessage(error), { id: "faq-media-upload" });
+    } finally {
+      setUploadingIndex(null);
+      setDragIndex(null);
+    }
+  };
+
   return (
     <div className="space-y-3 rounded-xl border border-zinc-300 bg-white p-4 dark:border-zinc-800 dark:bg-black">
       <div className="flex items-center justify-between gap-3">
         <div>
           <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">سوالات متداول مجله</span>
-          <p className="mt-1 text-xs text-zinc-500">هر سطر یک سوال و پاسخ دارد؛ در آخرین سطر دکمه اضافه و در سطرهای دیگر دکمه حذف می‌آید.</p>
+          <p className="mt-1 text-xs text-zinc-500">هر سطر یک سوال و پاسخ دارد؛ روی + کنار پاسخ کلیک کنید یا عکس، گیف و ویدیو را روی پاسخ رها کنید.</p>
         </div>
       </div>
 
-      {rows.map((item, index) => (
+      {rows.map((item, index) => {
+        const firstMedia = Array.isArray(item?.media) ? item.media[0] : null;
+
+        return (
         <div className="flex flex-row items-start gap-x-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950" key={`article-faq-${index}`}>
           <div className="flex w-full flex-col gap-y-2">
             <input
@@ -164,13 +337,75 @@ function FaqRowsEditor({ items = [], onChange }) {
               type="text"
               value={item?.question || ""}
             />
-            <textarea
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-700 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-white"
-              onChange={(event) => handleItemChange(index, "answer", event.target.value)}
-              placeholder="پاسخ سوال را بنویسید"
-              rows={3}
-              value={item?.answer || ""}
-            />
+            <div
+              className={`relative rounded-xl  transition ${
+                dragIndex === index
+                  ? "border-emerald-500 bg-emerald-50 dark:border-blue-500 dark:bg-blue-950/30"
+                  : "border-zinc-300 bg-white dark:border-zinc-800 dark:bg-black"
+              }`}
+              onDragLeave={() => setDragIndex(null)}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragIndex(index);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                handleMediaFiles(index, event.dataTransfer.files);
+              }}
+            >
+              <input
+                className="w-full rounded-xl border-0 bg-transparent py-3 pl-14 pr-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-700 dark:text-white dark:focus:border-white"
+                onChange={(event) => handleItemChange(index, "answer", event.target.value)}
+                onDrop={(event) => event.preventDefault()}
+                placeholder="پاسخ سوال را بنویسید"
+                type="text"
+                value={item?.answer || ""}
+              />
+              <label
+                aria-label="افزودن رسانه به پاسخ"
+                className={`group absolute left-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center overflow-hidden rounded-full border text-white transition ${
+                  firstMedia
+                    ? "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900"
+                    : "border-emerald-700 bg-emerald-600 hover:bg-emerald-500 dark:border-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 [&_svg]:!text-white"
+                } ${
+                  uploadingIndex === index ? "pointer-events-none opacity-60" : ""
+                }`}
+                htmlFor={`article-faq-media-${index}`}
+                title="افزودن عکس، گیف یا ویدیو"
+              >
+                {uploadingIndex === index ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                ) : firstMedia ? (
+                  firstMedia.type === "video" ? (
+                    <video className="h-full w-full object-cover" muted playsInline src={firstMedia.url} />
+                  ) : (
+                    <img alt="" className="h-full w-full object-cover" src={firstMedia.url} />
+                  )
+                ) : (
+                  <Plus className="h-5 w-5 !text-white" style={{ color: "#fff" }} />
+                )}
+              </label>
+              {firstMedia ? (
+                <button
+                  aria-label="حذف رسانه پاسخ"
+                  className="absolute left-0.5 top-0.5 z-10 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white shadow-sm transition hover:bg-red-500 [&_svg]:!text-white"
+                  onClick={() => removeItemMedia(index, 0)}
+                  type="button"
+                >
+                  <Cross className="h-2.5 w-2.5" />
+                </button>
+              ) : null}
+              <input
+                accept="image/*,video/*"
+                className="hidden"
+                id={`article-faq-media-${index}`}
+                onChange={(event) => {
+                  handleMediaFiles(index, event.target.files);
+                  event.target.value = "";
+                }}
+                type="file"
+              />
+            </div>
           </div>
 
           {index > 0 && (
@@ -191,7 +426,8 @@ function FaqRowsEditor({ items = [], onChange }) {
             </span>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -209,13 +445,16 @@ function ArticleForm({ mode = "create" }) {
   const [isDesktopPreviewOpen, setIsDesktopPreviewOpen] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEdit);
   const [quickCreate, setQuickCreate] = useState(null);
-  const [quickCreateForm, setQuickCreateForm] = useState({ name: "", slug: "", description: "" });
+  const [quickCreateForm, setQuickCreateForm] = useState(quickCreateInitialValues);
+  const [quickCreateImagePreview, setQuickCreateImagePreview] = useState("");
   const slugManuallyEditedRef = useRef(isEdit);
 
   const { data: articleData, isLoading: isLoadingArticle } = useGetArticleQuery(id, { skip: !isEdit || !id });
   const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery({ page: 1, limit: 200 });
   const { data: tagsData, refetch: refetchTags } = useGetTagsQuery({ page: 1, limit: 200 });
   const { data: gamesData } = useGetGamesQuery({ page: 1, limit: 200 });
+  const { data: platformsData } = useGetPlatformsQuery({ tree: true, limit: 500 });
+  const { data: iconsData, isLoading: isLoadingIcons } = useGetIconsQuery({ page: 1, limit: 300 });
   const [createArticle, createState] = useCreateArticleMutation();
   const [createCategory, createCategoryState] = useCreateCategoryMutation();
   const [createTag, createTagState] = useCreateTagMutation();
@@ -225,6 +464,8 @@ function ArticleForm({ mode = "create" }) {
   const categories = categoriesData?.data || [];
   const tags = tagsData?.data || [];
   const games = gamesData?.data || [];
+  const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
+  const icons = iconsData?.data || [];
   const isSaving = createState.isLoading || updateState.isLoading;
   const isQuickCreateSaving = createCategoryState.isLoading || createTagState.isLoading;
   const isLastStep = currentStep === steps.length - 1;
@@ -236,7 +477,9 @@ function ArticleForm({ mode = "create" }) {
   const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.name, value: item._id })), [categories]);
   const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id })), [tags]);
   const gameOptions = useMemo(() => games.map((item) => ({ label: item.title, value: item._id })), [games]);
+  const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
   const selectedTagLabels = tagOptions.filter((option) => form.tags.includes(option.value)).map((option) => option.label);
+  const selectedPlatformLabels = platformOptions.filter((option) => form.platforms.includes(option.value)).map((option) => option.label.replace(/^-+\s*/, ""));
   const selectedRelatedGames = useMemo(
     () => games.filter((game) => form.relatedGames.includes(game._id)),
     [form.relatedGames, games]
@@ -256,8 +499,14 @@ function ArticleForm({ mode = "create" }) {
       readingTime: article.readingTime || "",
       category: article.category?._id || article.category || "",
       tags: toIdArray(article.tags),
+      platforms: toIdArray(article.platforms),
       relatedGames: toIdArray(article.relatedGames),
-      faqs: Array.isArray(article.faqs) ? article.faqs.map((item) => ({ question: item?.question || "", answer: item?.answer || "" })) : [],
+      faqs: Array.isArray(article.faqs)
+        ? article.faqs.map((item) => ({
+            question: item?.question || "",
+            ...splitFaqAnswerMedia(item?.answer, item?.media),
+          }))
+        : [],
       publishedAt: formatDate(article.publishedAt),
       isFeatured: Boolean(article.isFeatured),
       status: article.status || "active",
@@ -339,13 +588,74 @@ function ArticleForm({ mode = "create" }) {
 
   const openQuickCreate = (type) => {
     setQuickCreate(type);
-    setQuickCreateForm({ name: "", slug: "", description: "" });
+    setQuickCreateForm(quickCreateInitialValues);
+    setQuickCreateImagePreview("");
   };
 
   const closeQuickCreate = () => {
     if (isQuickCreateSaving) return;
     setQuickCreate(null);
-    setQuickCreateForm({ name: "", slug: "", description: "" });
+    setQuickCreateForm(quickCreateInitialValues);
+    setQuickCreateImagePreview("");
+  };
+
+  const setQuickCreateValue = (name, value) => {
+    setQuickCreateForm((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "name" && !prev.slug) next.slug = makeSlug(value);
+      return next;
+    });
+  };
+
+  const setQuickCreateImageFile = async (file) => {
+    if (!(file instanceof File)) {
+      setQuickCreateValue("image", null);
+      setQuickCreateImagePreview("");
+      return;
+    }
+
+    const entityName = quickCreateForm.name.trim();
+    if (!entityName) {
+      toast.error("ابتدا نام را وارد کنید", { id: "article-quick-create-image" });
+      return;
+    }
+
+    const localPreview = URL.createObjectURL(file);
+    setQuickCreateImagePreview(localPreview);
+
+    try {
+      const response = await uploadImageWithProgress(file, null, {
+        entityName,
+        entityType: quickCreateUploadTypes[quickCreate] || quickCreate || "magazines",
+        requireEntityName: true,
+      });
+      const media = normalizeUploadedMedia(response, "image");
+      if (!media) throw new Error("پاسخ آپلود معتبر نیست");
+      setQuickCreateValue("image", media);
+      setQuickCreateImagePreview(media.url);
+    } catch (error) {
+      setQuickCreateValue("image", null);
+      setQuickCreateImagePreview("");
+      toast.error(getUploadErrorMessage(error), { id: "article-quick-create-image" });
+    } finally {
+      URL.revokeObjectURL(localPreview);
+    }
+  };
+
+  const buildQuickCreateRequest = () => {
+    const trimmed = Object.fromEntries(Object.entries(quickCreateForm).map(([key, value]) => [key, String(value || "").trim()]));
+    const formData = new FormData();
+    const name = trimmed.name;
+    const slug = makeSlug(trimmed.slug || name);
+
+    formData.append("name", name);
+    if (slug) formData.append("slug", slug);
+    if (trimmed.description) formData.append("description", trimmed.description);
+    if (trimmed.icon) formData.append("icon", trimmed.icon);
+    if (quickCreate === "category" && trimmed.parent) formData.append("parent", trimmed.parent);
+    if (isMediaObject(quickCreateForm.image)) formData.append("image", JSON.stringify(quickCreateForm.image));
+
+    return formData;
   };
 
   const handleQuickCreateSubmit = async (event) => {
@@ -358,20 +668,13 @@ function ArticleForm({ mode = "create" }) {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("description", quickCreateForm.description.trim());
-    if (quickCreate === "tag") {
-      formData.append("slug", makeSlug(quickCreateForm.slug || name));
-    }
-
     try {
       const label = quickCreate === "category" ? "\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc" : "\u062a\u06af";
       toast.loading(`\u062f\u0631 \u062d\u0627\u0644 \u0627\u0641\u0632\u0648\u062f\u0646 ${label}...`, { id: "article-quick-create" });
       const response =
         quickCreate === "category"
-          ? await createCategory(formData).unwrap()
-          : await createTag(formData).unwrap();
+          ? await createCategory(buildQuickCreateRequest()).unwrap()
+          : await createTag(buildQuickCreateRequest()).unwrap();
       const createdId = response?.data?._id;
 
       if (quickCreate === "category") {
@@ -383,7 +686,8 @@ function ArticleForm({ mode = "create" }) {
       }
 
       setQuickCreate(null);
-      setQuickCreateForm({ name: "", slug: "", description: "" });
+      setQuickCreateForm(quickCreateInitialValues);
+      setQuickCreateImagePreview("");
       toast.success(response?.description || `${label} \u0627\u0636\u0627\u0641\u0647 \u0634\u062f`, { id: "article-quick-create" });
     } catch (error) {
       const label = quickCreate === "category" ? "\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc" : "\u062a\u06af";
@@ -425,6 +729,8 @@ function ArticleForm({ mode = "create" }) {
     Object.entries({ ...form, author: activeAuthor }).forEach(([key, value]) => {
       if (key === "cover" || key === "cardCover" || key === "contentCover") {
         if (value instanceof File) formData.append(key, value);
+        else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
+        else if (value === deletedMediaValue) formData.append(key, deletedMediaValue);
         return;
       }
       if (Array.isArray(value)) {
@@ -490,20 +796,26 @@ function ArticleForm({ mode = "create" }) {
                     : "اسلاگ از ترجمه انگلیسی عنوان ساخته می‌شود."}
               </span>
             </label>
-            <ThumbnailUpload
-              name="cardCover"
-              preview={cardCoverPreview}
-              setThumbnail={(file) => setForm((prev) => ({ ...prev, cardCover: file }))}
-              setThumbnailPreview={setCardCoverPreview}
-              title="انتخاب تصویر کارت"
-            />
-            <ThumbnailUpload
-              name="contentCover"
-              preview={contentCoverPreview}
-              setThumbnail={(file) => setForm((prev) => ({ ...prev, contentCover: file }))}
-              setThumbnailPreview={setContentCoverPreview}
-              title="انتخاب تصویر محتوای مجله"
-            />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ArticleImagePicker
+                field="cardCover"
+                label="تصویر کارت"
+                onChange={(media) => setForm((prev) => ({ ...prev, cardCover: media }))}
+                preview={cardCoverPreview}
+                resizeHeight={768}
+                resizeWidth={768}
+                setPreview={setCardCoverPreview}
+              />
+              <ArticleImagePicker
+                field="contentCover"
+                label="تصویر جزئیات مجله"
+                onChange={(media) => setForm((prev) => ({ ...prev, contentCover: media }))}
+                preview={contentCoverPreview}
+                resizeHeight={1080}
+                resizeWidth={1920}
+                setPreview={setContentCoverPreview}
+              />
+            </div>
           </div>
         );
       case "content":
@@ -519,31 +831,15 @@ function ArticleForm({ mode = "create" }) {
       case "faqs":
         return <FaqRowsEditor items={form.faqs} onChange={(value) => setArrayField("faqs", value)} />;
       case "relations": {
-        const relationQuickCreateActions = (
-          <div className="grid gap-3 md:grid-cols-2">
-            <button
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white dark:border-blue-700 dark:bg-blue-600"
-              onClick={() => openQuickCreate("category")}
-              type="button"
-            >
-              <Plus className="h-6 w-6 !text-white" style={{ color: "#fff" }} />
-              {"\u0627\u0641\u0632\u0648\u062f\u0646 \u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc"}
-            </button>
-            <button
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white dark:border-blue-700 dark:bg-blue-600"
-              onClick={() => openQuickCreate("tag")}
-              type="button"
-            >
-              <Plus className="h-6 w-6 !text-white" style={{ color: "#fff" }} />
-              {"\u0627\u0641\u0632\u0648\u062f\u0646 \u062a\u06af"}
-            </button>
-          </div>
-        );
         return (
           <div className="space-y-4">
-            {relationQuickCreateActions}
-            <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={handleChange} options={categoryOptions} value={form.category} />
-            <MultiSelectDropdown label="تگ‌ها" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
+            <QuickCreateField label="دسته‌بندی" onCreate={() => openQuickCreate("category")}>
+              <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={handleChange} options={categoryOptions} value={form.category} />
+            </QuickCreateField>
+            <QuickCreateField label="تگ" onCreate={() => openQuickCreate("tag")}>
+              <MultiSelectDropdown label="تگ‌ها" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />
+            </QuickCreateField>
+            <MultiSelectDropdown label="پلتفرم‌ها (اختیاری)" onChange={(value) => setArrayField("platforms", value)} options={platformOptions} value={form.platforms} />
             <MultiSelectDropdown label="بازی‌های مرتبط" onChange={(value) => setArrayField("relatedGames", value)} options={gameOptions} value={form.relatedGames} />
           </div>
         );
@@ -634,6 +930,7 @@ function ArticleForm({ mode = "create" }) {
                     coverPreview={contentCoverPreview || coverPreview || cardCoverPreview}
                     form={form}
                     relatedGames={selectedRelatedGames}
+                    platforms={selectedPlatformLabels}
                     tags={selectedTagLabels}
                     variant="mobile"
                   />
@@ -644,47 +941,101 @@ function ArticleForm({ mode = "create" }) {
         </form>
 
         {quickCreate ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" dir="rtl">
-            <form className="w-full max-w-lg space-y-4 rounded-2xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl" onSubmit={handleQuickCreateSubmit}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6" dir="rtl">
+            <form className="w-full max-w-2xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950" onSubmit={handleQuickCreateSubmit}>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold text-white">{quickCreate === "category" ? "افزودن دسته‌بندی" : "افزودن تگ"}</h2>
+                <div>
+                  <p className="text-xs text-zinc-500">افزودن سریع</p>
+                  <h2 className="text-lg font-bold text-zinc-950 dark:text-white">{quickCreateLabels[quickCreate]}</h2>
+                </div>
                 <button
                   aria-label="بستن"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-300 transition hover:border-white hover:text-white"
+                  className="rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-600 transition hover:border-red-400 hover:text-red-500 dark:border-zinc-800 dark:text-zinc-300"
                   disabled={isQuickCreateSaving}
                   onClick={closeQuickCreate}
                   type="button"
                 >
-                  <Cross />
+                  بستن
                 </button>
               </div>
-              <Field
-                label={quickCreate === "category" ? "نام دسته‌بندی" : "نام تگ"}
-                name="quickCreateName"
-                onChange={(event) => setQuickCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder={quickCreate === "category" ? "مثلا اخبار بازی" : "مثلا راهنمای خرید"}
-                value={quickCreateForm.name}
-              />
-              {quickCreate === "tag" ? (
-                <Field
-                  label="اسلاگ"
-                  name="quickCreateSlug"
-                  onChange={(event) => setQuickCreateForm((prev) => ({ ...prev, slug: event.target.value }))}
-                  placeholder="buying-guide"
-                  value={quickCreateForm.slug}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <QuickCreateImageUpload
+                  label="تصویر"
+                  name={`quick-create-${quickCreate}-image`}
+                  onRemove={() => {
+                    setQuickCreateValue("image", null);
+                    setQuickCreateImagePreview("");
+                  }}
+                  onSelect={setQuickCreateImageFile}
+                  preview={quickCreateImagePreview}
                 />
-              ) : null}
-              <Textarea
-                label="توضیحات"
-                name="quickCreateDescription"
-                onChange={(event) => setQuickCreateForm((prev) => ({ ...prev, description: event.target.value }))}
-                placeholder="توضیح کوتاه"
-                rows={3}
-                value={quickCreateForm.description}
-              />
-              <div className="flex items-center justify-end gap-3 border-t border-zinc-800 pt-4">
+
+                <label className="space-y-2">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">عنوان</span>
+                  <input
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                    onChange={(event) => setQuickCreateValue("name", event.target.value)}
+                    placeholder={quickCreate === "category" ? "مثلا اخبار بازی" : "مثلا راهنمای خرید"}
+                    value={quickCreateForm.name}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">اسلاگ</span>
+                  <input
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                    dir="ltr"
+                    onChange={(event) => setQuickCreateValue("slug", event.target.value)}
+                    placeholder="buying-guide"
+                    value={quickCreateForm.slug}
+                  />
+                </label>
+
+                {quickCreate === "category" ? (
+                  <>
+                    <div className="md:col-span-2">
+                      <IconPicker
+                        icons={icons}
+                        isLoadingIcons={isLoadingIcons}
+                        label="آیکون"
+                        name="icon"
+                        onChange={(event) => setQuickCreateValue("icon", event.target.value)}
+                        value={quickCreateForm.icon}
+                      />
+                    </div>
+                    <label className="space-y-2">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">والد</span>
+                      <select
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                        onChange={(event) => setQuickCreateValue("parent", event.target.value)}
+                        value={quickCreateForm.parent}
+                      >
+                        <option value="">بدون والد</option>
+                        {categoryOptions.map((category) => (
+                          <option key={category.value} value={category.value}>
+                            {category.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                ) : null}
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">توضیحات</span>
+                  <textarea
+                    className="min-h-24 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+                    onChange={(event) => setQuickCreateValue("description", event.target.value)}
+                    placeholder="توضیح کوتاه"
+                    value={quickCreateForm.description}
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                 <button
-                  className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-white hover:text-white"
+                  className="rounded-xl border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-950 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-white dark:hover:text-white"
                   disabled={isQuickCreateSaving}
                   onClick={closeQuickCreate}
                   type="button"
@@ -692,7 +1043,7 @@ function ArticleForm({ mode = "create" }) {
                   انصراف
                 </button>
                 <button
-                  className="rounded-xl border border-emerald-700 bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-700 dark:bg-blue-600"
+                  className="rounded-xl border border-emerald-600 bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
                   disabled={isQuickCreateSaving}
                   type="submit"
                 >
@@ -719,6 +1070,7 @@ function ArticleForm({ mode = "create" }) {
                 form={form}
                 isSticky={false}
                 relatedGames={selectedRelatedGames}
+                platforms={selectedPlatformLabels}
                 tags={selectedTagLabels}
               />
             </div>
@@ -730,5 +1082,3 @@ function ArticleForm({ mode = "create" }) {
 }
 
 export default ArticleForm;
-
-

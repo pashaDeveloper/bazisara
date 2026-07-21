@@ -19,6 +19,21 @@ function formatPublishedDate(value) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function renderFaqAnswerHtml(value) {
+  const text = String(value || "");
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  return escapeHtml(text).replace(/\n/g, "<br />");
+}
+
 export function ArticleCardPreview({ coverPreview, form }) {
   const title = form.title.trim();
 
@@ -42,7 +57,7 @@ export function ArticleCardPreview({ coverPreview, form }) {
   );
 }
 
-export function ArticleDetailPreview({ coverPreview, form, isSticky = true, relatedGames = [], tags = [], variant = "desktop" }) {
+export function ArticleDetailPreview({ coverPreview, form, isSticky = true, platforms = [], relatedGames = [], tags = [], variant = "desktop" }) {
   const isMobile = variant === "mobile";
   const scrollRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -50,7 +65,7 @@ export function ArticleDetailPreview({ coverPreview, form, isSticky = true, rela
   const publishedDate = formatPublishedDate(form.publishedAt);
   const content = form.content.trim();
   const excerpt = form.excerpt.trim();
-  const faqs = Array.isArray(form.faqs) ? form.faqs.filter((item) => item?.question || item?.answer) : [];
+  const faqs = Array.isArray(form.faqs) ? form.faqs.filter((item) => item?.question || item?.answer || item?.media?.length) : [];
   const relatedItems = relatedGames.slice(0, 6);
   const sidebarItems = [
     { icon: ArticleComment, count: "۵۵", label: "دیدگاه" },
@@ -107,11 +122,12 @@ export function ArticleDetailPreview({ coverPreview, form, isSticky = true, rela
               <SkeletonBlock className="mx-auto h-6 w-2/3 bg-zinc-200" />
             </div>
           )}
-          {form.author || publishedDate || form.readingTime ? (
+          {form.author || publishedDate || form.readingTime || platforms.length ? (
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] text-zinc-500">
               {form.author ? <span>{form.author}</span> : null}
               {publishedDate ? <span>{publishedDate}</span> : null}
               {form.readingTime ? <span>{form.readingTime}</span> : null}
+              {platforms.length ? <span>{platforms.join(" / ")}</span> : null}
             </div>
           ) : (
             <div className="flex items-center justify-center gap-3">
@@ -189,7 +205,21 @@ export function ArticleDetailPreview({ coverPreview, form, isSticky = true, rela
                   <div className="grid grid-rows-[0fr] overflow-hidden transition-all duration-300 ease-in-out group-open:grid-rows-[1fr]">
                     <div className="min-h-0 overflow-hidden">
                       <div className="pb-5 leading-relaxed">
-                        <div className="space-y-2 leading-relaxed text-zinc-600">{item.answer}</div>
+                        <div
+                          className="space-y-2 leading-relaxed text-zinc-600 [&_.article-faq-media]:my-3 [&_.article-faq-media_img]:w-full [&_.article-faq-media_img]:rounded-xl [&_.article-faq-media_img]:object-cover [&_.article-faq-media_video]:w-full [&_.article-faq-media_video]:rounded-xl"
+                          dangerouslySetInnerHTML={{ __html: renderFaqAnswerHtml(item.answer) }}
+                        />
+                        {Array.isArray(item.media) && item.media.length ? (
+                          <div className="mt-3 grid gap-3">
+                            {item.media.map((media, mediaIndex) =>
+                              media?.type === "video" ? (
+                                <video className="w-full rounded-xl" controls key={`${media.url}-${mediaIndex}`} playsInline preload="metadata" src={media.url} />
+                              ) : (
+                                <img alt="" className="w-full rounded-xl object-cover" key={`${media.url}-${mediaIndex}`} loading="lazy" src={media.url} />
+                              )
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>

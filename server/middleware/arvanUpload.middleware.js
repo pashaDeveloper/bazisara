@@ -38,6 +38,10 @@ const getPrepareOptions = (req, customFolder, field) => {
     return { fit: "cover", resizeHeight: 1080, resizeWidth: 1920 };
   }
 
+  if (customFolder === "sliders" && field === "mobileImage") {
+    return { fit: "cover", resizeHeight: 768, resizeWidth: 768 };
+  }
+
   return {
     fit: req.body?.resizeFit,
     resizeHeight: req.body?.resizeHeight,

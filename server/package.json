@@ -22,6 +22,7 @@
     "seed:tags": "node scripts/seedTags.js",
     "seed:samples": "node scripts/seedCatalogSamples.js",
     "seed:game-collections": "node scripts/seedGameCollections.js",
+    "db:backfill-public-ids": "node scripts/backfillPublicIds.js",
     "db:sync-indexes": "node scripts/syncIndexes.js",
     "seed:catalog": "npm run seed:icons && npm run seed:filters && npm run seed:categories && npm run seed:genres && npm run seed:companies && npm run seed:brands && npm run seed:platforms && npm run seed:category-filters && npm run seed:tags && npm run seed:samples && npm run seed:game-collections",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -46,6 +47,7 @@
     "mongoose": "^8.0.0",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^2.2.1",
+    "psn-api": "^2.18.0",
     "qrcode": "^1.5.4",
     "sharp": "^0.33.5",
     "stripe": "^14.13.0",

@@ -59,6 +59,25 @@ function getCategoryPath(category?: NamedEntity | null) {
   return path;
 }
 
+function entityLabel(value?: NamedEntity | null) {
+  return value?.name_fa || value?.name || value?.name_en || value?.slug || "";
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function renderFaqAnswerHtml(value?: string) {
+  const text = String(value || "");
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  return escapeHtml(text).replace(/\n/g, "<br />");
+}
+
 export default async function ArticleDetailPage({ params }: PageProps) {
   const { id } = await params;
   const article = await getApiItem<Article>("/magazines", id);
@@ -70,9 +89,10 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   const authorImage = mediaUrl(article.creator?.avatar);
   const date = formatPersianDate(article.publishedAt || article.createdAt);
   const categoryPath = getCategoryPath(article.category);
+  const platforms = article.platforms?.map(entityLabel).filter(Boolean) || [];
   const tags = article.tags?.map((tag) => tag.name).filter(Boolean) || [];
   const relatedItems = article.relatedGames?.slice(0, 6) || [];
-  const faqs = article.faqs?.filter((item) => item.question || item.answer) || [];
+  const faqs = article.faqs?.filter((item) => item.question || item.answer || item.media?.length) || [];
   const relatedCards: Array<Partial<Game>> = relatedItems.length
     ? relatedItems
     : Array.from({ length: 5 }, () => ({}));
@@ -111,6 +131,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   <span className="hidden h-5 w-px bg-zinc-300 sm:block" />
                   <span>{categoryPath.length ? categoryPath.join(" / ") : "بدون دسته‌بندی"}</span>
                   <span className="hidden h-5 w-px bg-zinc-300 sm:block" />
+                  {platforms.length ? (
+                    <>
+                      <span>{platforms.join(" / ")}</span>
+                      <span className="hidden h-5 w-px bg-zinc-300 sm:block" />
+                    </>
+                  ) : null}
                   <span>{date || "-"}</span>
                   <span className="hidden h-5 w-px bg-zinc-300 sm:block" />
                   <span>{article.views ? article.views.toLocaleString("fa-IR") : "۰"} بازدید</span>
@@ -182,7 +208,21 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                     <div className="grid grid-rows-[0fr] overflow-hidden transition-all duration-300 ease-in-out group-open:grid-rows-[1fr]">
                       <div className="min-h-0 overflow-hidden">
                         <div className="pb-5 leading-relaxed">
-                          <div className="space-y-2 leading-relaxed text-zinc-600">{item.answer}</div>
+                          <div
+                            className="space-y-2 leading-relaxed text-zinc-600 [&_.article-faq-media]:my-3 [&_.article-faq-media_img]:w-full [&_.article-faq-media_img]:rounded-xl [&_.article-faq-media_img]:object-cover [&_.article-faq-media_video]:w-full [&_.article-faq-media_video]:rounded-xl"
+                            dangerouslySetInnerHTML={{ __html: renderFaqAnswerHtml(item.answer) }}
+                          />
+                          {Array.isArray(item.media) && item.media.length ? (
+                            <div className="mt-3 grid gap-3">
+                              {item.media.map((media, mediaIndex) =>
+                                media?.type === "video" ? (
+                                  <video className="w-full rounded-xl" controls key={`${media.url}-${mediaIndex}`} playsInline preload="metadata" src={mediaUrl(media)} />
+                                ) : (
+                                  <img alt="" className="w-full rounded-xl object-cover" key={`${media.url}-${mediaIndex}`} loading="lazy" src={mediaUrl(media)} />
+                                )
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>

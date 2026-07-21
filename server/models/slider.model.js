@@ -43,6 +43,7 @@ const sliderSchema = new mongoose.Schema(
       default: 0,
     },
     image: mediaSchema,
+    mobileImage: mediaSchema,
     ...baseSchema.obj,
   },
   { timestamps: true }

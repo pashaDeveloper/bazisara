@@ -1,4 +1,5 @@
 import type { ProductDetail } from "../../products2/detail-data";
+import { productRoutePath } from "../../products2/data";
 import { ProductMiniCard } from "./product-mini-card";
 
 export function RelatedProductsSection({ relatedProducts }: Pick<ProductDetail, "relatedProducts">) {
@@ -15,7 +16,7 @@ export function RelatedProductsSection({ relatedProducts }: Pick<ProductDetail, 
               title={item.title}
               image={item.image}
               price={item.price}
-              href={`/products2/${item.id}`}
+              href={productRoutePath(item)}
             />
           ))}
         </div>
@@ -30,7 +31,7 @@ export function RelatedProductsSection({ relatedProducts }: Pick<ProductDetail, 
                 title={item.title}
                 image={item.image}
                 price={item.price}
-                href={`/products2/${item.id}`}
+                href={productRoutePath(item)}
               />
             </div>
           ))}
