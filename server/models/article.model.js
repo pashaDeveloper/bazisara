@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const baseSchema = require("./baseSchema.model");
-const Counter = require("./counter");
+const { nextPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
@@ -27,7 +27,7 @@ const faqSchema = new mongoose.Schema(
 
 const magazineSchema = new mongoose.Schema(
   {
-    magazineId: { type: Number, unique: true, sparse: true },
+    magazineId: { type: String, unique: true, sparse: true },
     title: {
       type: String,
       required: [true, "Magazine title is required"],
@@ -126,12 +126,7 @@ const magazineSchema = new mongoose.Schema(
 magazineSchema.pre("save", async function (next) {
   try {
     if (!this.magazineId) {
-      const counter = await Counter.findOneAndUpdate(
-        { name: "magazineId" },
-        { $inc: { seq: 1 } },
-        { new: true, upsert: true }
-      );
-      this.magazineId = counter.seq;
+      this.magazineId = await nextPublicId("magazineId", "MG");
     }
 
     next();

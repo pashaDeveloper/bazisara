@@ -7,6 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
 
 function makeSlug(value, { allowPersian = true } = {}) {
   const invalidCharsPattern = allowPersian ? /[^a-z0-9\u0600-\u06ff-]+/g : /[^a-z0-9-]+/g;
@@ -368,7 +369,7 @@ function populateArticle(query) {
 function articleIdentityFilter(id) {
   const value = String(id || "").trim();
   const filters = [];
-  if (/^\d+$/.test(value)) filters.push({ magazineId: Number(value) });
+  filters.push(...publicIdOrLegacyFilters("magazineId", value, "MG"));
   if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
   if (filters.length > 1) return { $or: filters };
   if (filters.length === 1) return filters[0];

@@ -22,6 +22,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
 
 function makeServiceError(message, statusCode = 502, code = "") {
   const error = new Error(message);
@@ -110,7 +111,7 @@ const populateGame = (query) =>
 function gameIdentityFilter(id) {
   const value = String(id || "").trim();
   const filters = [];
-  if (/^\d+$/.test(value)) filters.push({ gameId: Number(value) });
+  filters.push(...publicIdOrLegacyFilters("gameId", value, "GM"));
   if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
   if (filters.length > 1) return { $or: filters };
   if (filters.length === 1) return filters[0];

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
-const Counter = require("./counter");
+const { nextPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
@@ -121,7 +121,7 @@ const extraEditionSchema = new mongoose.Schema(
 
 const gameSchema = new mongoose.Schema(
   {
-    gameId: { type: Number, unique: true, sparse: true },
+    gameId: { type: String, unique: true, sparse: true },
     title: {
       type: String,
       required: [true, "Game title is required"],
@@ -367,12 +367,7 @@ const gameSchema = new mongoose.Schema(
 gameSchema.pre("save", async function (next) {
   try {
     if (!this.gameId) {
-      const counter = await Counter.findOneAndUpdate(
-        { name: "gameId" },
-        { $inc: { seq: 1 } },
-        { new: true, upsert: true }
-      );
-      this.gameId = counter.seq;
+      this.gameId = await nextPublicId("gameId", "GM");
     }
 
     next();

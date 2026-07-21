@@ -211,10 +211,10 @@ function ArticleListCard({ article }: { article: Article }) {
   return (
     <Link
       href={articleHref(article)}
-      className="grid min-h-[154px] grid-cols-1 items-start gap-3 rounded-[1.4rem] border border-[#e2e7f0] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#cfd7e5] hover:shadow-[0_18px_36px_-32px_rgba(15,23,42,.35)] lg:grid-cols-[150px_minmax(0,1fr)] lg:items-center lg:gap-5 lg:rounded-[2rem] lg:px-4 lg:py-3"
+      className="grid min-h-[124px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 rounded-[1.4rem] border border-[#e2e7f0] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#cfd7e5] hover:shadow-[0_18px_36px_-32px_rgba(15,23,42,.35)] lg:min-h-[154px] lg:grid-cols-[150px_minmax(0,1fr)] lg:gap-5 lg:rounded-[2rem] lg:px-4 lg:py-3"
       dir="rtl"
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.2rem] border border-[#e1e7f1] bg-white lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]">
+      <div className="relative h-[96px] w-[96px] overflow-hidden rounded-[1.2rem] border border-[#e1e7f1] bg-white lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]">
         {image ? (
           <img alt={article.title} className="h-full w-full object-cover" src={image} />
         ) : (
@@ -222,10 +222,10 @@ function ArticleListCard({ article }: { article: Article }) {
         )}
       </div>
       <div className="min-w-0 text-right">
-        <h3 className="line-clamp-2 text-[1rem] font-black leading-7 text-[#303542] lg:text-[1.35rem] lg:leading-8">
+        <h3 className="line-clamp-2 text-[0.95rem] font-black leading-6 text-[#303542] lg:text-[1.35rem] lg:leading-8">
           {article.title}
         </h3>
-        <div className="mt-3 flex items-center justify-end gap-3 text-xs font-bold text-[#8a91a0] lg:mt-5 lg:text-sm">
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2 text-[0.7rem] font-bold text-[#8a91a0] lg:mt-5 lg:gap-3 lg:text-sm">
           <span>{formatArticleTime(article)}</span>
           <span className="h-5 w-px bg-[#c6ccd7]" />
           <span>{article.views ? article.views.toLocaleString("fa-IR") : "۰"} دیدگاه</span>
@@ -237,11 +237,11 @@ function ArticleListCard({ article }: { article: Article }) {
 
 function ArticleSkeletonRow() {
   return (
-    <div className="grid min-h-[154px] grid-cols-[150px_minmax(0,1fr)] items-center gap-5 rounded-[2rem] border border-[#e2e7f0] bg-white px-4 py-3">
-      <div className="h-[124px] w-[124px] animate-pulse rounded-[1.7rem] border border-[#e1e7f1] bg-zinc-100" />
-      <div className="space-y-4">
-        <div className="h-6 w-full animate-pulse rounded-lg bg-zinc-100" />
-        <div className="h-6 w-3/4 animate-pulse rounded-lg bg-zinc-100" />
+    <div className="grid min-h-[124px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 rounded-[1.4rem] border border-[#e2e7f0] bg-white p-3 lg:min-h-[154px] lg:grid-cols-[150px_minmax(0,1fr)] lg:gap-5 lg:rounded-[2rem] lg:px-4 lg:py-3">
+      <div className="h-[96px] w-[96px] animate-pulse rounded-[1.2rem] border border-[#e1e7f1] bg-zinc-100 lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]" />
+      <div className="space-y-3 lg:space-y-4">
+        <div className="h-5 w-full animate-pulse rounded-lg bg-zinc-100 lg:h-6" />
+        <div className="h-5 w-3/4 animate-pulse rounded-lg bg-zinc-100 lg:h-6" />
         <div className="mr-auto h-4 w-1/2 animate-pulse rounded-lg bg-zinc-100" />
       </div>
     </div>

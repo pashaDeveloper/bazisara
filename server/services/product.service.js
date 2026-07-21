@@ -12,6 +12,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
 
 function mediaUrl(file) {
   return file?.url || file?.path || "";
@@ -451,7 +452,7 @@ function decorateProduct(product) {
 function productIdentityFilter(id) {
   const value = String(id || "").trim();
   const filters = [];
-  if (/^\d+$/.test(value)) filters.push({ productId: Number(value) });
+  filters.push(...publicIdOrLegacyFilters("productId", value, "PR"));
   if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
   if (filters.length > 1) return { $or: filters };
   if (filters.length === 1) return filters[0];

@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
-const Counter = require("./counter");
 const baseSchema = require("./baseSchema.model");
 const { generateSlug, normalizePersianSlug, translateToEnglish } = require("../utils/seoUtils");
+const { nextPublicId } = require("../utils/publicId.util");
 
 const urlListSchema = new mongoose.Schema(
   {
@@ -14,7 +14,7 @@ const urlListSchema = new mongoose.Schema(
 
 const productSchema = new mongoose.Schema(
   {
-    productId: { type: Number, unique: true },
+    productId: { type: String, unique: true, sparse: true },
     title: { type: String, required: true, trim: true },
     title_en: { type: String, trim: true },
     summary: { type: String, required: true, default: "" },
@@ -78,7 +78,7 @@ const productSchema = new mongoose.Schema(
         currency: { type: String },
         deviceType: { type: String },
         name: { type: String },
-        productId: { type: Number },
+        productId: { type: String },
         productImageUrl: [{ type: String }],
         leafCategory: { type: String },
         unitPrice: { type: Number },
@@ -94,7 +94,7 @@ const productSchema = new mongoose.Schema(
     promotion_banner: [{ type: String }],
     bigdata_tracker_data: {
       page_name: { type: String },
-      page_info: { product_id: { type: Number } },
+      page_info: { product_id: { type: String } },
     },
     seo: { type: ObjectId, ref: "Seo" },
     creator: { type: ObjectId, ref: "Admin" },
@@ -106,8 +106,7 @@ const productSchema = new mongoose.Schema(
 productSchema.pre("save", async function (next) {
   try {
     if (!this.productId) {
-      const counter = await Counter.findOneAndUpdate({ name: "productId" }, { $inc: { seq: 1 } }, { new: true, upsert: true });
-      this.productId = counter.seq;
+      this.productId = await nextPublicId("productId", "PR");
     }
 
     if (!this.title_en && this.title) this.title_en = await translateToEnglish(this.title);

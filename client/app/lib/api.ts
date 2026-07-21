@@ -30,7 +30,7 @@ export type NamedEntity = {
 
 export type Game = {
   _id: string;
-  gameId?: number;
+  gameId?: string;
   title: string;
   slug?: string;
   shortDescription?: string;
@@ -111,7 +111,7 @@ export type Game = {
 
 export type Article = {
   _id: string;
-  magazineId?: number;
+  magazineId?: string;
   title: string;
   slug?: string;
   excerpt?: string;
