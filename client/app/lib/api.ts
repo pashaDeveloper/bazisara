@@ -10,6 +10,21 @@ type ApiEnvelope<T> = {
 };
 
 export type Media = {
+  blur?: {
+    hash?: string;
+    width?: number | null;
+    height?: number | null;
+  };
+  mobile?: {
+    url?: string;
+    public_id?: string;
+    width?: number | null;
+    height?: number | null;
+  };
+  position?: {
+    x?: number | null;
+    y?: number | null;
+  };
   url?: string;
   public_id?: string;
   storage?: string;
@@ -170,6 +185,20 @@ export function mediaUrl(media?: Media | string | null) {
 
   const origin = API_BASE.replace(/\/api\/?$/, "");
   return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
+export function mediaBlurUrl(media?: Media | string | null) {
+  return "";
+}
+
+export function mediaBlurHash(media?: Media | string | null) {
+  if (!media || typeof media === "string") return "";
+  return media.blur?.hash || "";
+}
+
+export function mediaMobileUrl(media?: Media | string | null) {
+  if (!media || typeof media === "string") return "";
+  return mediaUrl(media.mobile?.url || "");
 }
 
 export async function getApiList<T>(path: string, limit = 24) {

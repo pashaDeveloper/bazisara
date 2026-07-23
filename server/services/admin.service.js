@@ -42,6 +42,7 @@ function buildMedia(req, field, existingMedia) {
   const uploaded = req.uploadedFiles?.[field]?.[0] || (field === "avatar" ? req.file : null);
   if (uploaded) {
     return {
+      blur: uploaded.blur,
       url: uploaded.url || uploaded.path,
       public_id: uploaded.key || uploaded.public_id || uploaded.filename || "",
       storage: uploaded.storage || ""
@@ -51,6 +52,7 @@ function buildMedia(req, field, existingMedia) {
   const urlField = `${field}Url`;
   if (req.body[urlField] !== undefined) {
     return {
+      blur: existingMedia?.blur,
       url: req.body[urlField] || "",
       public_id: existingMedia?.public_id || "",
       storage: existingMedia?.storage || ""
@@ -248,6 +250,7 @@ exports.signUp = async (req, res) => {
     req.uploadedFiles["avatar"].length > 0
   ) {
     avatar = {
+      blur: req.uploadedFiles["avatar"][0].blur,
       url: req.uploadedFiles["avatar"][0].url,
       public_id: req.uploadedFiles["avatar"][0].key,
       storage: req.uploadedFiles["avatar"][0].storage || ""
@@ -835,6 +838,7 @@ exports.updateAdmin = async (req, res) => {
 
     // تنظیم تصویر جدید
     avatar = {
+      blur: req.uploadedFiles["avatar"][0].blur,
       url: req.uploadedFiles["avatar"][0].url,
       public_id: req.uploadedFiles["avatar"][0].key,
       storage: req.uploadedFiles["avatar"][0].storage || ""
@@ -902,6 +906,7 @@ exports.updateAdminInfo = async (req, res) => {
 
     // تنظیم تصویر جدید
     avatar = {
+      blur: req.uploadedFiles["avatar"][0].blur,
       url: req.uploadedFiles["avatar"][0].url,
       public_id: req.uploadedFiles["avatar"][0].key,
       storage: req.uploadedFiles["avatar"][0].storage || ""

@@ -2,7 +2,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
-const { getResourceType, prepareFile } = require("../utils/uploadFile.util");
+const { generateBlurHash, getResourceType, makeImageVariant, prepareFile } = require("../utils/uploadFile.util");
 
 const uploadRoot = path.join(__dirname, "..", "uploads");
 
@@ -21,6 +21,20 @@ const getBaseFolder = (customFolder) => {
 const getBaseUrl = (req) => {
   return process.env.LOCAL_UPLOAD_BASE_URL || `${req.protocol}://${req.get("host")}`;
 };
+
+const isSquareCardImage = (customFolder, field) => {
+  const folder = String(customFolder || "").toLowerCase();
+  return (
+    (folder === "games" && ["cover", "dlcImages", "extraEditionImages"].includes(field)) ||
+    (folder === "genres" && field === "image") ||
+    (folder === "game-collections" && field === "image")
+  );
+};
+
+const getPrepareOptions = (customFolder, field) =>
+  isSquareCardImage(customFolder, field)
+    ? { allowEnlargement: true, fit: "cover", resizeHeight: 768, resizeWidth: 768 }
+    : {};
 
 const uploadLocal = (customFolder = null) => {
   const storage = multer.memoryStorage();
@@ -44,21 +58,48 @@ const uploadLocal = (customFolder = null) => {
 
           for (const file of req.files[field]) {
             const hashedName = crypto.randomBytes(16).toString("hex");
-            const { extension, fileBuffer, contentType } = await prepareFile(file);
+            const prepareOptions = getPrepareOptions(customFolder, field);
+            const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const filename = `${hashedName}.${extension}`;
+            const blurHash = await generateBlurHash(file, extension);
+            const mobileFile = isSquareCardImage(customFolder, field)
+              ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 512, resizeWidth: 512 })
+              : null;
+            const mobileFilename = `${hashedName}-mobile.webp`;
             const relativeFolder = baseFolder.split("/").filter(Boolean).join(path.sep);
             const destinationFolder = path.join(uploadRoot, relativeFolder);
             const filePath = path.join(destinationFolder, filename);
+            const mobileFilePath = path.join(destinationFolder, mobileFilename);
             const publicId = `${baseFolder}/${filename}`;
+            const mobilePublicId = `${baseFolder}/${mobileFilename}`;
             const publicPath = publicId.split("/").map(encodeURIComponent).join("/");
+            const mobilePublicPath = mobilePublicId.split("/").map(encodeURIComponent).join("/");
 
             await fs.mkdir(destinationFolder, { recursive: true });
             await fs.writeFile(filePath, fileBuffer);
+            if (mobileFile) {
+              await fs.writeFile(mobileFilePath, mobileFile.fileBuffer);
+            }
 
             req.uploadedFiles[field].push({
               url: `${getBaseUrl(req)}/uploads/${publicPath}`,
               public_id: publicId,
               key: publicId,
+              blur: blurHash
+                ? {
+                    hash: blurHash.hash,
+                    width: blurHash.width,
+                    height: blurHash.height,
+                }
+                : undefined,
+              mobile: mobileFile
+                ? {
+                    url: `${getBaseUrl(req)}/uploads/${mobilePublicPath}`,
+                    public_id: mobilePublicId,
+                    width: mobileFile.width,
+                    height: mobileFile.height,
+                  }
+                : undefined,
               filename,
               path: filePath,
               format: extension,

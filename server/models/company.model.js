@@ -55,6 +55,11 @@ const companySchema = new mongoose.Schema(
       default: null,
     },
     logo: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: {
         type: String,
         default: "",

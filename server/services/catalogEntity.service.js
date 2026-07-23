@@ -53,6 +53,7 @@ function normalizePayload(body, fields, uploadedFiles, adminId) {
 
   if (uploadedFiles?.logo?.[0]) {
     payload.logo = {
+      blur: uploadedFiles.logo[0].blur,
       url: uploadedFiles.logo[0].url || uploadedFiles.logo[0].path || "",
       public_id: uploadedFiles.logo[0].key || uploadedFiles.logo[0].public_id || uploadedFiles.logo[0].filename || "N/A",
     };

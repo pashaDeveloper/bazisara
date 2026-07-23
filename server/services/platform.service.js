@@ -39,6 +39,7 @@ function buildUploadedFile(uploadedFiles = {}, fieldName) {
   const file = uploadedFiles[fieldName]?.[0];
   if (!file) return null;
   return {
+    blur: file.blur,
     url: file.url || file.path || "",
     public_id: file.public_id || file.key || file.filename || "",
     format: file.format || "",
@@ -49,6 +50,7 @@ function buildImage(uploadedFiles = {}, bodyValue) {
   const image = mediaFromUploadOrBody(uploadedFiles, "image", bodyValue);
   if (!image) return null;
   return {
+    blur: image.blur,
     url: image.url,
     public_id: image.public_id,
     storage: image.storage || "",

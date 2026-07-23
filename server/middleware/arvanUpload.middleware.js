@@ -2,6 +2,8 @@ const multer = require("multer");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const {
   getResourceType,
+  generateBlurHash,
+  makeImageVariant,
   makeObjectName,
   prepareFile,
 } = require("../utils/uploadFile.util");
@@ -33,9 +35,24 @@ const getPublicUrl = (key) => {
   return `${baseUrl.replace(/\/$/, "")}/${key.split("/").map(encodeURIComponent).join("/")}`;
 };
 
+const makeMobileKey = (key) => key.replace(/\.[^.]+$/, "-mobile.webp");
+
+const isSquareCardImage = (customFolder, field) => {
+  const folder = String(customFolder || "").toLowerCase();
+  return (
+    (folder === "games" && ["cover", "dlcImages", "extraEditionImages"].includes(field)) ||
+    (folder === "genres" && field === "image") ||
+    (folder === "game-collections" && field === "image")
+  );
+};
+
 const getPrepareOptions = (req, customFolder, field) => {
   if (customFolder === "games" && field === "gallery") {
     return { fit: "cover", resizeHeight: 1080, resizeWidth: 1920 };
+  }
+
+  if (isSquareCardImage(customFolder, field)) {
+    return { allowEnlargement: true, fit: "cover", resizeHeight: 768, resizeWidth: 768 };
   }
 
   if (customFolder === "sliders" && field === "mobileImage") {
@@ -83,8 +100,18 @@ const uploadArvan = (customFolder = null) => {
               customFolder,
             });
 
-            const { extension, fileBuffer, contentType } = await prepareFile(file, getPrepareOptions(req, customFolder, field));
+            const prepareOptions = getPrepareOptions(req, customFolder, field);
+            const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const { filename, key } = makeObjectName(customFolder, extension, req.body);
+            const blurHash = await generateBlurHash(file, extension);
+            const mobileFile = isSquareCardImage(customFolder, field)
+              ? await makeImageVariant(file, extension, {
+                  fit: "cover",
+                  resizeHeight: 512,
+                  resizeWidth: 512,
+                })
+              : null;
+            const mobileKey = mobileFile ? makeMobileKey(key) : "";
 
             console.log("[ARVAN_UPLOAD] prepared file", {
               field,
@@ -112,10 +139,37 @@ const uploadArvan = (customFolder = null) => {
               bucket: process.env.ARVAN_S3_BUCKET,
             });
 
+            if (mobileFile) {
+              await s3Client.send(
+                new PutObjectCommand({
+                  Bucket: process.env.ARVAN_S3_BUCKET,
+                  Key: mobileKey,
+                  Body: mobileFile.fileBuffer,
+                  ContentType: mobileFile.contentType,
+                  ACL: getObjectAcl(),
+                })
+              );
+            }
+
             req.uploadedFiles[field].push({
               url: getPublicUrl(key),
               public_id: key,
               key,
+              blur: blurHash
+                ? {
+                    hash: blurHash.hash,
+                    width: blurHash.width,
+                    height: blurHash.height,
+                  }
+                : undefined,
+              mobile: mobileFile
+                ? {
+                    url: getPublicUrl(mobileKey),
+                    public_id: mobileKey,
+                    width: mobileFile.width,
+                    height: mobileFile.height,
+                  }
+                : undefined,
               filename,
               format: extension,
               original_size: file.size,

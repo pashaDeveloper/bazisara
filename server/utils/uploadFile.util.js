@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const path = require("path");
+const { encode } = require("blurhash");
 const sharp = require("sharp");
 
 const imageContentTypes = {
@@ -11,7 +12,7 @@ const imageContentTypes = {
   webp: "image/webp",
 };
 
-const compressibleImageExtensions = new Set(["jpg", "jpeg", "jfif", "png", "webp"]);
+const compressibleImageExtensions = new Set(["avif", "jpg", "jpeg", "jfif", "png", "webp"]);
 const resizeWebpQuality = 78;
 const compressionTargetRatio = 0.35;
 const compressionQualities = [82, 78, 74, 70, 66, 62, 58, 54, 50];
@@ -118,12 +119,81 @@ const normalizeResizeOptions = (options = {}) => {
   return {
     fit: ["contain", "cover", "fill", "inside", "outside"].includes(options.fit) ? options.fit : "cover",
     height: Math.round(height),
+    withoutEnlargement: options.allowEnlargement === true ? false : true,
     width: Math.round(width),
   };
 };
 
 const shouldAutoResize = (metadata) => {
   return metadata.width > defaultMaxImageDimension || metadata.height > defaultMaxImageDimension;
+};
+
+const isAnimatedImage = (metadata) => metadata.pages && metadata.pages > 1;
+
+const generateBlurHash = async (file, extension) => {
+  if (!compressibleImageExtensions.has(extension)) {
+    return null;
+  }
+
+  const metadata = await sharp(file.buffer, { animated: true }).metadata();
+  if (isAnimatedImage(metadata)) {
+    return null;
+  }
+
+  const { data, info } = await sharp(file.buffer)
+    .rotate()
+    .raw()
+    .ensureAlpha()
+    .resize(32, 32, { fit: "inside" })
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    hash: encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3),
+    height: info.height,
+    width: info.width,
+  };
+};
+
+const makeImageVariant = async (file, extension, options = {}) => {
+  if (!compressibleImageExtensions.has(extension)) {
+    return null;
+  }
+
+  const metadata = await sharp(file.buffer, { animated: true }).metadata();
+  if (isAnimatedImage(metadata)) {
+    return null;
+  }
+
+  const width = Number(options.width || options.resizeWidth);
+  const height = Number(options.height || options.resizeHeight);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  const fileBuffer = await sharp(file.buffer)
+    .rotate()
+    .resize({
+      fit: ["contain", "cover", "fill", "inside", "outside"].includes(options.fit) ? options.fit : "cover",
+      height: Math.round(height),
+      position: "center",
+      width: Math.round(width),
+      withoutEnlargement: false,
+    })
+    .webp({
+      alphaQuality: 80,
+      effort: 6,
+      quality: Number(options.quality) || resizeWebpQuality,
+      smartSubsample: true,
+    })
+    .toBuffer();
+
+  return {
+    contentType: "image/webp",
+    extension: "webp",
+    fileBuffer,
+    height: Math.round(height),
+    width: Math.round(width),
+  };
 };
 
 const resizeImage = async (file, extension, options) => {
@@ -133,7 +203,7 @@ const resizeImage = async (file, extension, options) => {
   }
 
   const metadata = await sharp(file.buffer, { animated: true }).metadata();
-  if (metadata.pages && metadata.pages > 1) {
+  if (isAnimatedImage(metadata)) {
     return null;
   }
 
@@ -144,7 +214,7 @@ const resizeImage = async (file, extension, options) => {
       height: resizeOptions.height,
       position: "center",
       width: resizeOptions.width,
-      withoutEnlargement: true,
+      withoutEnlargement: resizeOptions.withoutEnlargement,
     })
     .webp({
       alphaQuality: 80,
@@ -175,7 +245,7 @@ const compressImage = async (file, extension) => {
   }
 
   const metadata = await sharp(file.buffer, { animated: true }).metadata();
-  if (metadata.pages && metadata.pages > 1) {
+  if (isAnimatedImage(metadata)) {
     return null;
   }
 
@@ -255,6 +325,8 @@ const getResourceType = (mimetype) => {
 
 module.exports = {
   getResourceType,
+  generateBlurHash,
+  makeImageVariant,
   makeObjectName,
   prepareFile,
 };

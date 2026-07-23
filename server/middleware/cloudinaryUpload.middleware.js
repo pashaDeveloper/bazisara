@@ -2,6 +2,8 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const {
   getResourceType,
+  generateBlurHash,
+  makeImageVariant,
   makeObjectName,
   prepareFile,
 } = require("../utils/uploadFile.util");
@@ -23,6 +25,20 @@ const uploadBuffer = (buffer, options) => {
   });
 };
 
+const isSquareCardImage = (customFolder, field) => {
+  const folder = String(customFolder || "").toLowerCase();
+  return (
+    (folder === "games" && ["cover", "dlcImages", "extraEditionImages"].includes(field)) ||
+    (folder === "genres" && field === "image") ||
+    (folder === "game-collections" && field === "image")
+  );
+};
+
+const getPrepareOptions = (customFolder, field) =>
+  isSquareCardImage(customFolder, field)
+    ? { allowEnlargement: true, fit: "cover", resizeHeight: 768, resizeWidth: 768 }
+    : {};
+
 const uploadCloudinary = (customFolder = null) => {
   const multerInstance = multer({ storage: multer.memoryStorage() });
 
@@ -41,19 +57,45 @@ const uploadCloudinary = (customFolder = null) => {
           req.uploadedFiles[field] = [];
 
           for (const file of req.files[field]) {
-            const { extension, fileBuffer, contentType } = await prepareFile(file);
+            const prepareOptions = getPrepareOptions(customFolder, field);
+            const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const { key } = makeObjectName(customFolder, extension, req.body);
             const resourceType = getResourceType(contentType);
             const publicId = key.replace(/\.[^.]+$/, "");
+            const blurHash = await generateBlurHash(file, extension);
+            const mobileFile = isSquareCardImage(customFolder, field)
+              ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 512, resizeWidth: 512 })
+              : null;
             const result = await uploadBuffer(fileBuffer, {
               public_id: publicId,
               resource_type: resourceType,
             });
+            const mobileResult = mobileFile
+              ? await uploadBuffer(mobileFile.fileBuffer, {
+                  public_id: `${publicId}-mobile`,
+                  resource_type: "image",
+                })
+              : null;
 
             req.uploadedFiles[field].push({
               url: result.secure_url,
               public_id: result.public_id,
               key: result.public_id,
+              blur: blurHash
+                ? {
+                    hash: blurHash.hash,
+                    width: blurHash.width,
+                    height: blurHash.height,
+                }
+                : undefined,
+              mobile: mobileResult
+                ? {
+                    url: mobileResult.secure_url,
+                    public_id: mobileResult.public_id,
+                    width: mobileFile.width,
+                    height: mobileFile.height,
+                  }
+                : undefined,
               filename: `${result.public_id.split("/").pop()}.${result.format || extension}`,
               format: result.format || extension,
               resource_type: result.resource_type || resourceType,

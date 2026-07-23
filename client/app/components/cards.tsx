@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Article, Game } from "../lib/api";
-import { articleRouteId, gameRouteId, mediaUrl } from "../lib/api";
+import { articleRouteId, gameRouteId, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
+import { BlurImage } from "./blur-image";
 
 export function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
@@ -20,11 +21,8 @@ export function DashboardCardSkeleton() {
 
 export function GameCard({ game }: { game: Game }) {
   const routeId = gameRouteId(game);
-  const image =
-    mediaUrl(game.cardDesktopCover) ||
-    mediaUrl(game.cover) ||
-    mediaUrl(game.desktopCover) ||
-    mediaUrl(game.gallery?.[0]);
+  const media = [game.cardDesktopCover, game.cover, game.desktopCover, game.gallery?.[0]].find((item) => mediaUrl(item));
+  const image = mediaUrl(media);
 
   return (
     <Link
@@ -34,7 +32,7 @@ export function GameCard({ game }: { game: Game }) {
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
         {image ? (
-          <img alt={game.title} className="h-full w-full object-cover" src={image} />
+          <BlurImage alt={game.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}
@@ -52,7 +50,8 @@ export function GameCard({ game }: { game: Game }) {
 
 export function ArticleCard({ article }: { article: Article }) {
   const routeId = articleRouteId(article);
-  const image = mediaUrl(article.cardCover) || mediaUrl(article.cover);
+  const media = [article.cardCover, article.cover].find((item) => mediaUrl(item));
+  const image = mediaUrl(media);
 
   return (
     <Link
@@ -62,7 +61,7 @@ export function ArticleCard({ article }: { article: Article }) {
     >
       <div className="h-20 w-20 overflow-hidden rounded-xl bg-zinc-900 sm:h-24 sm:w-24">
         {image ? (
-          <img alt={article.title} className="h-full w-full object-cover" src={image} />
+          <BlurImage alt={article.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}

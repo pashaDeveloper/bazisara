@@ -11,6 +11,7 @@ const {
 function buildMedia(file) {
   if (!file) return undefined;
   return {
+    blur: file.blur,
     url: file.url,
     public_id: file.public_id,
     storage: file.storage || "",

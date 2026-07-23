@@ -3,10 +3,11 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { Article, Game } from "../lib/api";
-import { articleRouteId, gameRouteId, mediaUrl } from "../lib/api";
+import type { Article, Game, Media } from "../lib/api";
+import { articleRouteId, gameRouteId, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
 import { DashboardCardSkeleton } from "./cards";
+import { BlurImage } from "./blur-image";
 
 type CategoryChip = {
   id: string;
@@ -70,14 +71,16 @@ function ChipButton({
 function ContentCard({
   href,
   title,
-  image,
+  media,
   align = "right",
 }: {
   href: string;
   title: string;
-  image?: string;
+  media?: Media;
   align?: "left" | "right";
 }) {
+  const image = mediaUrl(media);
+
   return (
     <Link
       href={href}
@@ -86,7 +89,7 @@ function ContentCard({
     >
       <div className="relative aspect-square overflow-hidden rounded-xl">
         {image ? (
-          <img alt={title} className="h-full w-full object-cover" src={image} />
+          <BlurImage alt={title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <div className="h-full w-full animate-pulse rounded-xl bg-zinc-800/20" />
         )}
@@ -125,14 +128,14 @@ function FilteredSection<T extends Article | Game>({
   items,
   title,
   label,
-  getImage,
+  getMedia,
   align = "right",
 }: {
   href: string;
   items: T[];
   title: string;
   label: string;
-  getImage: (item: T) => string;
+  getMedia: (item: T) => Media | undefined;
   align?: "left" | "right";
 }) {
   const categories = useMemo(() => uniqueCategories(items), [items]);
@@ -170,7 +173,7 @@ function FilteredSection<T extends Article | Game>({
               key={item._id}
               align={align}
               href={`${href.replace(/\/$/, "")}/${slugify(item.slug || item.title) || item._id}/${"magazineId" in item ? articleRouteId(item) : gameRouteId(item)}`}
-              image={getImage(item)}
+              media={getMedia(item)}
               title={item.title}
             />
           ))}
@@ -206,7 +209,8 @@ function formatArticleTime(article: Article) {
 }
 
 function ArticleListCard({ article }: { article: Article }) {
-  const image = mediaUrl(article.cardCover) || mediaUrl(article.cover);
+  const media = [article.cardCover, article.cover].find((item) => mediaUrl(item));
+  const image = mediaUrl(media);
 
   return (
     <Link
@@ -216,7 +220,7 @@ function ArticleListCard({ article }: { article: Article }) {
     >
       <div className="relative h-[96px] w-[96px] overflow-hidden rounded-[1.2rem] border border-[#e1e7f1] bg-white lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]">
         {image ? (
-          <img alt={article.title} className="h-full w-full object-cover" src={image} />
+          <BlurImage alt={article.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <div className="h-full w-full animate-pulse rounded-[1.7rem] bg-zinc-100" />
         )}
@@ -365,12 +369,7 @@ export function HomeCollections({
         label="همه بازی‌ها"
         title="لیست بازی‌ها"
         align="left"
-        getImage={(game) =>
-          mediaUrl(game.cardDesktopCover) ||
-          mediaUrl(game.cover) ||
-          mediaUrl(game.desktopCover) ||
-          mediaUrl(game.gallery?.[0])
-        }
+        getMedia={(game) => [game.cardDesktopCover, game.cover, game.desktopCover, game.gallery?.[0]].find((item) => mediaUrl(item))}
       />
 
       <HomeArticlesSection articles={articles} />

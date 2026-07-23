@@ -1,8 +1,9 @@
 import { Bookmark, Eye, MessageCircle, Heart, Share2 } from "lucide-react";
 import { notFound } from "next/navigation";
+import { BlurImage } from "../../../components/blur-image";
 import { SkeletonBlock } from "../../../components/cards";
 import type { Article, Game, NamedEntity } from "../../../lib/api";
-import { formatPersianDate, getApiItem, mediaUrl } from "../../../lib/api";
+import { formatPersianDate, getApiItem, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -84,9 +85,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
   if (!article) notFound();
 
-  const image = mediaUrl(article.contentCover) || mediaUrl(article.cover) || mediaUrl(article.cardCover);
+  const heroMedia = [article.contentCover, article.cover, article.cardCover].find((item) => mediaUrl(item));
+  const image = mediaUrl(heroMedia);
   const authorName = article.creator?.name || article.author || "تحریریه بازی بازار";
-  const authorImage = mediaUrl(article.creator?.avatar);
+  const authorAvatar = article.creator?.avatar;
+  const authorImage = mediaUrl(authorAvatar);
   const date = formatPersianDate(article.publishedAt || article.createdAt);
   const categoryPath = getCategoryPath(article.category);
   const platforms = article.platforms?.map(entityLabel).filter(Boolean) || [];
@@ -118,7 +121,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-right text-[12px] font-bold text-zinc-600">
                   <div className="flex items-center gap-2">
                     {authorImage ? (
-                      <img alt={authorName} className="h-10 w-10 rounded-full object-cover" src={authorImage} />
+                      <BlurImage alt={authorName} blurHash={mediaBlurHash(authorAvatar)} blurSrc={mediaBlurUrl(authorAvatar)} className="h-10 w-10 rounded-full" src={authorImage} />
                     ) : (
                       <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-900 text-center text-base font-black leading-10 text-white">
                         {authorName.slice(0, 1)}
@@ -152,7 +155,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               <div className="relative">
                 <div className="overflow-hidden bg-zinc-900">
                   {image ? (
-                    <img alt={article.title} className="aspect-[16/10] w-full object-cover" src={image} />
+                    <BlurImage alt={article.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="aspect-[16/10] w-full" src={image} />
                   ) : (
                     <SkeletonBlock className="aspect-[16/10] w-full rounded-none bg-zinc-200" />
                   )}
@@ -218,7 +221,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                                 media?.type === "video" ? (
                                   <video className="w-full rounded-xl" controls key={`${media.url}-${mediaIndex}`} playsInline preload="metadata" src={mediaUrl(media)} />
                                 ) : (
-                                  <img alt="" className="w-full rounded-xl object-cover" key={`${media.url}-${mediaIndex}`} loading="lazy" src={mediaUrl(media)} />
+                                  <BlurImage alt="" blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="w-full rounded-xl aspect-[16/9]" key={`${media.url}-${mediaIndex}`} src={mediaUrl(media)} />
                                 )
                               )}
                             </div>
@@ -262,14 +265,15 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             <h2 className="border-r-2 border-orange-500 pr-3 text-sm font-bold text-zinc-950">از دست ندهید</h2>
             <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
               {relatedCards.map((game, index) => {
-                const imageUrl = mediaUrl(game.cardDesktopCover) || mediaUrl(game.cover);
+                const media = [game.cardDesktopCover, game.cover].find((item) => mediaUrl(item));
+                const imageUrl = mediaUrl(media);
                 const label = game.title || "";
 
                 return (
                   <div className="w-20 shrink-0 text-center" key={game?._id || index}>
                     <div className="mx-auto h-16 w-16 overflow-hidden rounded-full border-2 border-orange-500 bg-zinc-800">
                       {imageUrl ? (
-                        <img alt={label} className="h-full w-full object-cover" src={imageUrl} />
+                        <BlurImage alt={label} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={imageUrl} />
                       ) : (
                         <SkeletonBlock className="h-full w-full rounded-none bg-zinc-200" />
                       )}

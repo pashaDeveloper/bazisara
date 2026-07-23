@@ -57,6 +57,10 @@ export function GameDetailPreview({
   variant = "desktop",
 }) {
   const isMobile = variant === "mobile";
+  const desktopPosition = form.desktopCover?.position || {};
+  const desktopObjectPosition = `${Number.isFinite(Number(desktopPosition.x)) ? desktopPosition.x : 50}% ${
+    Number.isFinite(Number(desktopPosition.y)) ? desktopPosition.y : 50
+  }%`;
   const heroImage =
     (isMobile ? mobileCoverPreview || coverPreview : desktopCoverPreview || coverPreview) ||
     galleryPreview[0]?.url ||
@@ -230,7 +234,16 @@ export function GameDetailPreview({
       dir="rtl"
     >
       <div className={`relative bg-zinc-900 ${isMobile ? "h-40" : "h-64"}`}>
-        {heroImage ? <img alt={title} className="h-full w-full object-cover" src={heroImage} /> : <SkeletonBlock className="h-full w-full rounded-none" />}
+        {heroImage ? (
+          <img
+            alt={title}
+            className="h-full w-full object-cover"
+            src={heroImage}
+            style={!isMobile && desktopCoverPreview ? { objectPosition: desktopObjectPosition } : undefined}
+          />
+        ) : (
+          <SkeletonBlock className="h-full w-full rounded-none" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
         <div
           className={`absolute rounded-xl border border-white/10 bg-white/90 text-zinc-950 shadow-xl ${

@@ -239,6 +239,7 @@ function normalizeFaqs(value) {
       media: Array.isArray(item?.media)
         ? item.media
             .map((media) => ({
+              blur: media?.blur || undefined,
               url: String(media?.url || "").trim(),
               public_id: String(media?.public_id || "").trim(),
               storage: String(media?.storage || "").trim(),
@@ -266,6 +267,7 @@ function normalizeBoolean(value) {
 function buildMedia(file) {
   if (!file) return undefined;
   return {
+    blur: file.blur,
     url: file.url,
     public_id: file.public_id,
     storage: file.storage || "",

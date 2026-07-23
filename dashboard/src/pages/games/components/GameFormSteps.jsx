@@ -1158,6 +1158,7 @@ export function GameMediaStep({
   isTrailerVideoUploading,
   onDeleteMainImage,
   onDeleteUploadedImage,
+  onEditDesktopCoverPosition,
   onImageUpload,
   onVideoUpload,
   setCoverPreview,
@@ -1238,6 +1239,16 @@ export function GameMediaStep({
             setThumbnailPreview={() => {}}
             title="انتخاب"
           />
+          {desktopCoverPreview ? (
+            <button
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-950 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-white dark:hover:text-white"
+              onClick={onEditDesktopCoverPosition}
+              type="button"
+            >
+              <Edit className="h-4 w-4" />
+              ویرایش ناحیه نمایش
+            </button>
+          ) : null}
         </div>
       </div>
       <MediaStep galleryPreview={galleryPreview} imageUploadState={imageUploadState} onDeleteUploadedImage={onDeleteUploadedImage} onImageUpload={onImageUpload} setForm={setForm} setGalleryPreview={setGalleryPreview} />

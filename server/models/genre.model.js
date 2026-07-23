@@ -22,6 +22,17 @@ const genreSchema = new mongoose.Schema(
       default: null,
     },
     image: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
+      mobile: {
+        url: { type: String, default: "" },
+        public_id: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: {
         type: String,
         default: "",

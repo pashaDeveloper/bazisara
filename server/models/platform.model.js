@@ -45,6 +45,11 @@ const platformSchema = new mongoose.Schema(
       default: null,
     },
     image: {
+      blur: {
+        hash: { type: String, trim: true, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: { type: String, trim: true, default: "" },
       public_id: { type: String, trim: true, default: "" },
     },

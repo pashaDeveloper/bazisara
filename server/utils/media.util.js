@@ -15,6 +15,9 @@ function parseMediaValue(value, fallbackType = "image") {
   if (!raw?.url) return undefined;
 
   return {
+    blur: raw.blur || undefined,
+    mobile: raw.mobile || undefined,
+    position: raw.position || undefined,
     url: String(raw.url || "").trim(),
     public_id: String(raw.public_id || raw.key || "").trim(),
     storage: String(raw.storage || "").trim(),
@@ -25,6 +28,9 @@ function parseMediaValue(value, fallbackType = "image") {
 function mediaFromUpload(file, fallbackType = "image") {
   if (!file) return undefined;
   return {
+    blur: file.blur,
+    mobile: file.mobile,
+    position: file.position,
     url: file.url || file.path || "",
     public_id: file.public_id || file.key || file.filename || "",
     storage: file.storage || "",

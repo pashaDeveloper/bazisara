@@ -18,10 +18,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BlurImage } from "../../../components/blur-image";
 import { SkeletonBlock } from "../../../components/cards";
 import { productRoutePath, products } from "../../../products2/data";
-import type { Game, NamedEntity } from "../../../lib/api";
-import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaUrl } from "../../../lib/api";
+import type { Game, Media, NamedEntity } from "../../../lib/api";
+import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
 
 export const dynamic = "force-dynamic";
@@ -128,31 +129,24 @@ function latinToPersian(value: string | number) {
   return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 }
 
-function gameImage(game: Game, preferred: "desktop" | "mobile" | "card" = "card") {
+function gameMedia(game: Game, preferred: "desktop" | "mobile" | "card" = "card"): Media | undefined {
   if (preferred === "desktop") {
-    return (
-      mediaUrl(game.desktopCover) ||
-      mediaUrl(game.cover) ||
-      mediaUrl(game.cardDesktopCover) ||
-      mediaUrl(game.gallery?.[0])
-    );
+    return [game.desktopCover, game.cover, game.cardDesktopCover, game.gallery?.[0]].find((item) => mediaUrl(item));
   }
 
   if (preferred === "mobile") {
-    return (
-      mediaUrl(game.mobileCover) ||
-      mediaUrl(game.cover) ||
-      mediaUrl(game.cardMobileCover) ||
-      mediaUrl(game.gallery?.[0])
-    );
+    return [game.mobileCover, game.cover, game.cardMobileCover, game.gallery?.[0]].find((item) => mediaUrl(item));
   }
 
-  return (
-    mediaUrl(game.cardDesktopCover) ||
-    mediaUrl(game.cover) ||
-    mediaUrl(game.desktopCover) ||
-    mediaUrl(game.gallery?.[0])
-  );
+  return [game.cardDesktopCover, game.cover, game.desktopCover, game.gallery?.[0]].find((item) => mediaUrl(item));
+}
+
+function objectPosition(media?: Media) {
+  const x = Number(media?.position?.x);
+  const y = Number(media?.position?.y);
+  const safeX = Number.isFinite(x) ? Math.min(100, Math.max(0, x)) : 50;
+  const safeY = Number.isFinite(y) ? Math.min(100, Math.max(0, y)) : 50;
+  return `${safeX}% ${safeY}%`;
 }
 
 function compactValue(value?: string | number | null) {
@@ -280,13 +274,21 @@ function HeroActions({ trailerUrl }: { trailerUrl?: string }) {
 }
 
 function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: string[]; keywords: string[] }) {
-  const heroImage = gameImage(game, "desktop");
+  const heroMedia = gameMedia(game, "desktop");
+  const heroImage = mediaUrl(heroMedia);
   const trailerUrl = mediaUrl(game.trailerVideo);
 
   return (
     <section className="relative hidden h-[480px] overflow-hidden bg-[#dbe5ed] lg:block" dir="ltr">
       {heroImage ? (
-        <img alt={game.title} className="absolute inset-0 h-full w-full object-cover" src={heroImage} />
+        <BlurImage
+          alt={game.title}
+          blurHash={mediaBlurHash(heroMedia)}
+          blurSrc={mediaBlurUrl(heroMedia)}
+          className="absolute inset-0 h-full w-full"
+          imageStyle={{ objectPosition: objectPosition(heroMedia) }}
+          src={heroImage}
+        />
       ) : (
         <SkeletonBlock className="absolute inset-0 h-full w-full rounded-none" />
       )}
@@ -322,7 +324,8 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
 }
 
 function MobileHero({ game, platforms, keywords }: { game: Game; platforms: string[]; keywords: string[] }) {
-  const heroImage = gameImage(game, "mobile") || gameImage(game, "desktop");
+  const heroMedia = gameMedia(game, "mobile") || gameMedia(game, "desktop");
+  const heroImage = mediaUrl(heroMedia);
   const trailerUrl = mediaUrl(game.trailerVideo);
 
   return (
@@ -342,7 +345,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="relative mx-auto aspect-[4/3] w-full max-w-[360px] overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
-            <img alt={game.title} className="h-full w-full object-contain" src={heroImage} />
+            <BlurImage alt={game.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-contain" src={heroImage} />
           ) : (
             <SkeletonBlock className="h-full w-full rounded-none" />
           )}
@@ -497,7 +500,8 @@ function GameRail({ title, games }: { title: string; games: Game[] }) {
       <div className="flex gap-3 overflow-x-auto pb-2">
         {games.slice(0, 8).map((item) => {
           const routeId = gameRouteId(item);
-          const image = gameImage(item, "card");
+          const media = gameMedia(item, "card");
+          const image = mediaUrl(media);
           return (
             <Link
               key={item._id}
@@ -506,7 +510,7 @@ function GameRail({ title, games }: { title: string; games: Game[] }) {
               dir="ltr"
             >
               <div className="aspect-square overflow-hidden rounded-md bg-[#edf1f6]">
-                {image ? <img alt={item.title} className="h-full w-full object-cover" src={image} /> : <SkeletonBlock className="h-full w-full" />}
+                {image ? <BlurImage alt={item.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} /> : <SkeletonBlock className="h-full w-full" />}
               </div>
               <h3 className="mt-3 line-clamp-2 min-h-10 text-left text-[13px] font-bold leading-5 text-[#2e394f]">{item.title}</h3>
             </Link>

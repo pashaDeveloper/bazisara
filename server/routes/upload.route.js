@@ -18,6 +18,9 @@ const arvanS3Client = new S3Client({
   },
 });
 
+const makeBlurPublicId = (publicId) => publicId.replace(/\.[^.]+$/, "-blur.webp");
+const makeMobilePublicId = (publicId) => publicId.replace(/\.[^.]+$/, "-mobile.webp");
+
 const createUploadHandler = (req, res) => {
   const file = req.uploadedFiles?.file?.[0] || req.uploadedFiles?.upload?.[0];
 
@@ -64,6 +67,18 @@ const deleteArvanHandler = async (req, res, next) => {
         Key: publicId,
       })
     );
+    await arvanS3Client.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.ARVAN_S3_BUCKET,
+        Key: makeBlurPublicId(publicId),
+      })
+    ).catch(() => null);
+    await arvanS3Client.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.ARVAN_S3_BUCKET,
+        Key: makeMobilePublicId(publicId),
+      })
+    ).catch(() => null);
 
     res.status(200).json({
       acknowledgement: true,

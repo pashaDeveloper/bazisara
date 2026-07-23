@@ -476,7 +476,7 @@ function GameForm({ mode = "create" }) {
   const [coverPreview, setCoverPreview] = useState("");
   const [desktopCoverPreview, setDesktopCoverPreview] = useState("");
   const [mobileCoverPreview, setMobileCoverPreview] = useState("");
-  const [desktopCoverCropFile, setDesktopCoverCropFile] = useState(null);
+  const [desktopCoverPositionSource, setDesktopCoverPositionSource] = useState(null);
   const [galleryPreview, setGalleryPreview] = useState([]);
   const [trailerVideoPreview, setTrailerVideoPreview] = useState("");
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
@@ -861,7 +861,7 @@ function GameForm({ mode = "create" }) {
       patchTitle: game.patchTitle || "",
       patchImage: null,
       cover: null,
-      desktopCover: null,
+      desktopCover: game.desktopCover?.url ? game.desktopCover : null,
       mobileCover: null,
       gallery: existingGallery,
     });
@@ -1495,7 +1495,11 @@ function GameForm({ mode = "create" }) {
             setCoverPreview={setCoverPreview}
             setDesktopCoverPreview={setDesktopCoverPreview}
             setMobileCoverPreview={setMobileCoverPreview}
-            setDesktopCoverCropFile={setDesktopCoverCropFile}
+            onEditDesktopCoverPosition={() => {
+              if (!desktopCoverPreview) return;
+              setDesktopCoverPositionSource({ sourceUrl: desktopCoverPreview });
+            }}
+            setDesktopCoverCropFile={(file) => setDesktopCoverPositionSource(file instanceof File ? { file } : null)}
             setForm={setForm}
             setGalleryPreview={setGalleryPreview}
             setTrailerThumbnailPreview={setTrailerThumbnailPreview}
@@ -1965,14 +1969,24 @@ function GameForm({ mode = "create" }) {
         ) : null}
 
         <DesktopCoverCropper
-          file={desktopCoverCropFile}
-          onCancel={() => setDesktopCoverCropFile(null)}
-          onCrop={async (croppedFile, previewUrl) => {
-            setDesktopCoverPreview(previewUrl);
-            setDesktopCoverCropFile(null);
-            const media = await handleImageUpload("desktopCover", croppedFile);
+          file={desktopCoverPositionSource?.file}
+          sourceUrl={desktopCoverPositionSource?.sourceUrl || ""}
+          initialPosition={form.desktopCover?.position}
+          onCancel={() => setDesktopCoverPositionSource(null)}
+          onSelect={async (selectedFile, position) => {
+            setDesktopCoverPositionSource(null);
+            if (!selectedFile) {
+              setForm((prev) => ({
+                ...prev,
+                desktopCover: prev.desktopCover?.url ? { ...prev.desktopCover, position } : prev.desktopCover,
+              }));
+              return;
+            }
+
+            const media = await handleImageUpload("desktopCover", selectedFile);
             if (!media) return;
-            setForm((prev) => ({ ...prev, desktopCover: media }));
+            const positionedMedia = { ...media, position };
+            setForm((prev) => ({ ...prev, desktopCover: positionedMedia }));
             setDesktopCoverPreview(media.url);
           }}
         />

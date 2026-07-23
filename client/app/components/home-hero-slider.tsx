@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Slider } from "../lib/api";
-import { mediaUrl } from "../lib/api";
+import { mediaBlurHash, mediaBlurUrl, mediaUrl } from "../lib/api";
+import { BlurImage } from "./blur-image";
 
 function SliderSkeleton() {
   return (
@@ -28,7 +29,11 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
     .map((slider) => ({
       ...slider,
       imageUrl: mediaUrl(slider.image) || mediaUrl(slider.mobileImage),
+      imageBlurHash: mediaBlurHash(slider.image) || mediaBlurHash(slider.mobileImage),
+      imageBlurUrl: mediaBlurUrl(slider.image) || mediaBlurUrl(slider.mobileImage),
       mobileImageUrl: mediaUrl(slider.mobileImage) || mediaUrl(slider.image),
+      mobileImageBlurHash: mediaBlurHash(slider.mobileImage) || mediaBlurHash(slider.image),
+      mobileImageBlurUrl: mediaBlurUrl(slider.mobileImage) || mediaBlurUrl(slider.image),
     }))
     .filter((slider) => slider.imageUrl && !failedSlideIds.includes(slider._id));
 
@@ -68,10 +73,13 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
               onClick={() => scrollToSlide(index % visibleSliders.length)}
               className="relative aspect-square w-[84vw] shrink-0 overflow-hidden rounded-[1.25rem] bg-white shadow-[0_16px_30px_-26px_rgba(0,0,0,.35)] sm:w-[66vw]"
             >
-              <img
+              <BlurImage
                 src={slide.mobileImageUrl}
+                blurHash={slide.mobileImageBlurHash}
+                blurSrc={slide.mobileImageBlurUrl}
                 alt={slide.title || ""}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full"
+                imageClassName="object-cover object-center"
                 onError={() =>
                   setFailedSlideIds((current) =>
                     current.includes(slide._id) ? current : [...current, slide._id],
@@ -99,10 +107,13 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
 
       <div className="hidden lg:block">
         <div className="relative h-[397px] w-full">
-          <img
+          <BlurImage
             src={activeSlide.imageUrl}
+            blurHash={activeSlide.imageBlurHash}
+            blurSrc={activeSlide.imageBlurUrl}
             alt={activeSlide.title || ""}
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full"
+            imageClassName="object-cover object-center"
             onError={() =>
               setFailedSlideIds((current) =>
                 current.includes(activeSlide._id) ? current : [...current, activeSlide._id],

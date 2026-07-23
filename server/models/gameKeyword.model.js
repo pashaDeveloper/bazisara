@@ -29,6 +29,11 @@ const gameKeywordSchema = new mongoose.Schema(
       maxLength: [1000, "Description must be at most 1000 characters"],
     },
     image: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: { type: String, default: "" },
       public_id: { type: String, default: "" },
       storage: {

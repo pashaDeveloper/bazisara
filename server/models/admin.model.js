@@ -38,6 +38,11 @@ const adminSchema = new mongoose.Schema(
 
     // آواتار
     avatar: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: {
         type: String,
         default: "https://placehold.co/300x300.png",
@@ -53,6 +58,11 @@ const adminSchema = new mongoose.Schema(
       },
     },
     nationalCard: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: {
         type: String,
         default: "",

@@ -18,6 +18,17 @@ const gameCollectionSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true, trim: true, lowercase: true, maxLength: 160 },
     description: { type: String, trim: true, default: "" },
     image: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
+      mobile: {
+        url: { type: String, default: "" },
+        public_id: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: {
         type: String,
         default: "",

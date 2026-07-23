@@ -18,6 +18,10 @@ function mediaUrl(file) {
   return file?.url || file?.path || "";
 }
 
+function mediaBlurUrl(file) {
+  return file?.blur?.url || "";
+}
+
 function parseArray(value) {
   if (value === undefined || value === null || value === "") return [];
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -274,17 +278,36 @@ async function createSeo(value) {
 }
 
 function buildImages(body, uploadedFiles = {}, existing = null) {
-  const mainFileUrl = mediaUrl(uploadedFiles.image?.[0]);
+  const mainFile = uploadedFiles.image?.[0];
+  const mainFileUrl = mediaUrl(mainFile);
   const mainUrl = mainFileUrl || body.imageUrl || existing?.images?.main?.url?.[0] || "";
-  const galleryFileUrls = Array.isArray(uploadedFiles.gallery) ? uploadedFiles.gallery.map(mediaUrl).filter(Boolean) : [];
-  const galleryUrls = body.galleryUrls !== undefined ? parseArray(body.galleryUrls).map(String) : existing?.images?.list?.map((item) => item.url?.[0]).filter(Boolean) || [];
+  const mainBlurUrl = mediaBlurUrl(mainFile) || existing?.images?.main?.blur_url?.[0] || "";
+  const galleryFiles = Array.isArray(uploadedFiles.gallery) ? uploadedFiles.gallery : [];
+  const galleryFileItems = galleryFiles
+    .map((file) => ({ blurUrl: mediaBlurUrl(file), url: mediaUrl(file) }))
+    .filter((item) => item.url);
+  const existingGalleryItems = existing?.images?.list || [];
+  const galleryUrlItems =
+    body.galleryUrls !== undefined
+      ? parseArray(body.galleryUrls).map((url) => {
+          const existingItem = existingGalleryItems.find((item) => item.url?.[0] === url);
+          return { blurUrl: existingItem?.blur_url?.[0] || "", url: String(url) };
+        })
+      : existingGalleryItems
+          .map((item) => ({ blurUrl: item.blur_url?.[0] || "", url: item.url?.[0] || "" }))
+          .filter((item) => item.url);
 
   return {
     main: {
+      blur_url: mainBlurUrl ? [mainBlurUrl] : [],
       url: mainUrl ? [mainUrl] : [],
       webp_url: [],
     },
-    list: [...galleryUrls, ...galleryFileUrls].map((url) => ({ url: [url], webp_url: [] })),
+    list: [...galleryUrlItems, ...galleryFileItems].map((item) => ({
+      blur_url: item.blurUrl ? [item.blurUrl] : [],
+      url: [item.url],
+      webp_url: [],
+    })),
   };
 }
 
@@ -406,6 +429,7 @@ function decorateProduct(product) {
   const item = typeof product.toObject === "function" ? product.toObject() : { ...product };
   const variant = item.default_variant || item.variants?.[0] || {};
   const imageUrl = item.images?.main?.url?.[0] || "";
+  const imageBlurUrl = item.images?.main?.blur_url?.[0] || "";
   const badge = item.product_badges?.[0] || variant.variant_badges?.[0]?.payload;
 
   return {
@@ -413,8 +437,12 @@ function decorateProduct(product) {
     id: item.productId,
     slug: item.url?.uri_fa || item.url?.uri_en || "",
     subtitle: item.summary,
-    image: { url: imageUrl, type: "image" },
-    gallery: item.images?.list?.map((entry) => ({ url: entry.url?.[0] || "", type: "image" })).filter((entry) => entry.url) || [],
+    image: { blur: imageBlurUrl ? { url: imageBlurUrl } : undefined, url: imageUrl, type: "image" },
+    gallery: item.images?.list?.map((entry) => ({
+      blur: entry.blur_url?.[0] ? { url: entry.blur_url[0] } : undefined,
+      url: entry.url?.[0] || "",
+      type: "image",
+    })).filter((entry) => entry.url) || [],
     priceRef: item.price || null,
     priceConfig: item.price
       ? {

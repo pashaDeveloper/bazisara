@@ -4,6 +4,11 @@ const { nextPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
+    blur: {
+      hash: { type: String, default: "" },
+      width: { type: Number, default: null },
+      height: { type: Number, default: null },
+    },
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
     storage: {

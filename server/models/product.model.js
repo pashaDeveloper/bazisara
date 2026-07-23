@@ -6,6 +6,7 @@ const { nextPublicId } = require("../utils/publicId.util");
 
 const urlListSchema = new mongoose.Schema(
   {
+    blur_url: [{ type: String }],
     url: [{ type: String }],
     webp_url: [{ type: String }],
   },

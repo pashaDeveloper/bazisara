@@ -42,6 +42,11 @@ const tagSchema = new mongoose.Schema(
       },
     ],
     image: {
+      blur: {
+        hash: { type: String, default: "" },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+      },
       url: {
         type: String,
         default: "",

@@ -5,6 +5,21 @@ const { nextPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
+    blur: {
+      hash: { type: String, default: "" },
+      width: { type: Number, default: null },
+      height: { type: Number, default: null },
+    },
+    mobile: {
+      url: { type: String, default: "" },
+      public_id: { type: String, default: "" },
+      width: { type: Number, default: null },
+      height: { type: Number, default: null },
+    },
+    position: {
+      x: { type: Number, default: 50 },
+      y: { type: Number, default: 50 },
+    },
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
     type: { type: String, enum: ["image", "video"], default: "image" },

@@ -974,6 +974,9 @@ function buildMedia(file) {
   if (!file) return undefined;
 
   return {
+    blur: file.blur,
+    mobile: file.mobile,
+    position: file.position,
     url: file.url,
     public_id: file.public_id,
     type: file.resource_type === "video" ? "video" : "image",
@@ -998,6 +1001,9 @@ function parseMediaValue(value, fallbackType = "image") {
   if (!raw?.url) return undefined;
 
   return {
+    blur: raw.blur || undefined,
+    mobile: raw.mobile || undefined,
+    position: raw.position || undefined,
     url: String(raw.url || "").trim(),
     public_id: String(raw.public_id || raw.key || "").trim(),
     type: raw.type === "video" || raw.resource_type === "video" ? "video" : fallbackType,
