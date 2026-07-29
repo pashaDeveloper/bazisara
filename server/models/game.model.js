@@ -127,6 +127,7 @@ const extraEditionItemSchema = new mongoose.Schema(
 const extraEditionSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, default: "" },
+    versionTitles: { type: String, trim: true, default: "" },
     versionSize: { type: String, trim: true, default: "" },
     items: [extraEditionItemSchema],
     image: mediaSchema,
@@ -303,7 +304,7 @@ const gameSchema = new mongoose.Schema(
       type: Number,
       default: null,
       min: [0, "Score cannot be negative"],
-      max: [100, "Score cannot be more than 100"],
+      max: [5, "Score cannot be more than 5"],
     },
     steamScore: {
       type: Number,
@@ -315,7 +316,7 @@ const gameSchema = new mongoose.Schema(
       type: Number,
       default: null,
       min: [0, "Score cannot be negative"],
-      max: [100, "Score cannot be more than 100"],
+      max: [5, "Score cannot be more than 5"],
     },
     playstationNpCommunicationId: {
       type: String,
@@ -355,6 +356,10 @@ const gameSchema = new mongoose.Schema(
       },
     ],
     isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    showOnlyInCollections: {
       type: Boolean,
       default: false,
     },

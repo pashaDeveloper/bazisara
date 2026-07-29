@@ -53,6 +53,11 @@ function mapXboxError(error) {
   return makeServiceError(error?.message || "Xbox Live request failed", 502, "XBOX_UPSTREAM_FAILED");
 }
 
+function isXboxAuthError(error) {
+  const status = getUpstreamStatus(error);
+  return status === 401 || status === 403 || error?.code === "XBOX_AUTH_EXPIRED";
+}
+
 function mapPlayStationError(error) {
   const status = getUpstreamStatus(error);
   const code = String(error?.code || "");
@@ -257,8 +262,78 @@ function normalizeStoreTitle(value) {
     .trim();
 }
 
+function getXboxProductIdFromText(value) {
+  const text = String(value || "").trim();
+  const storeUrlMatch = text.match(/xbox\.com\/[^)\s]+\/([a-z0-9]{12})(?:[/?#)\s]|$)/i);
+  if (storeUrlMatch) return storeUrlMatch[1].toUpperCase();
+
+  const productIdMatch = text.match(/\b([A-Z0-9]{12})\b/i);
+  return productIdMatch ? productIdMatch[1].toUpperCase() : "";
+}
+
+function normalizeXboxBaseTitle(value) {
+  return normalizeStoreTitle(String(value || "").replace(/\s*\([^)]*\)\s*/g, " "));
+}
+
+function normalizedTitleContainsPhrase(sourceTitle, requestedTitle) {
+  const sourceTokens = normalizeStoreTitle(sourceTitle).split(" ").filter(Boolean);
+  const requestedTokens = normalizeStoreTitle(requestedTitle).split(" ").filter(Boolean);
+  if (!sourceTokens.length || !requestedTokens.length || requestedTokens.length > sourceTokens.length) return false;
+
+  return sourceTokens.some((_, index) =>
+    requestedTokens.every((token, offset) => sourceTokens[index + offset] === token)
+  );
+}
+
+function pickXboxCatalogProduct(products, title) {
+  const normalizedTitle = normalizeStoreTitle(title);
+  if (!normalizedTitle) return products[0];
+
+  const xboxTitlePriority = (item) => {
+    const titleText = normalizeStoreTitle(item?.Title);
+    const hasSeries = /\bseries\b/.test(titleText);
+    const hasXboxOne = /\bxbox one\b/.test(titleText);
+    if (hasSeries && !hasXboxOne) return 0;
+    if (hasSeries) return 1;
+    if (!hasXboxOne) return 2;
+    return 3;
+  };
+  const bestTitle = (items) =>
+    items
+      .filter(Boolean)
+      .sort((a, b) => xboxTitlePriority(a) - xboxTitlePriority(b) || String(a.Title || "").length - String(b.Title || "").length)[0];
+
+  return (
+    products.find((item) => normalizeStoreTitle(item.Title) === normalizedTitle) ||
+    bestTitle(products.filter((item) => normalizeXboxBaseTitle(item.Title) === normalizedTitle)) ||
+    bestTitle(products.filter((item) => normalizedTitleContainsPhrase(item.Title, normalizedTitle))) ||
+    products[0]
+  );
+}
+
+async function fetchXboxStorePageRating(productId, title) {
+  const slug = normalizeStoreTitle(title).replace(/\s+/g, "-") || "product";
+  const url = `https://www.xbox.com/en-US/games/store/${encodeURIComponent(slug)}/${encodeURIComponent(productId)}`;
+
+  try {
+    const { data } = await axios.get(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 15000,
+    });
+    const match = String(data).match(/"aggregateRating"\s*:\s*(\{[^}]+\})/);
+    if (!match) return null;
+
+    const rating = JSON.parse(match[1]);
+    const ratingValue = Number(rating?.ratingValue);
+    return Number.isFinite(ratingValue) ? ratingValue : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function fetchPlayStationIntro(title) {
-  const query = encodeURIComponent(title);
+  const searchText = normalizeStoreTitle(title) || title;
+  const query = encodeURIComponent(searchText);
   const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${query}?size=8&suggested_size=0`;
   const { data: searchData } = await axios.get(searchUrl, {
     headers: { "User-Agent": "Mozilla/5.0" },
@@ -290,15 +365,150 @@ async function fetchPlayStationIntro(title) {
   };
 }
 
+async function suggestPlayStationGames(query) {
+  const searchText = normalizeStoreTitle(query) || query;
+  const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${encodeURIComponent(searchText)}?size=8&suggested_size=0`;
+  const { data } = await axios.get(searchUrl, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    timeout: 12000,
+  });
+
+  const items = Array.isArray(data?.links) ? data.links : [];
+  return items
+    .map((item) => ({
+      externalId: item.id || "",
+      image: item.images?.[0]?.url || item.image || "",
+      platform: "PlayStation",
+      source: "playstation",
+      title: item.name || item.title_name || "",
+    }))
+    .filter((item) => item.title);
+}
+
+function getPlayStationPlatformLabel(item) {
+  const values = [
+    ...(Array.isArray(item?.playable_platform) ? item.playable_platform : []),
+    ...(Array.isArray(item?.default_sku?.entitlements)
+      ? item.default_sku.entitlements.flatMap((entitlement) =>
+          Array.isArray(entitlement?.packages)
+            ? entitlement.packages.map((pkg) => pkg?.platformName)
+            : []
+        )
+      : []),
+  ]
+    .map((value) => String(value || "").toUpperCase())
+    .filter(Boolean);
+
+  const ordered = ["PS5", "PS4", "PS3"].filter((platform) => values.some((value) => value.includes(platform)));
+  return ordered.length ? ordered.join(" / ") : "PlayStation";
+}
+
+function collectPlayStationGalleryImages(item) {
+  const rawImages = [
+    ...(Array.isArray(item?.mediaList?.screenshots) ? item.mediaList.screenshots : []),
+    ...(Array.isArray(item?.images) ? item.images : []),
+    ...(item?.image ? [{ type: "PRODUCT_IMAGE", url: item.image }] : []),
+    ...(Array.isArray(item?.mediaList?.previews)
+      ? item.mediaList.previews.flatMap((preview) =>
+          Array.isArray(preview?.shots) ? preview.shots.map((url) => ({ type: "PREVIEW_SHOT", url })) : []
+        )
+      : []),
+  ];
+
+  return rawImages
+    .map((image) => ({
+      imageType: String(image?.type || image?.typeId || ""),
+      url: typeof image === "string" ? image : String(image?.url || "").trim(),
+    }))
+    .filter((image) => image.url && !/\.(mp4|m3u8)(\?|$)/i.test(image.url));
+}
+
+async function suggestPlayStationGalleryImages(query) {
+  const searchText = normalizeStoreTitle(query) || query;
+  const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${encodeURIComponent(searchText)}?size=8&suggested_size=0`;
+  const { data } = await axios.get(searchUrl, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    timeout: 12000,
+  });
+
+  const normalizedQuery = normalizeStoreTitle(query);
+  const items = (Array.isArray(data?.links) ? data.links : [])
+    .filter((item) => item?.id && item?.container_type === "product")
+    .sort((a, b) => {
+      const aTitle = normalizeStoreTitle(a?.title_name || a?.name || "");
+      const bTitle = normalizeStoreTitle(b?.title_name || b?.name || "");
+      return Number(!aTitle.includes(normalizedQuery)) - Number(!bTitle.includes(normalizedQuery));
+    })
+    .slice(0, 4);
+
+  const details = await Promise.allSettled(
+    items.map(async (item) => {
+      const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(item.id)}`;
+      const { data: detail } = await axios.get(detailUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        timeout: 12000,
+      });
+      return { item, detail };
+    })
+  );
+
+  const seen = new Set();
+  const suggestions = [];
+
+  details.forEach((result) => {
+    if (result.status !== "fulfilled") return;
+    const source = result.value.detail || result.value.item;
+    const fallback = result.value.item || {};
+    const title = source.title_name || source.name || fallback.title_name || fallback.name || query;
+    const platform = getPlayStationPlatformLabel(source);
+    const images = [
+      ...collectPlayStationGalleryImages(source),
+      ...collectPlayStationGalleryImages(fallback),
+    ];
+    images.forEach((image, index) => {
+      if (seen.has(image.url)) return;
+      seen.add(image.url);
+      suggestions.push({
+        externalId: `${source.id || fallback.id || "playstation"}-${index}`,
+        imageType: image.imageType,
+        platform,
+        source: "playstation",
+        title,
+        url: image.url,
+      });
+    });
+  });
+
+  return suggestions.slice(0, 24);
+}
+
 async function fetchXboxIntro(title) {
+  const directProductId = getXboxProductIdFromText(title);
+  if (directProductId) {
+    const detailUrl = `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${encodeURIComponent(directProductId)}&market=US&languages=en-US&MS-CV=DGU1mcuYo0WMMp`;
+    const { data: detailData } = await axios.get(detailUrl, { timeout: 15000 });
+    const product = detailData?.Products?.[0];
+    const localized = product?.LocalizedProperties?.[0] || {};
+    const intro = cleanStoreIntro(localized.ProductDescription || localized.ShortDescription || "");
+    if (!intro) throw new Error("Xbox intro not found");
+
+    const allTimeRating = (product?.MarketProperties?.[0]?.UsageData || []).find(
+      (item) => item?.AggregateTimeSpan === "AllTime"
+    );
+    const pageRating = await fetchXboxStorePageRating(directProductId, localized.ProductTitle || title);
+
+    return {
+      intro,
+      score: pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
+      sourceTitle: localized.ProductTitle || title,
+    };
+  }
+
   const query = encodeURIComponent(title);
   const suggestUrl = `https://displaycatalog.mp.microsoft.com/v7.0/productFamilies/autosuggest?market=US&languages=en-US&query=${query}&productFamilyNames=Games&top=8`;
   const { data: suggestData } = await axios.get(suggestUrl, { timeout: 15000 });
   const products = (suggestData?.Results || []).flatMap((group) => group?.Products || []);
-  const normalizedTitle = normalizeStoreTitle(title);
-  const selected =
-    products.find((item) => normalizeStoreTitle(item.Title).includes(normalizedTitle)) ||
-    products[0];
+  const selected = pickXboxCatalogProduct(products, title);
 
   if (!selected?.ProductId) throw makeServiceError("Xbox product not found", 404, "XBOX_PRODUCT_NOT_FOUND");
 
@@ -312,24 +522,52 @@ async function fetchXboxIntro(title) {
   const allTimeRating = (product?.MarketProperties?.[0]?.UsageData || []).find(
     (item) => item?.AggregateTimeSpan === "AllTime"
   );
+  const pageRating = await fetchXboxStorePageRating(selected.ProductId, localized.ProductTitle || selected.Title || title);
 
   return {
     intro,
-    score: allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null,
+    score: pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
     sourceTitle: localized.ProductTitle || selected.Title || "",
   };
 }
 
+async function suggestXboxGames(query) {
+  const suggestUrl = `https://displaycatalog.mp.microsoft.com/v7.0/productFamilies/autosuggest?market=US&languages=en-US&query=${encodeURIComponent(query)}&productFamilyNames=Games&top=8`;
+  const { data } = await axios.get(suggestUrl, { timeout: 12000 });
+  const products = (data?.Results || []).flatMap((group) => group?.Products || []);
+
+  return products
+    .map((item) => ({
+      externalId: item.ProductId || "",
+      image: item.ImageUrl || "",
+      platform: "Xbox",
+      source: "xbox",
+      title: item.Title || "",
+    }))
+    .filter((item) => item.title);
+}
+
 async function findXboxCatalogGame(title) {
+  const directProductId = getXboxProductIdFromText(title);
+  if (directProductId) {
+    const detailUrl = `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${encodeURIComponent(directProductId)}&market=US&languages=en-US&MS-CV=DGU1mcuYo0WMMp`;
+    const { data: detailData } = await axios.get(detailUrl, { timeout: 15000 });
+    const product = detailData?.Products?.[0];
+    const localized = product?.LocalizedProperties?.[0] || {};
+    const titleId = (product?.AlternateIds || []).find((item) => item?.IdType === "XboxTitleId")?.Value;
+
+    return {
+      productId: directProductId,
+      sourceTitle: localized.ProductTitle || title,
+      titleId: titleId || "",
+    };
+  }
+
   const query = encodeURIComponent(title);
   const suggestUrl = `https://displaycatalog.mp.microsoft.com/v7.0/productFamilies/autosuggest?market=US&languages=en-US&query=${query}&productFamilyNames=Games&top=8`;
   const { data: suggestData } = await axios.get(suggestUrl, { timeout: 15000 });
   const products = (suggestData?.Results || []).flatMap((group) => group?.Products || []);
-  const normalizedTitle = normalizeStoreTitle(title);
-  const selected =
-    products.find((item) => normalizeStoreTitle(item.Title) === normalizedTitle) ||
-    products.find((item) => normalizeStoreTitle(item.Title).includes(normalizedTitle)) ||
-    products[0];
+  const selected = pickXboxCatalogProduct(products, title);
 
   if (!selected?.ProductId) throw makeServiceError("Xbox product not found", 404, "XBOX_PRODUCT_NOT_FOUND");
 
@@ -346,7 +584,7 @@ async function findXboxCatalogGame(title) {
   };
 }
 
-function getXboxAuthorizationHeader() {
+function getConfiguredXboxAuthorizationHeader() {
   const directToken = String(process.env.XBOX_LIVE_AUTHORIZATION || "").trim();
   if (directToken) return directToken.startsWith("XBL3.0") ? directToken : `XBL3.0 ${directToken}`;
 
@@ -355,6 +593,165 @@ function getXboxAuthorizationHeader() {
   if (userHash && token) return `XBL3.0 x=${userHash};${token}`;
 
   return "";
+}
+
+function getXboxOAuthConfig() {
+  return {
+    clientId: String(process.env.XBOX_LIVE_CLIENT_ID || process.env.MICROSOFT_CLIENT_ID || "").trim(),
+    clientSecret: String(process.env.XBOX_LIVE_CLIENT_SECRET || process.env.MICROSOFT_CLIENT_SECRET || "").trim(),
+    refreshToken: String(process.env.XBOX_LIVE_REFRESH_TOKEN || process.env.MICROSOFT_REFRESH_TOKEN || "").trim(),
+    scope: String(process.env.XBOX_LIVE_SCOPE || "XboxLive.signin offline_access").trim(),
+  };
+}
+
+async function refreshMicrosoftAccessToken() {
+  const { clientId, clientSecret, refreshToken, scope } = getXboxOAuthConfig();
+  if (!clientId || !refreshToken) {
+    throw makeServiceError("Xbox Live refresh token is not configured", 424, "XBOX_AUTH_NOT_CONFIGURED");
+  }
+
+  const body = new URLSearchParams({
+    client_id: clientId,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+    scope,
+  });
+  if (clientSecret) body.set("client_secret", clientSecret);
+
+  const { data } = await axios.post("https://login.live.com/oauth20_token.srf", body.toString(), {
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    timeout: 15000,
+  });
+
+  const accessToken = String(data?.access_token || "").trim();
+  if (!accessToken) {
+    throw makeServiceError("Microsoft access token was not returned", 424, "XBOX_AUTH_EXPIRED");
+  }
+
+  if (data?.refresh_token) {
+    process.env.XBOX_LIVE_REFRESH_TOKEN = String(data.refresh_token);
+  }
+
+  return accessToken;
+}
+
+async function getXboxUserToken(accessToken) {
+  const { data } = await axios.post(
+    "https://user.auth.xboxlive.com/user/authenticate",
+    {
+      Properties: {
+        AuthMethod: "RPS",
+        SiteName: "user.auth.xboxlive.com",
+        RpsTicket: `d=${accessToken}`,
+      },
+      RelyingParty: "http://auth.xboxlive.com",
+      TokenType: "JWT",
+    },
+    {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-xbl-contract-version": "1",
+      },
+      timeout: 15000,
+    }
+  );
+
+  const token = String(data?.Token || "").trim();
+  if (!token) throw makeServiceError("Xbox user token was not returned", 424, "XBOX_AUTH_EXPIRED");
+  return token;
+}
+
+async function getXboxXstsToken(userToken) {
+  const { data } = await axios.post(
+    "https://xsts.auth.xboxlive.com/xsts/authorize",
+    {
+      Properties: {
+        SandboxId: "RETAIL",
+        UserTokens: [userToken],
+      },
+      RelyingParty: "http://xboxlive.com",
+      TokenType: "JWT",
+    },
+    {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-xbl-contract-version": "1",
+      },
+      timeout: 15000,
+    }
+  );
+
+  const token = String(data?.Token || "").trim();
+  const userClaims = data?.DisplayClaims?.xui?.[0] || {};
+  const userHash = String(userClaims.uhs || "").trim();
+  const xuid = String(userClaims.xid || "").trim();
+  if (!token || !userHash) {
+    throw makeServiceError("Xbox XSTS token was not returned", 424, "XBOX_AUTH_EXPIRED");
+  }
+
+  return { token, userHash, xuid };
+}
+
+async function refreshXboxAuthorizationHeader() {
+  try {
+    const accessToken = await refreshMicrosoftAccessToken();
+    const userToken = await getXboxUserToken(accessToken);
+    const xsts = await getXboxXstsToken(userToken);
+    const authorization = `XBL3.0 x=${xsts.userHash};${xsts.token}`;
+
+    process.env.XBOX_LIVE_AUTHORIZATION = authorization;
+    process.env.XBOX_LIVE_USER_HASH = xsts.userHash;
+    process.env.XBOX_LIVE_TOKEN = xsts.token;
+    if (xsts.xuid) process.env.XBOX_LIVE_XUID = xsts.xuid;
+
+    return authorization;
+  } catch (error) {
+    throw mapXboxError(error);
+  }
+}
+
+async function getXboxAuthorizationHeader(options = {}) {
+  if (options.forceRefresh) return refreshXboxAuthorizationHeader();
+
+  const configuredAuthorization = getConfiguredXboxAuthorizationHeader();
+  if (configuredAuthorization) return configuredAuthorization;
+
+  return refreshXboxAuthorizationHeader();
+}
+
+async function xboxLiveGet(url, config = {}) {
+  let authorization = await getXboxAuthorizationHeader();
+
+  const request = (authHeader) =>
+    axios.get(url, {
+      ...config,
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "en-US",
+        "x-xbl-contract-version": "2",
+        ...(config.headers || {}),
+        Authorization: authHeader,
+      },
+    });
+
+  try {
+    return await request(authorization);
+  } catch (error) {
+    if (!isXboxAuthError(error)) throw mapXboxError(error);
+    try {
+      authorization = await getXboxAuthorizationHeader({ forceRefresh: true });
+    } catch (refreshError) {
+      if (refreshError?.code === "XBOX_AUTH_NOT_CONFIGURED") throw mapXboxError(error);
+      throw refreshError;
+    }
+    try {
+      return await request(authorization);
+    } catch (retryError) {
+      throw mapXboxError(retryError);
+    }
+  }
 }
 
 function normalizeXboxAchievement(item) {
@@ -392,18 +789,12 @@ function titleMatches(sourceTitle, requestedTitle) {
   return source === requested || source.includes(requested) || requested.includes(source);
 }
 
-async function findXboxUserTitle(authorization, xuid, title) {
+async function findXboxUserTitle(xuid, title) {
   let data;
   try {
-    ({ data } = await axios.get(
+    ({ data } = await xboxLiveGet(
       `https://titlehub.xboxlive.com/users/xuid(${encodeURIComponent(xuid)})/titles/titlehistory/decoration/detail,scid,image,achievement`,
       {
-        headers: {
-          Accept: "application/json",
-          Authorization: authorization,
-          "Accept-Language": "en-US",
-          "x-xbl-contract-version": "2",
-        },
         params: { maxItems: 1000 },
         timeout: 15000,
       }
@@ -426,10 +817,10 @@ async function findXboxUserTitle(authorization, xuid, title) {
 }
 
 async function fetchXboxAchievements(title, requestedTitleId = "") {
-  const authorization = getXboxAuthorizationHeader();
+  await getXboxAuthorizationHeader();
   const xuid = String(process.env.XBOX_LIVE_XUID || "").trim();
 
-  if (!authorization || !xuid) {
+  if (!xuid) {
     throw makeServiceError("Xbox Live credentials are not configured", 424, "XBOX_AUTH_NOT_CONFIGURED");
   }
 
@@ -438,22 +829,16 @@ async function fetchXboxAchievements(title, requestedTitleId = "") {
     ? { productId: "", sourceTitle: title, titleId: manualTitleId }
     : await findXboxCatalogGame(title);
   if (!catalogGame.titleId) {
-    const userTitle = await findXboxUserTitle(authorization, xuid, title);
+    const userTitle = await findXboxUserTitle(xuid, title);
     catalogGame.sourceTitle = userTitle.sourceTitle || catalogGame.sourceTitle;
     catalogGame.titleId = userTitle.titleId;
   }
 
   let data;
   try {
-    ({ data } = await axios.get(
+    ({ data } = await xboxLiveGet(
       `https://achievements.xboxlive.com/users/xuid(${encodeURIComponent(xuid)})/achievements`,
       {
-        headers: {
-          Accept: "application/json",
-          Authorization: authorization,
-          "Accept-Language": "en-US",
-          "x-xbl-contract-version": "2",
-        },
         params: {
           maxItems: 100,
           titleId: catalogGame.titleId,
@@ -597,10 +982,18 @@ function normalizeScore100(value) {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function normalizeScore5To100(value) {
+function normalizeScore5(value) {
   const score = Number(value);
   if (!Number.isFinite(score)) return null;
-  return Math.max(0, Math.min(100, Math.round(score * 20)));
+  const roundedHalfStarScore = Math.round(score * 2) / 2;
+  return Math.max(0, Math.min(5, roundedHalfStarScore));
+}
+
+function normalizeSubmittedStoreScore5(value) {
+  const score = toNumber(value);
+  if (score === null) return null;
+  if (score > 5) return normalizeScore5(score / 20);
+  return Math.max(0, Math.min(5, Number(score.toFixed(1))));
 }
 
 async function fetchSteamScores(title) {
@@ -645,11 +1038,46 @@ async function fetchSteamScores(title) {
   };
 }
 
+async function suggestSteamGames(query) {
+  const { data } = await axios.get("https://store.steampowered.com/api/storesearch/", {
+    params: { term: query, l: "english", cc: "US" },
+    timeout: 12000,
+  });
+
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return items
+    .map((item) => ({
+      externalId: item.id ? String(item.id) : "",
+      image: item.tiny_image || "",
+      platform: "Steam",
+      source: "steam",
+      title: item.name || "",
+    }))
+    .filter((item) => item.title);
+}
+
+function mergeGameSuggestions(groups, limit = 10) {
+  const seen = new Set();
+  const suggestions = [];
+
+  groups.flat().forEach((item) => {
+    const title = String(item?.title || "").trim();
+    if (!title) return;
+
+    const key = normalizeStoreTitle(title);
+    if (seen.has(key)) return;
+    seen.add(key);
+    suggestions.push({ ...item, title });
+  });
+
+  return suggestions.slice(0, limit);
+}
+
 async function fetchXboxScores(title) {
   const data = await fetchXboxIntro(title);
   return {
     sourceTitle: data.sourceTitle,
-    xboxScore: normalizeScore5To100(data.score),
+    xboxScore: normalizeScore5(data.score),
   };
 }
 
@@ -657,7 +1085,7 @@ async function fetchPlayStationScores(title) {
   const data = await fetchPlayStationIntro(title);
   return {
     sourceTitle: data.sourceTitle,
-    sonyScore: normalizeScore5To100(data.score),
+    sonyScore: normalizeScore5(data.score),
   };
 }
 
@@ -721,35 +1149,16 @@ function parseArray(value) {
 
 const offlinePlayerCatalog = [
   {
-    key: "single-player",
-    title_fa: "تک‌نفره",
-    title_en: "Single-player",
-    min: 1,
-    max: 1,
-    legacyValues: ["offline_1", "single_player", "تک نفره", "تک‌نفره", "1"],
-  },
-  {
-    key: "up-to-4",
-    title_fa: "تا ۴ نفر",
-    title_en: "Up to 4 players",
-    min: 1,
-    max: 4,
-    legacyValues: ["offline_1_4", "1-4 نفره", "تا 4 نفر", "تا ۴ نفر", "up_to_4"],
-  },
-];
-
-const normalizedOfflinePlayerCatalog = [
-  {
     key: "none",
-    title_fa: "ندارد",
+    title_fa: "نداره",
     title_en: "No offline players",
     min: 0,
     max: 0,
-    legacyValues: ["no", "none", "0", "ندارد"],
+    legacyValues: ["no", "none", "0", "ندارد", "نداره"],
   },
   {
     key: "single-player",
-    title_fa: "تک‌نفره",
+    title_fa: "تک نفره",
     title_en: "Single-player",
     min: 1,
     max: 1,
@@ -757,19 +1166,86 @@ const normalizedOfflinePlayerCatalog = [
   },
   {
     key: "1-2",
-    title_fa: "۱-۲ نفره",
+    title_fa: "۱ - ۲ نفره",
     title_en: "1-2 players",
     min: 1,
     max: 2,
-    legacyValues: ["1-2 نفره", "1 تا 2 نفر", "۱-۲ نفره", "۱ تا ۲ نفر"],
+    legacyValues: ["1-2 نفره", "1 تا 2 نفر", "۱-۲ نفره", "۱ - ۲ نفره", "۱ تا ۲ نفر"],
   },
   {
-    key: "3-4",
-    title_fa: "۳-۴ نفره",
-    title_en: "3-4 players",
-    min: 3,
+    key: "1-3",
+    title_fa: "۱ - ۳ نفره",
+    title_en: "1-3 players",
+    min: 1,
+    max: 3,
+    legacyValues: ["1-3 نفره", "1 تا 3 نفر", "۱-۳ نفره", "۱ - ۳ نفره", "۱ تا ۳ نفر"],
+  },
+  {
+    key: "1-4",
+    title_fa: "۱ - ۴ نفره",
+    title_en: "1-4 players",
+    min: 1,
     max: 4,
-    legacyValues: ["offline_1_4", "1-4 نفره", "تا 4 نفر", "تا ۴ نفر", "up_to_4", "up-to-4", "3-4 نفره", "۳-۴ نفره"],
+    legacyValues: ["offline_1_4", "1-4 نفره", "۱-۴ نفره", "۱ - ۴ نفره", "تا 4 نفر", "تا ۴ نفر", "up_to_4", "up-to-4"],
+  },
+  {
+    key: "2",
+    title_fa: "۲ نفره",
+    title_en: "2 players",
+    min: 2,
+    max: 2,
+    legacyValues: ["2", "2 نفره", "۲ نفره"],
+  },
+];
+
+const normalizedOfflinePlayerCatalog = [
+  {
+    key: "none",
+    title_fa: "نداره",
+    title_en: "No offline players",
+    min: 0,
+    max: 0,
+    legacyValues: ["no", "none", "0", "ندارد", "نداره"],
+  },
+  {
+    key: "single-player",
+    title_fa: "تک نفره",
+    title_en: "Single-player",
+    min: 1,
+    max: 1,
+    legacyValues: ["offline_1", "single_player", "تک نفره", "تک‌نفره", "1"],
+  },
+  {
+    key: "1-2",
+    title_fa: "۱ - ۲ نفره",
+    title_en: "1-2 players",
+    min: 1,
+    max: 2,
+    legacyValues: ["1-2 نفره", "1 تا 2 نفر", "۱-۲ نفره", "۱ - ۲ نفره", "۱ تا ۲ نفر"],
+  },
+  {
+    key: "1-3",
+    title_fa: "۱ - ۳ نفره",
+    title_en: "1-3 players",
+    min: 1,
+    max: 3,
+    legacyValues: ["1-3 نفره", "1 تا 3 نفر", "۱-۳ نفره", "۱ - ۳ نفره", "۱ تا ۳ نفر"],
+  },
+  {
+    key: "1-4",
+    title_fa: "۱ - ۴ نفره",
+    title_en: "1-4 players",
+    min: 1,
+    max: 4,
+    legacyValues: ["offline_1_4", "1-4 نفره", "1 تا 4 نفر", "۱-۴ نفره", "۱ - ۴ نفره", "۱ تا ۴ نفر", "تا 4 نفر", "تا ۴ نفر", "up_to_4", "up-to-4", "3-4", "3-4 نفره", "۳-۴ نفره"],
+  },
+  {
+    key: "2",
+    title_fa: "۲ نفره",
+    title_en: "2 players",
+    min: 2,
+    max: 2,
+    legacyValues: ["2", "2 نفره", "۲ نفره"],
   },
 ];
 
@@ -1161,6 +1637,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.hasFreePersianSubtitle !== undefined ? parseBoolean(body.hasFreePersianSubtitle) : undefined,
     hasPaidPersianSubtitle:
       body.hasPaidPersianSubtitle !== undefined ? parseBoolean(body.hasPaidPersianSubtitle) : undefined,
+    showOnlyInCollections:
+      body.showOnlyInCollections !== undefined ? parseBoolean(body.showOnlyInCollections) : undefined,
     dlcs:
       body.dlcs !== undefined
         ? parseObjectArray(body.dlcs, (item) => ({
@@ -1174,6 +1652,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.extraEditions !== undefined
         ? parseObjectArray(body.extraEditions, (item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
+            versionTitles: typeof item === "string" ? "" : String(item?.versionTitles || "").trim(),
             versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
             items: typeof item === "string" ? [] : parseExtraEditionItems(item?.items),
             image: typeof item === "string" ? "" : item?.image || "",
@@ -1219,11 +1698,11 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     metacriticScore:
       body.metacriticScore !== undefined ? toNumber(body.metacriticScore) : undefined,
     sonyScore:
-      body.sonyScore !== undefined ? toNumber(body.sonyScore) : undefined,
+      body.sonyScore !== undefined ? normalizeSubmittedStoreScore5(body.sonyScore) : undefined,
     steamScore:
       body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
     xboxScore:
-      body.xboxScore !== undefined ? toNumber(body.xboxScore) : undefined,
+      body.xboxScore !== undefined ? normalizeSubmittedStoreScore5(body.xboxScore) : undefined,
     playstationNpCommunicationId:
       body.playstationNpCommunicationId !== undefined ? normalizeNpCommunicationId(body.playstationNpCommunicationId) : undefined,
     isFeatured:
@@ -1540,6 +2019,56 @@ exports.fetchPlayStationTrophies = async (req, res) => {
   }
 };
 
+exports.suggestGames = async (req, res) => {
+  const query = String(req.query.q || req.query.search || "").trim();
+
+  if (query.length < 2) {
+    return res.status(200).json({
+      acknowledgement: true,
+      data: [],
+      description: "حداقل دو کاراکتر برای پیشنهاد عنوان لازم است",
+      message: "Game Suggestions",
+    });
+  }
+
+  const settled = await Promise.allSettled([
+    suggestXboxGames(query),
+    suggestPlayStationGames(query),
+    suggestSteamGames(query),
+  ]);
+  const groups = settled.map((result) => (result.status === "fulfilled" ? result.value : []));
+  const data = mergeGameSuggestions(groups, 12);
+
+  return res.status(200).json({
+    acknowledgement: true,
+    data,
+    description: data.length ? "پیشنهادهای عنوان بازی دریافت شد" : "پیشنهادی برای این عنوان پیدا نشد",
+    message: "Game Suggestions",
+  });
+};
+
+exports.suggestPlayStationGallery = async (req, res) => {
+  const query = String(req.query.q || req.query.search || "").trim();
+
+  if (query.length < 2) {
+    return res.status(200).json({
+      acknowledgement: true,
+      data: [],
+      description: "At least two characters are required for gallery suggestions",
+      message: "PlayStation Gallery Suggestions",
+    });
+  }
+
+  const data = await suggestPlayStationGalleryImages(query);
+
+  return res.status(200).json({
+    acknowledgement: true,
+    data,
+    description: data.length ? "PlayStation gallery suggestions fetched" : "No PlayStation gallery images found",
+    message: "PlayStation Gallery Suggestions",
+  });
+};
+
 exports.createGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles);
   payload.creator = req.admin?._id || null;
@@ -1590,7 +2119,7 @@ exports.getGames = async (req, res) => {
   }
   const query = {
     isDeleted: false,
-    ...(req.adminRecord ? {} : { status: "active" }),
+    ...(req.adminRecord ? {} : { status: "active", showOnlyInCollections: { $ne: true } }),
     ...(category ? { category } : {}),
     ...buildSearchQuery(search, [
       "title",

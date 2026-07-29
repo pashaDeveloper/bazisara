@@ -25,6 +25,20 @@ export const gameApi = bazisaraApi.injectEndpoints({
       }),
       providesTags: ["Game"],
     }),
+    suggestGames: builder.query({
+      query: (q) => ({
+        url: "/games/suggestions",
+        method: "GET",
+        params: { q },
+      }),
+    }),
+    suggestPlayStationGallery: builder.query({
+      query: (q) => ({
+        url: "/games/playstation-gallery",
+        method: "GET",
+        params: { q },
+      }),
+    }),
     updateGame: builder.mutation({
       query: ({ id, formData }) => ({
         url: `/games/${id}`,
@@ -83,6 +97,8 @@ export const {
   useFetchPlayStationTrophiesMutation,
   useGetGamesQuery,
   useGetGameQuery,
+  useSuggestGamesQuery,
+  useSuggestPlayStationGalleryQuery,
   useImportGameScoresMutation,
   useFetchXboxAchievementsMutation,
   useUpdateGameMutation,

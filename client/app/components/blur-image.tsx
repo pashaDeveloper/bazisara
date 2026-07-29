@@ -53,7 +53,15 @@ export function BlurImage({
   onError,
   src,
 }: BlurImageProps) {
-  const [loaded, setLoaded] = useState(false);
+  const [loadedSrc, setLoadedSrc] = useState("");
+  const imageRef = useRef<HTMLImageElement>(null);
+  const loaded = loadedSrc === src;
+  const setImageNode = (node: HTMLImageElement | null) => {
+    imageRef.current = node;
+    if (node?.complete && loadedSrc !== src) {
+      setLoadedSrc(src);
+    }
+  };
 
   return (
     <span
@@ -69,14 +77,25 @@ export function BlurImage({
           : undefined
       }
     >
-      {blurHash && !loaded ? <BlurHashCanvas hash={blurHash} /> : null}
+      {!loaded && src ? (
+        <img
+          aria-hidden
+          alt=""
+          className={`absolute inset-0 h-full w-full scale-105 blur-xl ${imageClassName}`}
+          src={src}
+          style={imageStyle}
+        />
+      ) : blurHash && !loaded ? (
+        <BlurHashCanvas hash={blurHash} />
+      ) : null}
       <img
         alt={alt}
         className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${imageClassName} ${
           loaded ? "opacity-100" : "opacity-0"
         }`}
         onError={onError}
-        onLoad={() => setLoaded(true)}
+        onLoad={() => setLoadedSrc(src)}
+        ref={setImageNode}
         src={src}
         style={imageStyle}
       />

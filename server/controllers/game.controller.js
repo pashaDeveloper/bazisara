@@ -48,6 +48,22 @@ exports.fetchPlayStationTrophies = async (req, res, next) => {
   }
 };
 
+exports.suggestGames = async (req, res, next) => {
+  try {
+    await gameService.suggestGames(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.suggestPlayStationGallery = async (req, res, next) => {
+  try {
+    await gameService.suggestPlayStationGallery(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getGames = async (req, res, next) => {
   try {
     await gameService.getGames(req, res);

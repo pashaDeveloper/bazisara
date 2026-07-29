@@ -14,10 +14,46 @@ import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/D
 import { DatePickerField, TextField, TextareaField } from "./GameFormFields";
 import { dlcTypeOptions } from "../gameOptions";
 import { makeGameSlug } from "../gameFormUtils";
+import { useSuggestGamesQuery, useSuggestPlayStationGalleryQuery } from "@/services/gameApi";
 
 const borderlessControlClass = "";
 const borderlessIconClass = "";
 const borderlessSwitchClass = "border-0 shadow-none";
+const playStationGalleryDragType = "application/x-playstation-gallery-image";
+
+function ImageSizeBadge({ src }) {
+  const [size, setSize] = React.useState(null);
+
+  React.useEffect(() => {
+    const url = String(src || "").trim();
+    if (!url) {
+      setSize(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (!cancelled) setSize({ height: image.naturalHeight, width: image.naturalWidth });
+    };
+    image.onerror = () => {
+      if (!cancelled) setSize(null);
+    };
+    image.src = url;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  if (!size?.width || !size?.height) return null;
+
+  return (
+    <span className="absolute bottom-2 left-2 z-20 rounded-md bg-black/80 px-2 py-1 text-[10px] font-bold !text-white shadow-md ring-1 ring-white/15">
+      {size.width} × {size.height}
+    </span>
+  );
+}
 
 function QuickCreateField({ children, label, onCreate }) {
   const child = React.isValidElement(children)
@@ -158,12 +194,245 @@ function ListTextField({ label, name, onChange, placeholder, value }) {
   );
 }
 
+function GameTitleSuggestField({ form, onChange, setForm }) {
+  const [debouncedTitle, setDebouncedTitle] = React.useState("");
+  const [isOpen, setIsOpen] = React.useState(false);
+  const rootRef = React.useRef(null);
+  const title = String(form.title || "");
+
+  React.useEffect(() => {
+    const value = title.trim();
+    const timer = window.setTimeout(() => setDebouncedTitle(value), 300);
+    return () => window.clearTimeout(timer);
+  }, [title]);
+
+  React.useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setIsOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  const { data, isFetching } = useSuggestGamesQuery(debouncedTitle, {
+    skip: debouncedTitle.length < 2,
+  });
+  const suggestions = Array.isArray(data?.data) ? data.data : [];
+
+  const selectSuggestion = (item) => {
+    const nextTitle = String(item.title || "").trim();
+    if (!nextTitle) return;
+
+    setForm((prev) => ({
+      ...prev,
+      title: nextTitle,
+      slug: prev.slug || makeGameSlug(nextTitle),
+    }));
+    setIsOpen(false);
+  };
+
+  return (
+    <label className="relative flex flex-col gap-y-1" ref={rootRef}>
+      <span className="text-sm text-zinc-700 dark:text-gray-100">عنوان بازی *</span>
+      <input
+        autoComplete="off"
+        className="h-10 w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
+        name="title"
+        onChange={(event) => {
+          onChange(event);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        placeholder="مثلا Rider"
+        value={title}
+      />
+      {isOpen && title.trim().length >= 2 ? (
+        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#08243f]">
+          {isFetching ? (
+            <div className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-300">در حال جستجوی عنوان...</div>
+          ) : suggestions.length ? (
+            <div className="max-h-72 overflow-y-auto py-1">
+              {suggestions.map((item) => (
+                <button
+                  className="flex w-full items-center gap-3 px-3 py-2 text-right transition hover:bg-zinc-50 dark:hover:bg-white/5"
+                  key={`${item.source}-${item.externalId || item.title}`}
+                  onClick={() => selectSuggestion(item)}
+                  type="button"
+                >
+                  {item.image ? (
+                    <img alt="" className="h-10 w-10 rounded-lg object-cover" src={item.image} />
+                  ) : (
+                    <span className="h-10 w-10 rounded-lg bg-zinc-100 dark:bg-white/10" />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-zinc-800 dark:text-zinc-100" dir="ltr">{item.title}</span>
+                    <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">{item.platform || item.source}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-300">پیشنهادی پیدا نشد</div>
+          )}
+        </div>
+      ) : null}
+    </label>
+  );
+}
+
+function PlayStationGallerySuggestions({ gameTitle, onAdd }) {
+  const [debouncedTitle, setDebouncedTitle] = React.useState("");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const title = String(gameTitle || "").trim();
+  const pageSize = 12;
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedTitle(title), 350);
+    return () => window.clearTimeout(timer);
+  }, [title]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedTitle]);
+
+  const { data, isFetching } = useSuggestPlayStationGalleryQuery(debouncedTitle, {
+    skip: debouncedTitle.length < 2,
+  });
+  const suggestions = Array.isArray(data?.data) ? data.data : [];
+  const pageCount = Math.max(1, Math.ceil(suggestions.length / pageSize));
+  const visibleSuggestions = suggestions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  React.useEffect(() => {
+    setCurrentPage((page) => Math.min(page, pageCount));
+  }, [pageCount]);
+
+  const startDrag = (event, item) => {
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData(playStationGalleryDragType, JSON.stringify(item));
+  };
+
+  if (debouncedTitle.length < 2) {
+    return (
+      <div className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-center text-xs text-zinc-500 dark:border-zinc-800">
+        برای پیشنهاد عکس PlayStation اول عنوان بازی را وارد کنید.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <span className="block text-sm font-bold text-zinc-800 dark:text-zinc-100">پیشنهاد تصاویر PlayStation</span>
+          <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">PS3 / PS4 / PS5 - با درگ یا دکمه به گالری اضافه کنید</span>
+        </div>
+        {isFetching ? <span className="text-xs text-zinc-500 dark:text-zinc-400">در حال دریافت...</span> : null}
+      </div>
+      {suggestions.length ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {visibleSuggestions.map((item) => (
+              <div
+                className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-green-400 dark:border-zinc-800 dark:bg-black"
+                draggable
+                key={`${item.externalId || item.url}`}
+                onDragStart={(event) => startDrag(event, item)}
+                title="برای افزودن داخل گالری درگ کنید"
+              >
+                <div className="relative aspect-video overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                  <img alt={item.title || "PlayStation"} className="h-full w-full object-cover" src={item.url} />
+                  <ImageSizeBadge src={item.url} />
+                  <span className="absolute right-2 top-2 rounded-md bg-white/95 px-2 py-1 text-[10px] font-bold text-zinc-950 shadow-md ring-1 ring-black/10">
+                    {item.platform || "PlayStation"}
+                  </span>
+                </div>
+                <div className="space-y-2 p-2">
+                  <span className="block truncate text-xs font-bold text-zinc-700 dark:text-zinc-200" dir="ltr">{item.title}</span>
+                  <button
+                    className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg bg-green-600 px-2 text-xs font-bold !text-white transition hover:bg-green-500 [&_svg]:!text-white"
+                    onClick={() => onAdd?.(item)}
+                    type="button"
+                  >
+                    <Plus className="h-3.5 w-3.5 !text-white" />
+                    افزودن
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {pageCount > 1 ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-black">
+              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">
+                صفحه {currentPage} از {pageCount} - {suggestions.length} تصویر
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-700 transition hover:border-green-500 hover:text-green-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-200"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                >
+                  قبلی
+                </button>
+                <button
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-700 transition hover:border-green-500 hover:text-green-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-200"
+                  disabled={currentPage >= pageCount}
+                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+                  type="button"
+                >
+                  بعدی
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : isFetching ? null : (
+        <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-5 text-center text-xs text-zinc-500 dark:border-zinc-800">
+          تصویری از PlayStation برای این عنوان پیدا نشد.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatFileSize(size) {
   const value = Number(size || 0);
   if (!value) return "";
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatMoney(value, locale = "fa-IR") {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return number.toLocaleString(locale, {
+    maximumFractionDigits: locale === "en-US" ? 2 : 0,
+  });
+}
+
+function getPlatformText(platformId, platformOptions = []) {
+  const option = platformOptions.find((item) => item.value === platformId);
+  return String(option?.label || option?.name || platformId || "").toLowerCase();
+}
+
+function getCapacityOptions(platformId, platformOptions = []) {
+  const text = getPlatformText(platformId, platformOptions);
+
+  if (/playstation|پلی|ps[345]?/.test(text)) {
+    return ["ظرفیت ۱", "ظرفیت ۲", "ظرفیت ۳", "ظرفیت کامل"];
+  }
+
+  if (/xbox|ایکس|اکس/.test(text)) {
+    return ["هوم", "سوئیچ", "ظرفیت کامل"];
+  }
+
+  if (/switch|nintendo|نینتندو|سوئیچ/.test(text)) {
+    return ["ظرفیت کامل"];
+  }
+
+  return ["ظرفیت کامل"];
 }
 
 function UploadStateOverlay({ state }) {
@@ -397,10 +666,10 @@ function ObjectRowsEditor({ columns, items = [], onChange, onCreatePlatform, tit
               placeholder={columns[1].placeholder}
               value={item.variant}
             />
-            <ListTextField
+            <TextField
               label={columns[2].label}
               name={`${title}-size-${index}`}
-              onChange={(value) => updateItem(index, { size: value })}
+              onChange={(event) => updateItem(index, { size: event.target.value })}
               placeholder={columns[2].placeholder}
               value={item.size}
             />
@@ -557,11 +826,11 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
                 options={typeOptions}
                 value={item.type}
               />
-              <ListTextField
-                label="عناوین"
+              <TextField
+                label="حجم"
                 name={`${title}-versionSize-${index}`}
-                onChange={(value) => updateItem(index, { versionSize: value })}
-                placeholder="عنوان را وارد کنید"
+                onChange={(event) => updateItem(index, { versionSize: event.target.value })}
+                placeholder="مثلا ۸۵ گیگابایت"
                 value={item.versionSize}
               />
               <InlineImageUploadButton
@@ -594,9 +863,9 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
 }
 
 function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUploadedImage, onImageUpload, platformOptions = [], title }) {
-  const rows = items.length ? items : [{ title: "", versionSize: "", items: [], image: "" }];
+  const rows = items.length ? items : [{ title: "", versionTitles: "", items: [], image: "" }];
   const [selectedIndexes, setSelectedIndexes] = React.useState([]);
-  const [modalIndex, setModalIndex] = React.useState(null);
+  const [modalTargets, setModalTargets] = React.useState([]);
   const [itemDraft, setItemDraft] = React.useState({
     capacityType: "",
     discountPercent: "",
@@ -604,20 +873,18 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
     price: "",
   });
 
+  const hasEditionContent = (item) =>
+    String(item.title || "").trim() ||
+    String(item.versionTitles || "").trim() ||
+    (Array.isArray(item.items) && item.items.length) ||
+    item.image;
+
   const updateItem = (index, patch) => {
     const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
-    onChange?.(
-      next.filter(
-        (item) =>
-          String(item.title || "").trim() ||
-          String(item.versionSize || "").trim() ||
-          (Array.isArray(item.items) && item.items.length) ||
-          item.image
-      )
-    );
+    onChange?.(next.filter(hasEditionContent));
   };
 
-  const addItem = () => onChange?.([...rows, { title: "", versionSize: "", items: [], image: "" }]);
+  const addItem = () => onChange?.([...rows, { title: "", versionTitles: "", items: [], image: "" }]);
   const removeItem = (index) => {
     setSelectedIndexes([]);
     onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
@@ -634,20 +901,40 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
     return Math.max(0, Math.round(price - (price * discount) / 100));
   })();
 
-  const openModal = (index) => {
-    setModalIndex(index);
+  const openSelectedModal = () => {
+    if (!selectedIndexes.length) return;
+    setModalTargets(selectedIndexes);
     setItemDraft({ capacityType: "", discountPercent: "", platform: "", price: "" });
   };
 
+  const capacityOptions = getCapacityOptions(itemDraft.platform, platformOptions).map((item) => ({
+    label: item,
+    value: item,
+  }));
+
+  const updateDraftPlatform = (platform) => {
+    const nextOptions = getCapacityOptions(platform, platformOptions);
+    setItemDraft((prev) => ({
+      ...prev,
+      platform,
+      capacityType: nextOptions.includes(prev.capacityType) ? prev.capacityType : nextOptions[0] || "",
+    }));
+  };
+
   const addEditionItem = () => {
-    if (modalIndex === null) return;
+    if (!modalTargets.length) return;
     const nextEntry = {
       ...itemDraft,
       discountedPrice,
     };
-    const currentItems = Array.isArray(rows[modalIndex]?.items) ? rows[modalIndex].items : [];
-    updateItem(modalIndex, { items: [...currentItems, nextEntry] });
-    setModalIndex(null);
+    const targetSet = new Set(modalTargets);
+    const next = rows.map((item, index) => {
+      if (!targetSet.has(index)) return item;
+      const currentItems = Array.isArray(item.items) ? item.items : [];
+      return { ...item, items: [...currentItems, nextEntry] };
+    });
+    onChange?.(next.filter(hasEditionContent));
+    setModalTargets([]);
   };
 
   const removeEditionItem = (editionIndex, itemIndex) => {
@@ -659,13 +946,27 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
     <div className="space-y-3  p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-700 dark:text-zinc-300">{title}</span>
-        <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
-          onClick={addItem}
-          type="button"
-        >
-          <Plus />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            aria-label="افزودن مورد به نسخه‌های انتخاب‌شده"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 !text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:!text-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:!text-zinc-500 [&_svg]:!text-white disabled:[&_svg]:!text-zinc-500"
+            disabled={!selectedIndexes.length}
+            onClick={openSelectedModal}
+            title="افزودن مورد به نسخه‌های انتخاب‌شده"
+            type="button"
+          >
+            <Plus className="h-4 w-4 !text-white" />
+          </button>
+          <button
+            aria-label="افزودن نسخه"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 transition hover:border-white hover:text-zinc-950 dark:text-white"
+            onClick={addItem}
+            title="افزودن نسخه"
+            type="button"
+          >
+            <Plus />
+          </button>
+        </div>
       </div>
       <div className="space-y-3">
         {rows.map((item, index) => (
@@ -677,20 +978,10 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                 onClick={() => toggleSelectedIndex(index)}
                 type="button"
               />
-              {selectedIndexes.includes(index) ? (
-                <button
-                  aria-label="افزودن مورد نسخه"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-green-600 bg-green-50 text-green-700 transition hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
-                  onClick={() => openModal(index)}
-                  type="button"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              ) : null}
             </div>
             <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_48px]">
               <TextField
-                label="خلاصه"
+                label="نام نسخه"
                 name={`${title}-title-${index}`}
                 onChange={(event) => updateItem(index, { title: event.target.value })}
                 placeholder="مثلا Deluxe Edition"
@@ -698,10 +989,10 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
               />
               <ListTextField
                 label="عناوین"
-                name={`${title}-versionSize-${index}`}
-                onChange={(value) => updateItem(index, { versionSize: value })}
+                name={`${title}-versionTitles-${index}`}
+                onChange={(value) => updateItem(index, { versionTitles: value })}
                 placeholder="عنوان را وارد کنید"
-                value={item.versionSize}
+                value={item.versionTitles}
               />
               <InlineImageUploadButton
                 image={item.image}
@@ -733,7 +1024,7 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                     <div className="grid gap-2 rounded-lg bg-zinc-50 p-2 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 md:grid-cols-[1fr_1fr_1fr_1fr_32px]" key={`${index}-entry-${entryIndex}`}>
                       <span>{platformLabel}</span>
                       <span>{entry.capacityType || "-"}</span>
-                      <span>{entry.price ? Number(entry.price).toLocaleString("fa-IR") : "-"}</span>
+                      <span>{entry.price ? `${formatMoney(entry.price)} تومان` : "-"}</span>
                       <span>{entry.discountedPrice ? Number(entry.discountedPrice).toLocaleString("fa-IR") : "-"}</span>
                       <button
                         aria-label="حذف مورد"
@@ -751,12 +1042,12 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
           </div>
         ))}
       </div>
-      {modalIndex !== null ? (
+      {modalTargets.length ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950" dir="rtl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">افزودن مورد نسخه</h3>
-              <button className="text-sm text-zinc-500" onClick={() => setModalIndex(null)} type="button">
+              <button className="text-sm text-zinc-500" onClick={() => setModalTargets([])} type="button">
                 بستن
               </button>
             </div>
@@ -764,15 +1055,15 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
               <SingleSelectDropdown
                 label="پلتفرم"
                 name="edition-item-platform"
-                onChange={(event) => setItemDraft((prev) => ({ ...prev, platform: event.target.value }))}
+                onChange={(event) => updateDraftPlatform(event.target.value)}
                 options={platformOptions}
                 value={itemDraft.platform}
               />
-              <TextField
+              <SingleSelectDropdown
                 label="نوع ظرفیت"
                 name="edition-item-capacity"
                 onChange={(event) => setItemDraft((prev) => ({ ...prev, capacityType: event.target.value }))}
-                placeholder="مثلا ظرفیت ۱"
+                options={capacityOptions}
                 value={itemDraft.capacityType}
               />
               <TextField
@@ -793,13 +1084,14 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
               />
             </div>
             <div className="mt-4 rounded-xl bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
-              قیمت با تخفیف: {discountedPrice ? discountedPrice.toLocaleString("fa-IR") : "-"}
+              <div>قیمت: {itemDraft.price ? `${formatMoney(itemDraft.price)} تومان` : "-"}</div>
+              <div className="mt-1">قیمت با تخفیف: {discountedPrice ? `${formatMoney(discountedPrice)} تومان` : "-"}</div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button className="rounded-xl border border-zinc-200 px-4 py-2 text-sm dark:border-zinc-800" onClick={() => setModalIndex(null)} type="button">
+              <button className="rounded-xl border border-zinc-200 px-4 py-2 text-sm dark:border-zinc-800" onClick={() => setModalTargets([])} type="button">
                 انصراف
               </button>
-              <button className="rounded-xl bg-green-600 px-4 py-2 text-sm text-white" onClick={addEditionItem} type="button">
+              <button className="rounded-xl bg-green-600 px-4 py-2 text-sm !text-white" onClick={addEditionItem} type="button">
                 افزودن
               </button>
             </div>
@@ -810,15 +1102,20 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
   );
 }
 
+const reviewSourceOptions = [
+  { label: "زومجی", value: "زومجی" },
+  { label: "گیم‌فا", value: "گیم‌فا" },
+];
+
 function LinkRowsEditor({ label, items = [], onChange }) {
-  const rows = items.length ? items : [{ title: "", link: "" }];
+  const rows = items.length ? items : [{ title: reviewSourceOptions[0].value, link: "" }];
 
   const updateItem = (index, patch) => {
     const next = rows.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
     onChange?.(next.filter((item) => item.title || item.link));
   };
 
-  const addItem = () => onChange?.([...rows, { title: "", link: "" }]);
+  const addItem = () => onChange?.([...rows, { title: reviewSourceOptions[0].value, link: "" }]);
   const removeItem = (index) => onChange?.(rows.filter((_, itemIndex) => itemIndex !== index));
 
   return (
@@ -836,16 +1133,16 @@ function LinkRowsEditor({ label, items = [], onChange }) {
       <div className="space-y-3">
         {rows.map((item, index) => (
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]" key={`${label}-${index}`}>
-            <TextField
-              label="خلاصه"
+            <SingleSelectDropdown
+              label="منبع"
               name={`${label}-title-${index}`}
               onChange={(event) => updateItem(index, { title: event.target.value })}
-              placeholder="مثلا Metacritic"
-              value={item.title}
+              options={reviewSourceOptions}
+              value={reviewSourceOptions.some((option) => option.value === item.title) ? item.title : reviewSourceOptions[0].value}
             />
             <TextField
               dir="ltr"
-              label="سازنده‌ها"
+              label="لینک"
               name={`${label}-link-${index}`}
               onChange={(event) => updateItem(index, { link: event.target.value })}
               placeholder="https://..."
@@ -1049,9 +1346,9 @@ export function BasicStep({
         : "text-zinc-500";
 
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <TextField label="عنوان بازی *" name="title" onChange={onChange} value={form.title} />
+      <div className="grid gap-4">
+        <div className="grid gap-4 md:grid-cols-2">
+        <GameTitleSuggestField form={form} onChange={onChange} setForm={setForm} />
         <TextField dir="ltr" label="اسلاگ بازی" name="slug" onChange={onChange} value={form.slug} />
       </div>
       <TextField
@@ -1154,6 +1451,7 @@ export function GameMediaStep({
   coverPreview,
   desktopCoverPreview,
   galleryPreview,
+  gameTitle,
   imageUploadState = {},
   isTrailerVideoUploading,
   onDeleteMainImage,
@@ -1251,7 +1549,21 @@ export function GameMediaStep({
           ) : null}
         </div>
       </div>
-      <MediaStep galleryPreview={galleryPreview} imageUploadState={imageUploadState} onDeleteUploadedImage={onDeleteUploadedImage} onImageUpload={onImageUpload} setForm={setForm} setGalleryPreview={setGalleryPreview} />
+      <MediaStep
+        coverPreview={coverPreview}
+        desktopCoverPreview={desktopCoverPreview}
+        galleryPreview={galleryPreview}
+        gameTitle={gameTitle}
+        imageUploadState={imageUploadState}
+        onDeleteUploadedImage={onDeleteUploadedImage}
+        onImageUpload={onImageUpload}
+        setCoverPreview={setCoverPreview}
+        setDesktopCoverPreview={setDesktopCoverPreview}
+        setForm={setForm}
+        setGalleryPreview={setGalleryPreview}
+        mobileCoverPreview={mobileCoverPreview}
+        setMobileCoverPreview={setMobileCoverPreview}
+      />
       <VideosStep
         isTrailerVideoUploading={isTrailerVideoUploading}
         onVideoUpload={onVideoUpload}
@@ -1273,6 +1585,7 @@ export function RelationsStep({
   genreOptions,
   onChange,
   onQuickCreate,
+  platformOptions,
   setArrayField,
 }) {
   const toggleGenresVisibility = () => {
@@ -1322,6 +1635,9 @@ export function RelationsStep({
       </QuickCreateField>
       <QuickCreateField label="کلمات کلیدی بازی" onCreate={() => onQuickCreate?.("gameKeyword", { field: "gameKeywords" })}>
         <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="کلمات کلیدی بازی" onChange={(value) => setArrayField("gameKeywords", value)} options={gameKeywordOptions} value={form.gameKeywords} />
+      </QuickCreateField>
+      <QuickCreateField label="پلتفرم" onCreate={() => onQuickCreate?.("platform", { field: "platforms" })}>
+        <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="پلتفرم‌ها" onChange={(value) => setArrayField("platforms", value)} options={platformOptions} value={form.platforms} />
       </QuickCreateField>
       <QuickCreateField label="سازنده‌ها" onCreate={() => onQuickCreate?.("company", { field: "developers" })}>
         <MultiSelectDropdown controlClassName={borderlessControlClass} iconClassName={borderlessIconClass} label="سازنده‌ها" onChange={(value) => setArrayField("developers", value)} options={companyOptions} value={form.developers} />
@@ -1426,15 +1742,23 @@ export function ReleaseStep({ ageRatingOptions, form, onChange, scoreImportState
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
-        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز سونی" name="sonyScore" onChange={onChange} type="number" value={form.sonyScore} />
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز سونی" max="5" min="0" name="sonyScore" onChange={onChange} step="0.1" type="number" value={form.sonyScore} />
         <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز استیم" name="steamScore" onChange={onChange} type="number" value={form.steamScore} />
-        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز Xbox" name="xboxScore" onChange={onChange} type="number" value={form.xboxScore} />
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز Xbox" max="5" min="0" name="xboxScore" onChange={onChange} step="0.1" type="number" value={form.xboxScore} />
       </div>
       {scoreImportState?.message ? (
         <p className={`text-xs ${scoreStatusClassName}`}>{scoreImportState.message}</p>
       ) : null}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-6">
         <StatusSwitch checked={form.isFeatured} className={borderlessSwitchClass} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
+        <StatusSwitch
+          checked={form.showOnlyInCollections}
+          className={borderlessSwitchClass}
+          id="showOnlyInCollections"
+          label="نمایش فقط در کالکشن‌ها"
+          name="showOnlyInCollections"
+          onChange={onChange}
+        />
         <StatusSwitch checked={form.hasDubbing} className={borderlessSwitchClass} id="hasDubbing" label="دوبله دارد" name="hasDubbing" onChange={onChange} />
         <StatusSwitch checked={form.hasSubtitle} className={borderlessSwitchClass} id="hasSubtitle" label="زیرنویس دارد" name="hasSubtitle" onChange={onChange} />
         <StatusSwitch
@@ -1465,12 +1789,12 @@ export function PlatformSizesStep({ form, onQuickCreate, platformOptions, setArr
         columns={[
           { label: "پلتفرم", options: platformOptions },
           { label: "نسخه", placeholder: "مثلا Standard / PS5" },
-          { label: "عناوین", placeholder: "عنوان را وارد کنید" },
+          { label: "حجم", placeholder: "مثلا ۸۵ گیگابایت" },
         ]}
         items={form.platformSizes}
         onChange={(value) => setArrayField("platformSizes", value)}
         onCreatePlatform={(target) => onQuickCreate?.("platform", target)}
-        title="عناوین نسخه‌های پلتفرم"
+        title="حجم نسخه‌های پلتفرم"
       />
     </div>
   );
@@ -1681,8 +2005,20 @@ export function DescriptionStep({ form, setForm }) {
   );
 }
 
-export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploadedImage, onImageUpload, setForm, setGalleryPreview }) {
+export function MediaStep({
+  galleryPreview,
+  gameTitle,
+  imageUploadState = {},
+  onDeleteUploadedImage,
+  onImageUpload,
+  setCoverPreview,
+  setDesktopCoverPreview,
+  setForm,
+  setGalleryPreview,
+  setMobileCoverPreview,
+}) {
   const [draggedId, setDraggedId] = React.useState(null);
+  const [pendingSuggestion, setPendingSuggestion] = React.useState(null);
 
   const syncGallery = (updater) => {
     setGalleryPreview((prev) => {
@@ -1733,6 +2069,79 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
     });
   };
 
+  const createPlayStationMedia = (suggestion) => {
+    const url = String(suggestion?.url || "").trim();
+    if (!url) return null;
+
+    return {
+      public_id: "",
+      type: "image",
+      url,
+    };
+  };
+
+  const appendPlayStationImage = (suggestion) => {
+    const media = createPlayStationMedia(suggestion);
+    if (!media) return;
+
+    syncGallery((prev) => {
+      if (prev.some((item) => String(item?.url || item?.media?.url || "") === media.url)) return prev;
+
+      return [
+        ...prev,
+        {
+          id: `gallery-playstation-${Date.now()}-${makeGameSlug(suggestion?.title || "image")}`,
+          kind: "existing",
+          media,
+          platform: suggestion?.platform || "PlayStation",
+          source: "playstation",
+          title: suggestion?.title || "",
+          type: "image",
+          url: media.url,
+        },
+      ];
+    });
+  };
+
+  const assignPlayStationImage = (destination) => {
+    const media = createPlayStationMedia(pendingSuggestion);
+    if (!media) return;
+
+    if (destination === "gallery") {
+      appendPlayStationImage(pendingSuggestion);
+    } else if (destination === "cover") {
+      setForm((prev) => ({ ...prev, cover: media }));
+      setCoverPreview?.(media.url);
+    } else if (destination === "mobileCover") {
+      setForm((prev) => ({ ...prev, mobileCover: media }));
+      setMobileCoverPreview?.(media.url);
+    } else if (destination === "desktopCover") {
+      setForm((prev) => ({ ...prev, desktopCover: media }));
+      setDesktopCoverPreview?.(media.url);
+    }
+
+    setPendingSuggestion(null);
+  };
+
+  const handleGalleryDrop = (event) => {
+    const suggestionPayload = event.dataTransfer.getData(playStationGalleryDragType);
+    if (!suggestionPayload) return;
+
+    event.preventDefault();
+    try {
+      appendPlayStationImage(JSON.parse(suggestionPayload));
+    } catch (_) {
+      // Ignore malformed drag payloads from outside the dashboard.
+    }
+  };
+
+  const handleGalleryDragOver = (event) => {
+    const dragTypes = Array.from(event.dataTransfer.types || []);
+    if (!dragTypes.includes(playStationGalleryDragType)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  };
+
   const replaceFile = (id, file) => {
     if (!file) return;
     const nextId = `gallery-${Date.now()}-${file.name}`;
@@ -1779,7 +2188,7 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
   };
 
   const removeItem = (item) => {
-    onDeleteUploadedImage?.(item.id, item.media || item);
+    if (item.source !== "playstation") onDeleteUploadedImage?.(item.id, item.media || item);
     syncGallery((prev) => prev.filter((current) => current.id !== item.id));
   };
 
@@ -1801,9 +2210,16 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
   return (
     <div className="space-y-4">
       <div className="grid gap-4">
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
+        <div
+          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4"
+          onDragOver={handleGalleryDragOver}
+          onDrop={handleGalleryDrop}
+        >
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
+          <div className="mb-4">
+            <PlayStationGallerySuggestions gameTitle={gameTitle} onAdd={setPendingSuggestion} />
+          </div>
           <ThumbnailUpload
             immediateUpload={false}
             multiple
@@ -1830,6 +2246,7 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
                 >
                   <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black">
                     <img alt="gallery" className="h-full w-full object-cover" src={item.url} />
+                    <ImageSizeBadge src={item.url} />
                     <UploadStateOverlay state={imageUploadState[item.id]} />
                     <button
                       aria-label="حذف تصویر"
@@ -1840,7 +2257,7 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
                     >
                       <Trash className="h-4 w-4 !text-white" style={{ color: "#fff" }} />
                     </button>
-                    <span className="absolute right-2 top-2 rounded-md bg-white dark:bg-black/70 px-2 py-1 text-[10px] text-zinc-950 dark:text-white">
+                    <span className="absolute right-2 top-2 rounded-md bg-white/95 px-2 py-1 text-[10px] font-bold text-zinc-950 shadow-md ring-1 ring-black/10">
                       {index + 1}
                     </span>
                   </div>
@@ -1869,6 +2286,43 @@ export function MediaStep({ galleryPreview, imageUploadState = {}, onDeleteUploa
           )}
         </div>
       </div>
+      {pendingSuggestion ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6" dir="rtl">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-zinc-500">افزودن تصویر PlayStation</p>
+                <h3 className="mt-1 text-base font-bold text-zinc-950 dark:text-white">این عکس کجا اضافه شود؟</h3>
+              </div>
+              <button
+                className="rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-600 transition hover:border-red-400 hover:text-red-500 dark:border-zinc-800 dark:text-zinc-300"
+                onClick={() => setPendingSuggestion(null)}
+                type="button"
+              >
+                بستن
+              </button>
+            </div>
+            <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
+              <img alt={pendingSuggestion.title || "PlayStation"} className="aspect-video w-full object-cover" src={pendingSuggestion.url} />
+              <ImageSizeBadge src={pendingSuggestion.url} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button className="rounded-xl bg-green-600 px-3 py-3 text-sm font-bold !text-white transition hover:bg-green-500" onClick={() => assignPlayStationImage("cover")} type="button">
+                کارت
+              </button>
+              <button className="rounded-xl bg-blue-600 px-3 py-3 text-sm font-bold !text-white transition hover:bg-blue-500" onClick={() => assignPlayStationImage("mobileCover")} type="button">
+                جزئیات موبایل
+              </button>
+              <button className="rounded-xl bg-zinc-900 px-3 py-3 text-sm font-bold !text-white transition hover:bg-zinc-800 dark:bg-white dark:!text-zinc-950 dark:hover:bg-zinc-200" onClick={() => assignPlayStationImage("desktopCover")} type="button">
+                دسکتاپ
+              </button>
+              <button className="rounded-xl border border-zinc-200 px-3 py-3 text-sm font-bold text-zinc-700 transition hover:border-green-500 hover:text-green-600 dark:border-zinc-800 dark:text-zinc-200" onClick={() => assignPlayStationImage("gallery")} type="button">
+                گالری
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -103,9 +103,9 @@ export function GameDetailPreview({
     ["رده سنی", ageRatingLabel],
     ["زمان تقریبی گیم‌پلی", form.gameplayTime],
     ["امتیاز متاکریتیک", form.metacriticScore],
-    ["امتیاز سونی", form.sonyScore],
+    ["امتیاز سونی از ۵", form.sonyScore],
     ["امتیاز استیم", form.steamScore],
-    ["امتیاز Xbox", form.xboxScore],
+    ["امتیاز Xbox از ۵", form.xboxScore],
     ["ژانرها", genres.join("، ")],
   ];
 

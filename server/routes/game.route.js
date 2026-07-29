@@ -30,6 +30,8 @@ router.post("/translate-intro", ...gameAccess, gameController.translateIntro);
 router.post("/import-scores", ...gameAccess, gameController.importScores);
 router.post("/xbox-achievements", ...gameAccess, gameController.fetchXboxAchievements);
 router.post("/playstation-trophies", ...gameAccess, gameController.fetchPlayStationTrophies);
+router.get("/suggestions", ...gameAccess, gameController.suggestGames);
+router.get("/playstation-gallery", ...gameAccess, gameController.suggestPlayStationGallery);
 router.get("/:id", optionalVerifyAdmin, gameController.getGame);
 
 registerStoragePost(

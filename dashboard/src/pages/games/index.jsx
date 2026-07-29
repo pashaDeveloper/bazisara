@@ -186,6 +186,11 @@ function Games() {
                           <div className="min-w-0">
                             <span className="block truncate">{item.title}</span>
                             <span className="mt-1 block truncate text-xs text-zinc-500">{item.slug}</span>
+                            {item.showOnlyInCollections ? (
+                              <span className="mt-2 inline-flex rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                                فقط کالکشن
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       </td>

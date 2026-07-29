@@ -97,6 +97,7 @@ const initialForm = {
   xboxScore: "",
   playstationNpCommunicationId: "",
   isFeatured: false,
+  showOnlyInCollections: false,
   socialLinks: [],
   trailerVideo: null,
   trailerThumbnail: null,
@@ -130,9 +131,10 @@ const normalizeOfflinePlayers = (value) => {
         const rawKey = String(item.key || item.value || "").trim();
         const legacyMap = {
           offline_1: "single-player",
-          offline_1_4: "3-4",
-          up_to_4: "3-4",
-          "up-to-4": "3-4",
+          offline_1_4: "1-4",
+          up_to_4: "1-4",
+          "up-to-4": "1-4",
+          "3-4": "1-4",
         };
         const key = legacyMap[rawKey] || rawKey;
         const option = offlinePlayerOptions.find((current) => current.value === key || current.key === key);
@@ -148,9 +150,10 @@ const normalizeOfflinePlayers = (value) => {
       const key = String(item || "").trim();
       const legacyMap = {
         offline_1: "single-player",
-        offline_1_4: "3-4",
-        up_to_4: "3-4",
-        "up-to-4": "3-4",
+        offline_1_4: "1-4",
+        up_to_4: "1-4",
+        "up-to-4": "1-4",
+        "3-4": "1-4",
       };
       const optionKey = legacyMap[key] || key;
       const option = offlinePlayerOptions.find((current) => current.value === optionKey || current.key === optionKey);
@@ -829,7 +832,7 @@ function GameForm({ mode = "create" }) {
       extraEditions: Array.isArray(game.extraEditions)
         ? game.extraEditions.map((item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
-            versionSize: String(item?.versionSize || "").trim(),
+            versionTitles: String(item?.versionTitles || "").trim(),
             items: Array.isArray(item?.items)
               ? item.items.map((entry) => ({
                   platform: entry?.platform?._id || entry?.platform || "",
@@ -855,6 +858,7 @@ function GameForm({ mode = "create" }) {
       xboxScore: game.xboxScore ?? "",
       playstationNpCommunicationId: game.playstationNpCommunicationId || "",
       isFeatured: Boolean(game.isFeatured),
+      showOnlyInCollections: Boolean(game.showOnlyInCollections),
       socialLinks: Array.isArray(game.socialLinks) ? game.socialLinks : [],
       trailerVideo: game.trailerVideo?.url ? game.trailerVideo : null,
       trailerThumbnail: null,
@@ -1325,6 +1329,7 @@ function GameForm({ mode = "create" }) {
     const derivedPlatforms = [
       ...new Set(
         [
+          ...(form.platforms || []),
           ...(form.platformReleases || []).map((item) => item.platform),
           ...(form.platformSizes || []).map((item) => item.platform),
         ].filter(Boolean)
@@ -1398,7 +1403,7 @@ function GameForm({ mode = "create" }) {
       if (key === "extraEditions") {
         const extraPayload = (value || []).map((item) => ({
           title: String(item?.title || "").trim(),
-          versionSize: String(item?.versionSize || "").trim(),
+          versionTitles: String(item?.versionTitles || "").trim(),
           items: Array.isArray(item?.items)
             ? item.items.map((entry) => ({
                 platform: entry?.platform || "",
@@ -1484,6 +1489,7 @@ function GameForm({ mode = "create" }) {
           <GameMediaStep
             coverPreview={coverPreview}
             desktopCoverPreview={desktopCoverPreview}
+            gameTitle={form.title}
             mobileCoverPreview={mobileCoverPreview}
             galleryPreview={galleryPreview}
             imageUploadState={imageUploadState}
@@ -1519,6 +1525,7 @@ function GameForm({ mode = "create" }) {
               genreOptions={genreOptions}
               onChange={handleChange}
               onQuickCreate={openQuickCreate}
+              platformOptions={platformOptions}
               setArrayField={setArrayField}
               tagOptions={tagOptions}
             />
@@ -1555,7 +1562,15 @@ function GameForm({ mode = "create" }) {
     }
   };
 
-  const selectedPlatformIds = (form.platformReleases || []).map((item) => item.platform).filter(Boolean);
+  const selectedPlatformIds = [
+    ...new Set(
+      [
+        ...(form.platforms || []),
+        ...(form.platformReleases || []).map((item) => item.platform),
+        ...(form.platformSizes || []).map((item) => item.platform),
+      ].filter(Boolean)
+    ),
+  ];
   const selectedPlatformLabels = platformOptions.filter((option) => selectedPlatformIds.includes(option.value)).map((option) => option.label);
   const selectedPlatformReleases = (form.platformReleases || [])
     .map((item) => ({

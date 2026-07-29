@@ -45,13 +45,6 @@ const reactionItems = [
   { label: "Love", icon: Heart },
 ];
 
-const gameIconBadges = [
-  { label: "DLC", src: "/games/icons/dlc.svg" },
-  { label: "Steam", src: "/games/icons/steam.svg" },
-  { label: "PlayStation", src: "/games/icons/ps.svg" },
-  { label: "Xbox", src: "/games/icons/xbox.svg" },
-];
-
 const comments = [
   {
     author: "کمس کبیر",
@@ -119,7 +112,7 @@ function joinMixed(values?: unknown[]) {
 
 function formatGameEditions(game: Game) {
   const editions = game.extraEditions
-    ?.map((item) => [item.title, item.versionSize].filter(Boolean).join(" - "))
+    ?.map((item) => [item.title, item.versionTitles, item.versionSize].filter(Boolean).join(" - "))
     .filter(Boolean);
 
   return editions?.join("، ") || "";
@@ -154,21 +147,6 @@ function compactValue(value?: string | number | null) {
   return latinToPersian(value);
 }
 
-function GameIconBadges() {
-  return (
-    <div className="grid grid-cols-4 gap-2" dir="ltr">
-      {gameIconBadges.map((item) => (
-        <div
-          key={item.label}
-          className="flex h-14 min-w-0 items-center justify-center rounded-lg border border-[#e6ebf2] bg-[#f8fafc] px-2 shadow-[0_12px_24px_-22px_rgba(15,23,42,.55)]"
-        >
-          <img src={item.src} alt={item.label} className="h-8 w-8 object-contain" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function formatBadgeScore(value?: number | null) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
   return new Intl.NumberFormat("fa-IR").format(Number(value));
@@ -190,13 +168,13 @@ function HeroCornerBadges({
     >
       <span className="grid h-[58px] w-10 overflow-hidden rounded-lg bg-black/25 text-center text-white  backdrop-blur-md">
         <span className="flex h-9 items-center justify-center ">
-          <img src="/games/icons/dlc.svg" alt="" className="h-7 w-7 object-contain" />
+          <BlurImage src="/games/icons/dlc.svg" alt="" className="h-7 w-7" imageClassName="object-contain" />
         </span>
         <span className="flex items-center justify-center text-[14px] font-medium leading-none">DLC</span>
       </span>
       <span className="grid h-[58px] w-10 overflow-hidden rounded-lg bg-black/25 text-center text-white  backdrop-blur-md">
         <span className="flex h-9 items-center justify-center">
-          <img src="/games/icons/Metacritic.svg" alt="" className="h-7 w-7 object-contain" />
+          <BlurImage src="/games/icons/Metacritic.svg" alt="" className="h-7 w-7" imageClassName="object-contain" />
         </span>
         <span className="flex items-center justify-center text-[14px] font-black leading-none">
           {formatBadgeScore(metacriticScore)}
@@ -234,15 +212,6 @@ function PillRow({
   );
 }
 
-function DetailPills({ platforms, keywords }: { platforms: string[]; keywords: string[] }) {
-  return (
-    <div className="grid gap-2">
-      <PillRow items={platforms} fallback={["PS5", "PS4"]} dir="ltr" />
-      <PillRow items={keywords} />
-    </div>
-  );
-}
-
 function HeroActions({ trailerUrl }: { trailerUrl?: string }) {
   return (
     <div className="grid grid-cols-2 gap-3" dir="ltr">
@@ -273,6 +242,60 @@ function HeroActions({ trailerUrl }: { trailerUrl?: string }) {
   );
 }
 
+function IconStat({
+  iconSrc,
+  label,
+  value,
+}: {
+  iconSrc: string;
+  label: string;
+  value?: string | number | null;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+      <div className="flex items-center gap-1 text-[13px] font-black text-[#15234a]">
+        <BlurImage src={iconSrc} alt="" className="h-5 w-5" imageClassName="object-contain" />
+        <span>{compactValue(value)}</span>
+      </div>
+      <span className="text-[11px] font-medium text-[#596277]">{label}</span>
+    </div>
+  );
+}
+
+function HeroInfoPanel({ game, keywords, platforms }: { game: Game; keywords: string[]; platforms: string[] }) {
+  const genre = keywords[0] || (!game.showGenresInCategories ? game.genres?.map(entityLabel).filter(Boolean)[0] : "") || "اکشن";
+  const stats = [
+    { iconSrc: "/games/icons/ps.svg", value: game.sonyScore || "۴.۵", label: `${formatCount(game.likes || 17)} رای` },
+    { iconSrc: "/games/icons/steam.svg", value: game.steamScore || "۳.۹", label: `${formatCount(game.views || 12401)} رای` },
+    { iconSrc: "/games/icons/xbox.svg", value: game.xboxScore || "۶.۹", label: `${formatCount(game.commentsCount || 18175)} رای` },
+  ];
+
+  return (
+    <>
+      <div className="mt-5 grid grid-cols-3 gap-4">
+        {stats.map((item) => (
+          <IconStat key={item.iconSrc} iconSrc={item.iconSrc} value={item.value} label={item.label} />
+        ))}
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <PillRow items={platforms} fallback={["PS5", "PS4"]} dir="ltr" />
+      </div>
+      <div className="mt-3 flex justify-end">
+        <span className="rounded-full border border-[#d6dce6] bg-white px-4 py-1.5 text-[12px] font-bold text-[#30384d] shadow-sm">{genre}</span>
+      </div>
+      <div className="mt-8 flex items-center justify-between text-[12px] font-bold text-[#30384d]">
+        <ArrowLeft className="h-4 w-4" />
+        <span>ویژگی‌ها:</span>
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-2">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="h-12 rounded-md border border-[#d8dde6] bg-[#f3f5f9]" />
+        ))}
+      </div>
+    </>
+  );
+}
+
 function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: string[]; keywords: string[] }) {
   const heroMedia = gameMedia(game, "desktop");
   const heroImage = mediaUrl(heroMedia);
@@ -295,26 +318,13 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/65" />
       <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
 
-      <div className="mx-auto flex h-full max-w-[1440px] items-center px-5">
-        <div className="w-[392px] rounded-xl border border-white/75 bg-white/92 p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)] backdrop-blur" dir="rtl">
-          <h1 className="line-clamp-2 text-left text-[21px] font-black leading-8 text-[#29467c]" dir="ltr">
-            {game.title}
-          </h1>
-          <div className="mt-5">
-            <GameIconBadges />
-          </div>
-          <div className="mt-4">
-            <DetailPills platforms={platforms} keywords={keywords} />
-          </div>
-          <div className="mt-8 text-[12px] font-bold text-[#30384d]">محتوای همه</div>
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-12 rounded-md border border-[#e5eaf2] bg-[#f3f5f9]" />
-            ))}
-          </div>
-          <div className="mt-5">
-            <HeroActions trailerUrl={trailerUrl} />
-          </div>
+      <div className="absolute left-6 top-1/2 w-[392px] -translate-y-1/2 rounded-xl border border-white/75 bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)]" dir="rtl" style={{ zIndex: 30 }}>
+        <h1 className="line-clamp-2 text-left text-[21px] font-black leading-8 text-[#29467c]" dir="ltr">
+          {game.title}
+        </h1>
+        <HeroInfoPanel game={game} platforms={platforms} keywords={keywords} />
+        <div className="mt-5">
+          <HeroActions trailerUrl={trailerUrl} />
         </div>
       </div>
 
@@ -341,20 +351,29 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         </div>
       </div>
 
-      <div className="relative overflow-hidden bg-[#f2f5f8] px-5 pb-5 pt-3">
+      <div className="relative overflow-hidden bg-[#f2f5f8] pb-5">
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="relative mx-auto aspect-[4/3] w-full max-w-[360px] overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
+        <div className="relative aspect-[16/10] w-full overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
-            <BlurImage alt={game.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-contain" src={heroImage} />
+            <BlurImage alt={game.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
           ) : (
             <SkeletonBlock className="h-full w-full rounded-none" />
           )}
           <HeroCornerBadges metacriticScore={game.metacriticScore} flush />
         </div>
         <div className="absolute bottom-5 left-5">
-          <button type="button" className="rounded-lg bg-[#ff3f68] px-4 py-2 text-[10px] font-black text-white">
-            خبرم کن
-          </button>
+          <a
+            href={trailerUrl || "#"}
+            aria-disabled={!trailerUrl}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[10px] font-black !text-white ${
+              trailerUrl ? "bg-[#ff3f68]" : "pointer-events-none bg-[#d8dee8]"
+            }`}
+            target={trailerUrl ? "_blank" : undefined}
+            rel={trailerUrl ? "noreferrer" : undefined}
+          >
+            <Play className="h-3.5 w-3.5 text-white" />
+            تماشای تریلر
+          </a>
           <div className="mt-1 flex gap-1">
             <span className="h-2 w-4 rounded-full bg-[#b7bdc8]" />
             <span className="h-2 w-2 rounded-full bg-[#d4d9e2]" />
@@ -367,12 +386,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         <h1 className="break-words pt-4 text-left text-[24px] font-black leading-8 text-[#2b477d]" dir="ltr">
           {game.title}
         </h1>
-        <div className="mt-5">
-          <GameIconBadges />
-        </div>
-        <div className="mt-4 flex justify-end">
-          <DetailPills platforms={platforms} keywords={keywords} />
-        </div>
+        <HeroInfoPanel game={game} platforms={platforms} keywords={keywords} />
         <div className="mt-5">
           <HeroActions trailerUrl={trailerUrl} />
         </div>
@@ -478,7 +492,7 @@ function ProductRail() {
             className="w-[150px] shrink-0 rounded-lg border border-[#e4e9f1] bg-white p-3 shadow-[0_14px_30px_-28px_rgba(15,23,42,.45)] lg:w-[180px]"
           >
             <div className="relative mx-auto aspect-square w-full">
-              <img alt={product.title} className="h-full w-full object-contain p-2" src={product.image} />
+              <BlurImage alt={product.title} className="h-full w-full" imageClassName="object-contain p-2" src={product.image} />
             </div>
             <h3 className="mt-3 line-clamp-2 min-h-10 text-[12px] font-bold leading-5 text-[#30394f]">{product.title}</h3>
             <div className="mt-2 text-left text-[12px] font-black text-[#29467c]">

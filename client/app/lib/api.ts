@@ -78,6 +78,7 @@ export type Game = {
   }>;
   extraEditions?: Array<{
     title?: string;
+    versionTitles?: string;
     versionSize?: string;
     items?: Array<{
       platform?: string | NamedEntity;
@@ -117,6 +118,7 @@ export type Game = {
   trailerThumbnail?: Media;
   gallery?: Media[];
   isFeatured?: boolean;
+  showOnlyInCollections?: boolean;
   views?: number;
   likes?: number;
   commentsCount?: number;
