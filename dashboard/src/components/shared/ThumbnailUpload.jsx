@@ -60,6 +60,8 @@ function ThumbnailUpload({
   disabled = false,
   immediateUpload = false,
   immediateUploadOptions = {},
+  altValue = "",
+  onAltChange,
   onUploadError,
 }) {
   const inputRegistration = useMemo(() => register || {}, [register]);
@@ -273,7 +275,7 @@ function ThumbnailUpload({
 
       {showPreview ? (
         profilePreview ? null : (
-          <DisplayImages galleryPreview={galleryPreview} imageSize={imageSize} onRemove={onRemove || shouldUploadImmediately ? handleRemove : undefined} rounded={previewShape} />
+          <DisplayImages altValue={altValue} galleryPreview={galleryPreview} imageSize={imageSize} onAltChange={onAltChange} onRemove={onRemove || shouldUploadImmediately ? handleRemove : undefined} rounded={previewShape} />
         )
       ) : null}
 

@@ -10,6 +10,7 @@ type ApiEnvelope<T> = {
 };
 
 export type Media = {
+  alt?: string;
   blur?: {
     hash?: string;
     width?: number | null;

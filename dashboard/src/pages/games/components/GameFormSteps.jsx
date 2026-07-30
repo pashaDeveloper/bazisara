@@ -766,7 +766,44 @@ function PlatformReleaseRowsEditor({ items = [], onChange, onCreatePlatform, pla
   );
 }
 
-function InlineImageUploadButton({ image, name, onChange, onRemove, state, title }) {
+function ImageAltOverlay({ onChange, value }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  return (
+    <div className="absolute bottom-1 left-1 right-1 z-50">
+      {isOpen ? (
+        <input
+          autoFocus
+          className="h-7 w-full rounded-md border border-white/70 bg-white px-2 text-[11px] font-bold text-zinc-950 outline-none shadow-lg"
+          onBlur={() => setIsOpen(false)}
+          onChange={(event) => onChange?.(event.target.value)}
+          onClick={(event) => event.stopPropagation()}
+          placeholder="Alt"
+          value={value || ""}
+        />
+      ) : (
+        <button
+          className="h-6 w-full rounded-md bg-white/90 px-2 text-[10px] font-black text-zinc-950 shadow transition hover:bg-white"
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsOpen(true);
+          }}
+          type="button"
+        >
+          Alt
+        </button>
+      )}
+    </div>
+  );
+}
+
+function withMediaAlt(media, alt) {
+  if (!media) return media;
+  if (typeof media === "object") return { ...media, alt };
+  return media;
+}
+
+function InlineImageUploadButton({ altValue = "", image, name, onAltChange, onChange, onRemove, state, title }) {
   const previewUrl = imageUrl(image, state);
 
   return (
@@ -775,6 +812,7 @@ function InlineImageUploadButton({ image, name, onChange, onRemove, state, title
         <div className="group relative h-12 w-12 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black">
           <img alt="" className="h-full w-full object-cover" src={previewUrl} />
           <UploadStateOverlay state={state} />
+          <ImageAltOverlay onChange={onAltChange} value={altValue} />
           {typeof onRemove === "function" ? (
             <button
               aria-label="حذف تصویر"
@@ -859,15 +897,17 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
                 value={item.versionSize}
               />
               <InlineImageUploadButton
+                altValue={item.image?.alt || ""}
                 image={item.image}
                 name={`dlcImages-${index}`}
+                onAltChange={(alt) => updateItem(index, { image: withMediaAlt(item.image, alt) })}
                 onChange={async (file) => {
                   const media = await onImageUpload?.(`dlcs-${index}`, file, {
                     resizeFit: "cover",
                     resizeHeight: 760,
                     resizeWidth: 760,
                   });
-                  if (media) updateItem(index, { image: media });
+                  if (media) updateItem(index, { image: withMediaAlt(media, item.image?.alt || "") });
                 }}
                 onRemove={async () => {
                   await onDeleteUploadedImage?.(`dlcs-${index}`, item.image);
@@ -1024,15 +1064,17 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                 value={item.versionTitles}
               />
               <InlineImageUploadButton
+                altValue={item.image?.alt || ""}
                 image={item.image}
                 name={`extraEditionImages-${index}`}
+                onAltChange={(alt) => updateItem(index, { image: withMediaAlt(item.image, alt) })}
                 onChange={async (file) => {
                   const media = await onImageUpload?.(`extraEditions-${index}`, file, {
                     resizeFit: "cover",
                     resizeHeight: 760,
                     resizeWidth: 760,
                   });
-                  if (media) updateItem(index, { image: media });
+                  if (media) updateItem(index, { image: withMediaAlt(media, item.image?.alt || "") });
                 }}
                 onRemove={async () => {
                   await onDeleteUploadedImage?.(`extraEditions-${index}`, item.image);
@@ -1486,6 +1528,7 @@ export function BasicStep({
 export function GameMediaStep({
   coverPreview,
   desktopCoverPreview,
+  form,
   galleryPreview,
   gameTitle,
   imageUploadState = {},
@@ -1513,8 +1556,10 @@ export function GameMediaStep({
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت مشترک *</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 768 × 768</p>
           <ThumbnailUpload
+            altValue={form.cover?.alt || ""}
             immediateUpload={false}
             name="cover"
+            onAltChange={(alt) => setForm((prev) => ({ ...prev, cover: withMediaAlt(prev.cover, alt) }))}
             onRemove={() => onDeleteMainImage?.("cover", setCoverPreview)}
             profilePreview
             preview={coverPreview}
@@ -1526,7 +1571,7 @@ export function GameMediaStep({
                 resizeWidth: 768,
               });
               if (!media) return;
-              setForm((prev) => ({ ...prev, cover: media }));
+              setForm((prev) => ({ ...prev, cover: withMediaAlt(media, prev.cover?.alt || "") }));
               setCoverPreview(media.url);
             }}
             setThumbnailPreview={setCoverPreview}
@@ -1537,8 +1582,10 @@ export function GameMediaStep({
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر اصلی موبایل</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1080 × 810</p>
           <ThumbnailUpload
+            altValue={form.mobileCover?.alt || ""}
             immediateUpload={false}
             name="mobileCover"
+            onAltChange={(alt) => setForm((prev) => ({ ...prev, mobileCover: withMediaAlt(prev.mobileCover, alt) }))}
             onRemove={() => onDeleteMainImage?.("mobileCover", setMobileCoverPreview)}
             profilePreview
             preview={mobileCoverPreview}
@@ -1550,7 +1597,7 @@ export function GameMediaStep({
                 resizeWidth: 1080,
               });
               if (!media) return;
-              setForm((prev) => ({ ...prev, mobileCover: media }));
+              setForm((prev) => ({ ...prev, mobileCover: withMediaAlt(media, prev.mobileCover?.alt || "") }));
               setMobileCoverPreview(media.url);
             }}
             setThumbnailPreview={setMobileCoverPreview}
@@ -1561,8 +1608,10 @@ export function GameMediaStep({
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر اصلی دسکتاپ</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
           <ThumbnailUpload
+            altValue={form.desktopCover?.alt || ""}
             immediateUpload={false}
             name="desktopCover"
+            onAltChange={(alt) => setForm((prev) => ({ ...prev, desktopCover: withMediaAlt(prev.desktopCover, alt) }))}
             onRemove={() => onDeleteMainImage?.("desktopCover", setDesktopCoverPreview)}
             profilePreview
             preview={desktopCoverPreview}
@@ -2111,6 +2160,7 @@ export function MediaStep({
     if (!url) return null;
 
     return {
+      alt: suggestion?.title || "",
       public_id: "",
       type: "image",
       url,
@@ -2230,6 +2280,20 @@ export function MediaStep({
     syncGallery((prev) => prev.filter((current) => current.id !== item.id));
   };
 
+  const updateGalleryAlt = (itemId, alt) => {
+    syncGallery((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              alt,
+              media: item.media ? { ...item.media, alt } : item.media,
+            }
+          : item
+      )
+    );
+  };
+
   const moveItem = (targetId) => {
     if (!draggedId || draggedId === targetId) return;
 
@@ -2292,6 +2356,7 @@ export function MediaStep({
                     <img alt="gallery" className="h-full w-full object-cover" src={item.url} />
                     <ImageSizeBadge src={item.url} />
                     <UploadStateOverlay state={imageUploadState[item.id]} />
+                    <ImageAltOverlay onChange={(alt) => updateGalleryAlt(item.id, alt)} value={item.alt || item.media?.alt || ""} />
                     <button
                       aria-label="حذف تصویر"
                       className="absolute left-2 top-2 z-40 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-600/90 !text-white opacity-0 shadow-lg transition hover:bg-red-500 group-hover:opacity-100 [&_svg]:!text-white"

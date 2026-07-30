@@ -32,7 +32,7 @@ export function GameCard({ game }: { game: Game }) {
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
         {image ? (
-          <BlurImage alt={game.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={media?.alt || game.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}

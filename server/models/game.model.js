@@ -20,6 +20,7 @@ const mediaSchema = new mongoose.Schema(
       x: { type: Number, default: 50 },
       y: { type: Number, default: 50 },
     },
+    alt: { type: String, trim: true, default: "" },
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
     type: { type: String, enum: ["image", "video"], default: "image" },

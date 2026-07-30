@@ -794,11 +794,14 @@ function GameForm({ mode = "create" }) {
     if (!game) return;
 
     const existingGallery = (game.gallery || []).map((item, index) => ({
+      ...item,
+      alt: item.alt || "",
       id: `existing-${item.public_id || item.url || index}`,
       url: item.url,
       public_id: item.public_id || "",
       type: item.type || "image",
       kind: "existing",
+      media: item,
     }));
 
     setForm({
@@ -875,9 +878,9 @@ function GameForm({ mode = "create" }) {
       trailerThumbnail: null,
       patchTitle: game.patchTitle || "",
       patchImage: null,
-      cover: null,
+      cover: game.cover?.url ? game.cover : game.cardDesktopCover?.url ? game.cardDesktopCover : null,
       desktopCover: game.desktopCover?.url ? game.desktopCover : null,
-      mobileCover: null,
+      mobileCover: game.mobileCover?.url ? game.mobileCover : game.cardMobileCover?.url ? game.cardMobileCover : null,
       gallery: existingGallery,
     });
     setCoverPreview(game.cover?.url || game.cardDesktopCover?.url || "");
@@ -1381,6 +1384,11 @@ function GameForm({ mode = "create" }) {
                 url: item.url,
                 public_id: item.public_id || "",
                 type: item.type || "image",
+                alt: item.alt || item.media?.alt || "",
+                blur: item.blur || item.media?.blur,
+                mobile: item.mobile || item.media?.mobile,
+                position: item.position || item.media?.position,
+                storage: item.storage || item.media?.storage || "",
               },
             });
           }
@@ -1500,6 +1508,7 @@ function GameForm({ mode = "create" }) {
           <GameMediaStep
             coverPreview={coverPreview}
             desktopCoverPreview={desktopCoverPreview}
+            form={form}
             gameTitle={form.title}
             mobileCoverPreview={mobileCoverPreview}
             galleryPreview={galleryPreview}
@@ -2011,7 +2020,7 @@ function GameForm({ mode = "create" }) {
 
             const media = await handleImageUpload("desktopCover", selectedFile);
             if (!media) return;
-            const positionedMedia = { ...media, position };
+            const positionedMedia = { ...media, alt: form.desktopCover?.alt || "", position };
             setForm((prev) => ({ ...prev, desktopCover: positionedMedia }));
             setDesktopCoverPreview(media.url);
           }}

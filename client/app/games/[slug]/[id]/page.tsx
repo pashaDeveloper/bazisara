@@ -291,7 +291,7 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
     <section className="relative hidden h-[480px] overflow-hidden bg-[#dbe5ed] lg:block" dir="ltr">
       {heroImage ? (
         <BlurImage
-          alt={game.title}
+          alt={heroMedia?.alt || game.title}
           blurHash={mediaBlurHash(heroMedia)}
           blurSrc={mediaBlurUrl(heroMedia)}
           className="absolute inset-0 h-full w-full"
@@ -342,7 +342,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
-            <BlurImage alt={game.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
+            <BlurImage alt={heroMedia?.alt || game.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
           ) : (
             <SkeletonBlock className="h-full w-full rounded-none" />
           )}

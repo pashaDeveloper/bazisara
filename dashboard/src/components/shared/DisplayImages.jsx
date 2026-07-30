@@ -47,7 +47,40 @@ function UploadOverlay({ state }) {
   );
 }
 
-function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", onRemove, rounded = "square" }) {
+function AltOverlay({ onChange, value }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (typeof onChange !== "function") return null;
+
+  return (
+    <div className="absolute bottom-1 left-1 right-1 z-50">
+      {isOpen ? (
+        <input
+          autoFocus
+          className="h-7 w-full rounded-md border border-white/70 bg-white px-2 text-[11px] font-bold text-zinc-950 outline-none shadow-lg"
+          onBlur={() => setIsOpen(false)}
+          onChange={(event) => onChange(event.target.value)}
+          onClick={(event) => event.stopPropagation()}
+          placeholder="Alt"
+          value={value || ""}
+        />
+      ) : (
+        <button
+          className="h-6 w-full rounded-md bg-white/90 px-2 text-[10px] font-black text-zinc-950 shadow transition hover:bg-white"
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsOpen(true);
+          }}
+          type="button"
+        >
+          Alt
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DisplayImages({ altValue = "", galleryPreview = [], imageSize = 96, className = "", onAltChange, onRemove, rounded = "square" }) {
   const [loadedMap, setLoadedMap] = useState({});
   const hasMedia = galleryPreview?.length > 0;
   const roundedClass = rounded === "square" ? "rounded-xl" : "rounded-full";
@@ -128,6 +161,7 @@ function DisplayImages({ galleryPreview = [], imageSize = 96, className = "", on
                 />
               )}
               <UploadOverlay state={uploadState} />
+              <AltOverlay onChange={onAltChange} value={item.alt || altValue} />
               {typeof onRemove === "function" ? (
                 <button
                   aria-label="حذف تصویر"

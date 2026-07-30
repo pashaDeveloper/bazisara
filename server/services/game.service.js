@@ -1481,6 +1481,7 @@ function buildMedia(file) {
   if (!file) return undefined;
 
   return {
+    alt: String(file.alt || "").trim(),
     blur: file.blur,
     mobile: file.mobile,
     position: file.position,
@@ -1508,6 +1509,7 @@ function parseMediaValue(value, fallbackType = "image") {
   if (!raw?.url) return undefined;
 
   return {
+    alt: String(raw.alt || "").trim(),
     blur: raw.blur || undefined,
     mobile: raw.mobile || undefined,
     position: raw.position || undefined,
