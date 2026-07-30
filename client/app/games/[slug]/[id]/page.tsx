@@ -24,6 +24,7 @@ import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
+import { TrailerPlayOverlay } from "./trailer-play-overlay";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -212,9 +213,9 @@ function PillRow({
   );
 }
 
-function HeroActions({ trailerUrl }: { trailerUrl?: string }) {
+function HeroActions() {
   return (
-    <div className="grid grid-cols-2 gap-3" dir="ltr">
+    <div className="grid gap-3" dir="ltr">
       <button
         type="button"
         className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[#ff3f68] px-2 text-[12px] font-black text-white shadow-[0_10px_22px_-16px_rgba(255,63,104,.75)] sm:text-[13px]"
@@ -223,21 +224,6 @@ function HeroActions({ trailerUrl }: { trailerUrl?: string }) {
         <Download className="h-4 w-4" />
         دانلود بازی
       </button>
-      <a
-        href={trailerUrl || "#"}
-        aria-disabled={!trailerUrl}
-        className={`flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-[12px] font-black shadow-[0_10px_22px_-16px_rgba(21,35,74,.55)] sm:text-[13px] ${
-          trailerUrl
-            ? "bg-[#ff3f68] text-white shadow-[0_10px_22px_-16px_rgba(255,63,104,.75)]"
-            : "pointer-events-none bg-[#d8dee8] text-[#748094]"
-        }`}
-        dir="rtl"
-        target={trailerUrl ? "_blank" : undefined}
-        rel={trailerUrl ? "noreferrer" : undefined}
-      >
-        <Play className="h-4 w-4" />
-        تماشای تریلر
-      </a>
     </div>
   );
 }
@@ -317,6 +303,7 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/65" />
       <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
+      <TrailerPlayOverlay title={game.title} trailerUrl={trailerUrl} />
 
       <div className="absolute left-6 top-1/2 w-[392px] -translate-y-1/2 rounded-xl border border-white/75 bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)]" dir="rtl" style={{ zIndex: 30 }}>
         <h1 className="line-clamp-2 text-left text-[21px] font-black leading-8 text-[#29467c]" dir="ltr">
@@ -324,7 +311,7 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
         </h1>
         <HeroInfoPanel game={game} platforms={platforms} keywords={keywords} />
         <div className="mt-5">
-          <HeroActions trailerUrl={trailerUrl} />
+          <HeroActions />
         </div>
       </div>
 
@@ -361,23 +348,23 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
           )}
           <HeroCornerBadges metacriticScore={game.metacriticScore} flush />
         </div>
-        <div className="absolute bottom-5 left-5">
+        <div className="absolute bottom-5 left-5 flex flex-col items-center">
           <a
             href={trailerUrl || "#"}
             aria-disabled={!trailerUrl}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[10px] font-black !text-white ${
-              trailerUrl ? "bg-[#ff3f68]" : "pointer-events-none bg-[#d8dee8]"
+            className={`inline-flex h-10 min-w-[98px] items-center justify-center gap-1.5 rounded-xl px-3 text-[11px] font-black leading-none !text-white shadow-[0_10px_24px_-14px_rgba(255,63,104,.9)] ${
+              trailerUrl ? "bg-[#ff3f68]" : "pointer-events-none bg-[#d8dee8] shadow-none"
             }`}
             target={trailerUrl ? "_blank" : undefined}
             rel={trailerUrl ? "noreferrer" : undefined}
           >
-            <Play className="h-3.5 w-3.5 text-white" />
+            <Play className="h-4 w-4 fill-white text-white" />
             تماشای تریلر
           </a>
-          <div className="mt-1 flex gap-1">
-            <span className="h-2 w-4 rounded-full bg-[#b7bdc8]" />
-            <span className="h-2 w-2 rounded-full bg-[#d4d9e2]" />
-            <span className="h-2 w-2 rounded-full bg-[#d4d9e2]" />
+          <div className="mt-2 flex h-7 items-center gap-2 rounded-full bg-black/25 px-3 backdrop-blur-sm">
+            <span className="h-2.5 w-2.5 rounded-full bg-white/85 shadow-sm" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/70" />
+            <span className="h-2.5 w-8 rounded-full bg-white/85 shadow-sm" />
           </div>
         </div>
       </div>
@@ -388,7 +375,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         </h1>
         <HeroInfoPanel game={game} platforms={platforms} keywords={keywords} />
         <div className="mt-5">
-          <HeroActions trailerUrl={trailerUrl} />
+          <HeroActions />
         </div>
       </div>
     </section>

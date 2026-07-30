@@ -46,9 +46,21 @@ const isSquareCardImage = (customFolder, field) => {
   );
 };
 
+const isSquare760Image = (customFolder, field) => {
+  const folder = String(customFolder || "").toLowerCase();
+  return (
+    (folder === "games" && ["dlcImages", "extraEditionImages"].includes(field)) ||
+    (folder === "game-collections" && field === "image")
+  );
+};
+
 const getPrepareOptions = (req, customFolder, field) => {
   if (customFolder === "games" && field === "gallery") {
-    return { fit: "cover", resizeHeight: 1080, resizeWidth: 1920 };
+    return { allowEnlargement: true, fit: "cover", resizeHeight: 1080, resizeWidth: 1920 };
+  }
+
+  if (isSquare760Image(customFolder, field)) {
+    return { allowEnlargement: true, fit: "cover", resizeHeight: 760, resizeWidth: 760 };
   }
 
   if (isSquareCardImage(customFolder, field)) {
@@ -60,6 +72,7 @@ const getPrepareOptions = (req, customFolder, field) => {
   }
 
   return {
+    allowEnlargement: ["true", "1", "yes"].includes(String(req.body?.allowEnlargement || "").toLowerCase()),
     fit: req.body?.resizeFit,
     resizeHeight: req.body?.resizeHeight,
     resizeWidth: req.body?.resizeWidth,

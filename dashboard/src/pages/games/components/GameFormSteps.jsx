@@ -49,7 +49,7 @@ function ImageSizeBadge({ src }) {
   if (!size?.width || !size?.height) return null;
 
   return (
-    <span className="absolute bottom-2 left-2 z-20 rounded-md bg-black/80 px-2 py-1 text-[10px] font-bold !text-white shadow-md ring-1 ring-white/15">
+    <span className="absolute bottom-2 left-2 z-20 rounded-md bg-black px-2 py-1 text-[10px] font-bold !text-white shadow-md ring-1 ring-white/20" >
       {size.width} × {size.height}
     </span>
   );
@@ -281,11 +281,12 @@ function GameTitleSuggestField({ form, onChange, setForm }) {
   );
 }
 
-function PlayStationGallerySuggestions({ gameTitle, onAdd }) {
+function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, selectedSuggestion }) {
   const [debouncedTitle, setDebouncedTitle] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
   const title = String(gameTitle || "").trim();
   const pageSize = 12;
+  const selectedUrl = String(selectedSuggestion?.url || "");
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedTitle(title), 350);
@@ -332,9 +333,14 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd }) {
       {suggestions.length ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {visibleSuggestions.map((item) => (
+            {visibleSuggestions.map((item) => {
+              const isSelected = selectedUrl && selectedUrl === String(item.url || "");
+
+              return (
               <div
-                className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-green-400 dark:border-zinc-800 dark:bg-black"
+                className={`group relative overflow-visible rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-green-400 dark:border-zinc-800 dark:bg-black ${
+                  isSelected ? "z-50 border-green-400 ring-2 ring-green-500/20" : "z-0"
+                }`}
                 draggable
                 key={`${item.externalId || item.url}`}
                 onDragStart={(event) => startDrag(event, item)}
@@ -350,16 +356,35 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd }) {
                 <div className="space-y-2 p-2">
                   <span className="block truncate text-xs font-bold text-zinc-700 dark:text-zinc-200" dir="ltr">{item.title}</span>
                   <button
-                    className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg bg-green-600 px-2 text-xs font-bold !text-white transition hover:bg-green-500 [&_svg]:!text-white"
-                    onClick={() => onAdd?.(item)}
+                    className={`inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg px-2 text-xs font-bold transition ${
+                      isSelected ? "bg-zinc-900 !text-white hover:bg-zinc-800 dark:bg-white dark:!text-zinc-950 dark:hover:bg-zinc-200" : "bg-green-600 !text-white hover:bg-green-500 [&_svg]:!text-white"
+                    }`}
+                    onClick={() => (isSelected ? onClear?.() : onAdd?.(item))}
                     type="button"
                   >
-                    <Plus className="h-3.5 w-3.5 !text-white" />
-                    افزودن
+                    <Plus className={`h-3.5 w-3.5 ${isSelected ? "dark:!text-zinc-950" : "!text-white"}`} />
+                    {isSelected ? "بستن" : "افزودن"}
                   </button>
+                  {isSelected ? (
+                    <div className="absolute left-2 right-2 top-2 z-50 flex flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-black/10" dir="rtl" style={{ backgroundColor: "#fff" }}>
+                      <button className="h-8 w-full px-3 text-right text-[11px] font-bold !text-zinc-950 transition hover:bg-zinc-100" onClick={() => onAssign?.("cover", item)} style={{ color: "#111827" }} type="button">
+                        کارت
+                      </button>
+                      <button className="h-8 w-full border-t border-zinc-200 px-3 text-right text-[11px] font-bold !text-zinc-950 transition hover:bg-zinc-100" onClick={() => onAssign?.("mobileCover", item)} style={{ color: "#111827" }} type="button">
+                        موبایل
+                      </button>
+                      <button className="h-8 w-full border-t border-zinc-200 px-3 text-right text-[11px] font-bold !text-zinc-950 transition hover:bg-zinc-100" onClick={() => onAssign?.("desktopCover", item)} style={{ color: "#111827" }} type="button">
+                        دسکتاپ
+                      </button>
+                      <button className="h-8 w-full border-t border-zinc-200 px-3 text-right text-[11px] font-bold !text-zinc-950 transition hover:bg-zinc-100" onClick={() => onAssign?.("gallery", item)} style={{ color: "#111827" }} type="button">
+                        گالری
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           {pageCount > 1 ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-black">
@@ -837,7 +862,11 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
                 image={item.image}
                 name={`dlcImages-${index}`}
                 onChange={async (file) => {
-                  const media = await onImageUpload?.(`dlcs-${index}`, file);
+                  const media = await onImageUpload?.(`dlcs-${index}`, file, {
+                    resizeFit: "cover",
+                    resizeHeight: 760,
+                    resizeWidth: 760,
+                  });
                   if (media) updateItem(index, { image: media });
                 }}
                 onRemove={async () => {
@@ -998,7 +1027,11 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                 image={item.image}
                 name={`extraEditionImages-${index}`}
                 onChange={async (file) => {
-                  const media = await onImageUpload?.(`extraEditions-${index}`, file);
+                  const media = await onImageUpload?.(`extraEditions-${index}`, file, {
+                    resizeFit: "cover",
+                    resizeHeight: 760,
+                    resizeWidth: 760,
+                  });
                   if (media) updateItem(index, { image: media });
                 }}
                 onRemove={async () => {
@@ -1359,6 +1392,9 @@ export function BasicStep({
         placeholder="NPWR09412_00"
         value={form.playstationNpCommunicationId}
       />
+      <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        اگر بازی داخل اکانت PSN سرور نیست، NP Communication ID مثل NPWR18910_00 را وارد کنید.
+      </p>
       <div className="grid gap-3 lg:grid-cols-2">
         <PlatformTrophiesPreview platform="xbox" state={xboxAchievementsState} />
         <PlatformTrophiesPreview platform="playstation" state={playStationTrophiesState} />
@@ -2044,6 +2080,7 @@ export function MediaStep({
 
     nextItems.forEach(async (item) => {
       const media = await onImageUpload?.(item.id, item.file, {
+        allowEnlargement: true,
         resizeFit: "cover",
         resizeHeight: 1080,
         resizeWidth: 1920,
@@ -2103,12 +2140,12 @@ export function MediaStep({
     });
   };
 
-  const assignPlayStationImage = (destination) => {
-    const media = createPlayStationMedia(pendingSuggestion);
+  const assignPlayStationImage = (destination, suggestion = pendingSuggestion) => {
+    const media = createPlayStationMedia(suggestion);
     if (!media) return;
 
     if (destination === "gallery") {
-      appendPlayStationImage(pendingSuggestion);
+      appendPlayStationImage(suggestion);
     } else if (destination === "cover") {
       setForm((prev) => ({ ...prev, cover: media }));
       setCoverPreview?.(media.url);
@@ -2162,6 +2199,7 @@ export function MediaStep({
 
     (async () => {
       const media = await onImageUpload?.(nextId, file, {
+        allowEnlargement: true,
         resizeFit: "cover",
         resizeHeight: 1080,
         resizeWidth: 1920,
@@ -2218,7 +2256,13 @@ export function MediaStep({
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
           <div className="mb-4">
-            <PlayStationGallerySuggestions gameTitle={gameTitle} onAdd={setPendingSuggestion} />
+            <PlayStationGallerySuggestions
+              gameTitle={gameTitle}
+              onAdd={setPendingSuggestion}
+              onAssign={assignPlayStationImage}
+              onClear={() => setPendingSuggestion(null)}
+              selectedSuggestion={pendingSuggestion}
+            />
           </div>
           <ThumbnailUpload
             immediateUpload={false}
@@ -2286,43 +2330,6 @@ export function MediaStep({
           )}
         </div>
       </div>
-      {pendingSuggestion ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-6" dir="rtl">
-          <div className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-zinc-500">افزودن تصویر PlayStation</p>
-                <h3 className="mt-1 text-base font-bold text-zinc-950 dark:text-white">این عکس کجا اضافه شود؟</h3>
-              </div>
-              <button
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-xs text-zinc-600 transition hover:border-red-400 hover:text-red-500 dark:border-zinc-800 dark:text-zinc-300"
-                onClick={() => setPendingSuggestion(null)}
-                type="button"
-              >
-                بستن
-              </button>
-            </div>
-            <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
-              <img alt={pendingSuggestion.title || "PlayStation"} className="aspect-video w-full object-cover" src={pendingSuggestion.url} />
-              <ImageSizeBadge src={pendingSuggestion.url} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="rounded-xl bg-green-600 px-3 py-3 text-sm font-bold !text-white transition hover:bg-green-500" onClick={() => assignPlayStationImage("cover")} type="button">
-                کارت
-              </button>
-              <button className="rounded-xl bg-blue-600 px-3 py-3 text-sm font-bold !text-white transition hover:bg-blue-500" onClick={() => assignPlayStationImage("mobileCover")} type="button">
-                جزئیات موبایل
-              </button>
-              <button className="rounded-xl bg-zinc-900 px-3 py-3 text-sm font-bold !text-white transition hover:bg-zinc-800 dark:bg-white dark:!text-zinc-950 dark:hover:bg-zinc-200" onClick={() => assignPlayStationImage("desktopCover")} type="button">
-                دسکتاپ
-              </button>
-              <button className="rounded-xl border border-zinc-200 px-3 py-3 text-sm font-bold text-zinc-700 transition hover:border-green-500 hover:text-green-600 dark:border-zinc-800 dark:text-zinc-200" onClick={() => assignPlayStationImage("gallery")} type="button">
-                گالری
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -2373,6 +2380,3 @@ export function VideosStep({
     </div>
   );
 }
-
-
-

@@ -49,6 +49,7 @@ export function uploadImageWithProgress(file, onProgress, options = {}) {
   if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
   if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));
   if (options.resizeFit) formData.append("resizeFit", String(options.resizeFit));
+  if (options.allowEnlargement) formData.append("allowEnlargement", "true");
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

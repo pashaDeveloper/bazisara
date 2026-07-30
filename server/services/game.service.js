@@ -895,6 +895,25 @@ function normalizeNpCommunicationId(value) {
   return `NPWR${match[1]}_${match[2] || "00"}`;
 }
 
+async function fetchPlayStationTrophyEndpoint(authorization, npCommunicationId, options = {}) {
+  const params = new URLSearchParams();
+  params.set("limit", String(options.limit || 200));
+  if (options.offset !== undefined) params.set("offset", String(options.offset));
+  if (options.npServiceName) params.set("npServiceName", options.npServiceName);
+
+  const url = `https://m.np.playstation.com/api/trophy/v1/npCommunicationIds/${encodeURIComponent(npCommunicationId)}/trophyGroups/all/trophies?${params.toString()}`;
+  const { data } = await axios.get(url, {
+    headers: {
+      Authorization: `Bearer ${authorization.accessToken}`,
+      "Accept-Language": "en-US",
+      "User-Agent": "Mozilla/5.0",
+    },
+    timeout: 15000,
+  });
+
+  return data;
+}
+
 async function getPlayStationTitleTrophies(authorization, npCommunicationId, options = {}) {
   const attempts = [];
   if (options.platform === "PS5") attempts.push(undefined, "trophy");
@@ -906,6 +925,18 @@ async function getPlayStationTitleTrophies(authorization, npCommunicationId, opt
     try {
       const trophiesData = await getTitleTrophies(authorization, npCommunicationId, "all", {
         headerOverrides: { "Accept-Language": "en-US" },
+        limit: 200,
+        npServiceName,
+      });
+      if (Array.isArray(trophiesData?.trophies) && trophiesData.trophies.length) return trophiesData;
+      if (Number(trophiesData?.totalItemCount || 0) > 0) return trophiesData;
+      lastError = new Error("PlayStation title trophies returned empty");
+    } catch (error) {
+      lastError = mapPlayStationError(error);
+    }
+
+    try {
+      const trophiesData = await fetchPlayStationTrophyEndpoint(authorization, npCommunicationId, {
         limit: 200,
         npServiceName,
       });

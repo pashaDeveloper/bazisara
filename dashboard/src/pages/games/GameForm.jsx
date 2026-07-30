@@ -122,6 +122,16 @@ const normalizeNpCommunicationId = (value) => {
   return match ? `NPWR${match[1]}_${match[2] || "00"}` : "";
 };
 
+const getRequestErrorMessage = (error, fallback) => {
+  if (error?.data?.description) return error.data.description;
+  if (error?.data?.message) return error.data.message;
+  if (error?.error) return error.error;
+  if (error?.status === "FETCH_ERROR") return "ارتباط با سرور برقرار نشد؛ آدرس API یا روشن بودن سرور را بررسی کنید.";
+  if (error?.status === "PARSING_ERROR") return "پاسخ سرور قابل خواندن نبود.";
+  if (error?.status) return `${fallback} (کد خطا: ${error.status})`;
+  return fallback;
+};
+
 const normalizeOfflinePlayers = (value) => {
   const items = Array.isArray(value) ? value : value ? [value] : [];
 
@@ -215,6 +225,7 @@ const uploadImageWithProgress = (file, onProgress, options = {}) => {
   if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
   if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));
   if (options.resizeFit) formData.append("resizeFit", String(options.resizeFit));
+  if (options.allowEnlargement) formData.append("allowEnlargement", "true");
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -645,7 +656,7 @@ function GameForm({ mode = "create" }) {
       } catch (error) {
         setXboxAchievementsState({
           achievements: [],
-          message: error?.data?.description || "دریافت تروفی‌های Xbox انجام نشد",
+          message: getRequestErrorMessage(error, "دریافت تروفی‌های Xbox انجام نشد"),
           sourceTitle: "",
           status: "error",
           title,
@@ -712,7 +723,7 @@ function GameForm({ mode = "create" }) {
       } catch (error) {
         setPlayStationTrophiesState({
           achievements: [],
-          message: error?.data?.description || "دریافت تروفی‌های PlayStation انجام نشد",
+          message: getRequestErrorMessage(error, "دریافت تروفی‌های PlayStation انجام نشد"),
           npCommunicationId: "",
           platform: "",
           sourceTitle: "",
