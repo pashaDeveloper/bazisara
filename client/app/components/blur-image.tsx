@@ -77,7 +77,16 @@ export function BlurImage({
           : undefined
       }
     >
-      {blurHash && !loaded ? (
+      {blurSrc && !loaded ? (
+        <img
+          aria-hidden
+          alt=""
+          className={`absolute inset-0 h-full w-full scale-110 blur-md ${imageClassName}`}
+          decoding="async"
+          src={blurSrc}
+          style={imageStyle}
+        />
+      ) : blurHash && !loaded ? (
         <BlurHashCanvas hash={blurHash} />
       ) : !loaded && src ? (
         <img

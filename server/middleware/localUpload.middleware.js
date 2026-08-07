@@ -2,7 +2,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
-const { generateBlurHash, getResourceType, makeImageVariant, prepareFile } = require("../utils/uploadFile.util");
+const { generateBlurHash, getResourceType, makeBlurPreview, makeImageVariant, prepareFile } = require("../utils/uploadFile.util");
 
 const uploadRoot = path.join(__dirname, "..", "uploads");
 
@@ -62,21 +62,29 @@ const uploadLocal = (customFolder = null) => {
             const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const filename = `${hashedName}.${extension}`;
             const blurHash = await generateBlurHash(file, extension);
+            const blurFile = await makeBlurPreview(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 640, resizeWidth: 640 })
               : null;
+            const blurFilename = `${hashedName}-blur.webp`;
             const mobileFilename = `${hashedName}-mobile.webp`;
             const relativeFolder = baseFolder.split("/").filter(Boolean).join(path.sep);
             const destinationFolder = path.join(uploadRoot, relativeFolder);
             const filePath = path.join(destinationFolder, filename);
+            const blurFilePath = path.join(destinationFolder, blurFilename);
             const mobileFilePath = path.join(destinationFolder, mobileFilename);
             const publicId = `${baseFolder}/${filename}`;
+            const blurPublicId = `${baseFolder}/${blurFilename}`;
             const mobilePublicId = `${baseFolder}/${mobileFilename}`;
             const publicPath = publicId.split("/").map(encodeURIComponent).join("/");
+            const blurPublicPath = blurPublicId.split("/").map(encodeURIComponent).join("/");
             const mobilePublicPath = mobilePublicId.split("/").map(encodeURIComponent).join("/");
 
             await fs.mkdir(destinationFolder, { recursive: true });
             await fs.writeFile(filePath, fileBuffer);
+            if (blurFile) {
+              await fs.writeFile(blurFilePath, blurFile.fileBuffer);
+            }
             if (mobileFile) {
               await fs.writeFile(mobileFilePath, mobileFile.fileBuffer);
             }
@@ -90,7 +98,9 @@ const uploadLocal = (customFolder = null) => {
                     hash: blurHash.hash,
                     width: blurHash.width,
                     height: blurHash.height,
-                }
+                    url: blurFile ? `${getBaseUrl(req)}/uploads/${blurPublicPath}` : "",
+                    public_id: blurPublicId,
+                  }
                 : undefined,
               mobile: mobileFile
                 ? {

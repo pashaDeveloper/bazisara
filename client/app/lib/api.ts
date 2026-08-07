@@ -13,6 +13,8 @@ export type Media = {
   alt?: string;
   blur?: {
     hash?: string;
+    public_id?: string;
+    url?: string;
     width?: number | null;
     height?: number | null;
   };
@@ -191,7 +193,8 @@ export function mediaUrl(media?: Media | string | null) {
 }
 
 export function mediaBlurUrl(media?: Media | string | null) {
-  return "";
+  if (!media || typeof media === "string") return "";
+  return mediaUrl(media.blur?.url || "");
 }
 
 export function mediaBlurHash(media?: Media | string | null) {

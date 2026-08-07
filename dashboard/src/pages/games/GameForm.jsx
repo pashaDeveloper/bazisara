@@ -187,6 +187,9 @@ const normalizeUploadedMedia = (response, fallbackType = "video") => {
   if (!file?.url) return null;
 
   return {
+    blur: file.blur,
+    mobile: file.mobile,
+    position: file.position,
     url: file.url,
     public_id: file.public_id || file.key || "",
     type: file.resource_type === "video" ? "video" : file.type || fallbackType,

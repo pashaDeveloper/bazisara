@@ -3,6 +3,7 @@ const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const {
   getResourceType,
   generateBlurHash,
+  makeBlurPreview,
   makeImageVariant,
   makeObjectName,
   prepareFile,
@@ -36,6 +37,7 @@ const getPublicUrl = (key) => {
 };
 
 const makeMobileKey = (key) => key.replace(/\.[^.]+$/, "-mobile.webp");
+const makeBlurKey = (key) => key.replace(/\.[^.]+$/, "-blur.webp");
 
 const isSquareCardImage = (customFolder, field) => {
   const folder = String(customFolder || "").toLowerCase();
@@ -117,6 +119,7 @@ const uploadArvan = (customFolder = null) => {
             const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const { filename, key } = makeObjectName(customFolder, extension, req.body);
             const blurHash = await generateBlurHash(file, extension);
+            const blurFile = await makeBlurPreview(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, {
                   fit: "cover",
@@ -124,6 +127,7 @@ const uploadArvan = (customFolder = null) => {
                   resizeWidth: 640,
                 })
               : null;
+            const blurKey = blurFile ? makeBlurKey(key) : "";
             const mobileKey = mobileFile ? makeMobileKey(key) : "";
 
             console.log("[ARVAN_UPLOAD] prepared file", {
@@ -164,6 +168,18 @@ const uploadArvan = (customFolder = null) => {
               );
             }
 
+            if (blurFile) {
+              await s3Client.send(
+                new PutObjectCommand({
+                  Bucket: process.env.ARVAN_S3_BUCKET,
+                  Key: blurKey,
+                  Body: blurFile.fileBuffer,
+                  ContentType: blurFile.contentType,
+                  ACL: getObjectAcl(),
+                })
+              );
+            }
+
             req.uploadedFiles[field].push({
               url: getPublicUrl(key),
               public_id: key,
@@ -173,6 +189,8 @@ const uploadArvan = (customFolder = null) => {
                     hash: blurHash.hash,
                     width: blurHash.width,
                     height: blurHash.height,
+                    url: blurFile ? getPublicUrl(blurKey) : "",
+                    public_id: blurKey,
                   }
                 : undefined,
               mobile: mobileFile

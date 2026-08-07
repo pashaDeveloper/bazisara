@@ -3,6 +3,7 @@ const cloudinary = require("cloudinary").v2;
 const {
   getResourceType,
   generateBlurHash,
+  makeBlurPreview,
   makeImageVariant,
   makeObjectName,
   prepareFile,
@@ -63,6 +64,7 @@ const uploadCloudinary = (customFolder = null) => {
             const resourceType = getResourceType(contentType);
             const publicId = key.replace(/\.[^.]+$/, "");
             const blurHash = await generateBlurHash(file, extension);
+            const blurFile = await makeBlurPreview(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 640, resizeWidth: 640 })
               : null;
@@ -76,6 +78,12 @@ const uploadCloudinary = (customFolder = null) => {
                   resource_type: "image",
                 })
               : null;
+            const blurResult = blurFile
+              ? await uploadBuffer(blurFile.fileBuffer, {
+                  public_id: `${publicId}-blur`,
+                  resource_type: "image",
+                })
+              : null;
 
             req.uploadedFiles[field].push({
               url: result.secure_url,
@@ -86,7 +94,9 @@ const uploadCloudinary = (customFolder = null) => {
                     hash: blurHash.hash,
                     width: blurHash.width,
                     height: blurHash.height,
-                }
+                    url: blurResult?.secure_url || "",
+                    public_id: blurResult?.public_id || "",
+                  }
                 : undefined,
               mobile: mobileResult
                 ? {

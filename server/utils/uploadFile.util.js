@@ -154,6 +154,47 @@ const generateBlurHash = async (file, extension) => {
   };
 };
 
+const makeBlurPreview = async (file, extension) => {
+  if (!compressibleImageExtensions.has(extension)) {
+    return null;
+  }
+
+  const metadata = await sharp(file.buffer, { animated: true }).metadata();
+  if (isAnimatedImage(metadata)) {
+    return null;
+  }
+
+  const maxDimension = 72;
+  const ratio = Math.min(1, maxDimension / Math.max(metadata.width || maxDimension, metadata.height || maxDimension));
+  const width = Math.max(1, Math.round((metadata.width || maxDimension) * ratio));
+  const height = Math.max(1, Math.round((metadata.height || maxDimension) * ratio));
+
+  const fileBuffer = await sharp(file.buffer)
+    .rotate()
+    .resize({
+      fit: "inside",
+      height,
+      width,
+      withoutEnlargement: true,
+    })
+    .blur(6)
+    .webp({
+      alphaQuality: 80,
+      effort: 5,
+      quality: 52,
+      smartSubsample: true,
+    })
+    .toBuffer();
+
+  return {
+    contentType: "image/webp",
+    extension: "webp",
+    fileBuffer,
+    height,
+    width,
+  };
+};
+
 const makeImageVariant = async (file, extension, options = {}) => {
   if (!compressibleImageExtensions.has(extension)) {
     return null;
@@ -326,6 +367,7 @@ const getResourceType = (mimetype) => {
 module.exports = {
   getResourceType,
   generateBlurHash,
+  makeBlurPreview,
   makeImageVariant,
   makeObjectName,
   prepareFile,
