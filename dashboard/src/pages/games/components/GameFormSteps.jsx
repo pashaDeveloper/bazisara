@@ -1,6 +1,5 @@
 ﻿import React from "react";
 import CloudUpload from "@/components/icons/CloudUpload";
-import { decode } from "blurhash";
 import SocialLinksInput from "@/components/shared/SocialLinksInput";
 import FormPageBuilder from "@/components/shared/input/FormPageBuilder";
 import MyEditor from "@/components/shared/textEditor/TextEditor";
@@ -56,106 +55,6 @@ function ImageSizeBadge({ src }) {
     >
       {size.width} × {size.height}
     </span>
-  );
-}
-
-function BlurHashPreviewCanvas({ hash }) {
-  const canvasRef = React.useRef(null);
-
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !hash) return;
-
-    try {
-      const width = 160;
-      const height = 160;
-      const pixels = decode(hash, width, height);
-      const context = canvas.getContext("2d");
-      if (!context) return;
-
-      const imageData = context.createImageData(width, height);
-      imageData.data.set(pixels);
-      context.putImageData(imageData, 0, 0);
-    } catch (_) {
-      const context = canvas.getContext("2d");
-      if (context) context.clearRect(0, 0, canvas.width, canvas.height);
-    }
-  }, [hash]);
-
-  return <canvas className="h-full w-full object-cover" height={160} ref={canvasRef} width={160} />;
-}
-
-function BlurHashPreviewModal({ item, onClose }) {
-  if (!item) return null;
-
-  const hash = String(item?.media?.blur?.hash || "").trim();
-  const blurUrl = String(item?.media?.blur?.url || "").trim();
-  const imageUrl = String(item?.preview || item?.media?.url || "").trim();
-
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" dir="rtl">
-      <div className="w-full max-w-2xl rounded-xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <span className="block text-sm font-bold text-zinc-900 dark:text-zinc-100">{item.label}</span>
-            <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">پیش‌نمایش موقت BlurHash</span>
-          </div>
-          <button
-            className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 px-3 text-xs font-bold text-zinc-700 transition hover:border-red-500 hover:text-red-600 dark:border-zinc-800 dark:text-zinc-200"
-            onClick={onClose}
-            type="button"
-          >
-            بستن
-          </button>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-300">Blur Preview</span>
-            <div className="aspect-square overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
-              {blurUrl ? (
-                <img alt="" className="h-full w-full scale-110 object-cover blur-md" src={blurUrl} />
-              ) : hash ? (
-                <BlurHashPreviewCanvas hash={hash} />
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs text-zinc-500">Blur موجود نیست</div>
-              )}
-            </div>
-          </div>
-          <div>
-            <span className="mb-2 block text-xs font-bold text-zinc-600 dark:text-zinc-300">تصویر اصلی</span>
-            <div className="aspect-square overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
-              {imageUrl ? <img alt="" className="h-full w-full object-cover" src={imageUrl} /> : <div className="flex h-full items-center justify-center text-xs text-zinc-500">تصویر موجود نیست</div>}
-            </div>
-          </div>
-        </div>
-        {hash ? (
-          <textarea
-            className="mt-4 h-20 w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left text-xs text-zinc-700 outline-none dark:border-zinc-800 dark:bg-black dark:text-zinc-200"
-            dir="ltr"
-            readOnly
-            value={hash}
-          />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function BlurHashPreviewButton({ label, media, onOpen, preview }) {
-  const hash = String(media?.blur?.hash || "").trim();
-  const blurUrl = String(media?.blur?.url || "").trim();
-  const hasPreview = Boolean(hash || blurUrl);
-
-  return (
-    <button
-      className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-dashed border-blue-300 px-3 py-2 text-xs font-bold text-blue-700 transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40 dark:disabled:border-zinc-800 dark:disabled:text-zinc-600"
-      disabled={!hasPreview}
-      onClick={() => onOpen?.({ label, media, preview })}
-      title={hasPreview ? "نمایش پیش‌نمایش blur" : "برای این تصویر blur موجود نیست"}
-      type="button"
-    >
-      نمایش Blur
-    </button>
   );
 }
 
@@ -1718,11 +1617,8 @@ export function GameMediaStep({
   trailerThumbnailPreview,
   trailerVideoPreview,
 }) {
-  const [blurHashPreview, setBlurHashPreview] = React.useState(null);
-
   return (
     <div className="space-y-4">
-      <BlurHashPreviewModal item={blurHashPreview} onClose={() => setBlurHashPreview(null)} />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کارت مشترک *</span>
@@ -1749,7 +1645,6 @@ export function GameMediaStep({
             setThumbnailPreview={setCoverPreview}
             title="انتخاب"
           />
-          <BlurHashPreviewButton label="تصویر کارت مشترک" media={form.cover} onOpen={setBlurHashPreview} preview={coverPreview} />
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر اصلی موبایل</span>
@@ -1776,7 +1671,6 @@ export function GameMediaStep({
             setThumbnailPreview={setMobileCoverPreview}
             title="انتخاب"
           />
-          <BlurHashPreviewButton label="تصویر اصلی موبایل" media={form.mobileCover} onOpen={setBlurHashPreview} preview={mobileCoverPreview} />
         </div>
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4">
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر اصلی دسکتاپ</span>
@@ -1796,7 +1690,6 @@ export function GameMediaStep({
             setThumbnailPreview={() => {}}
             title="انتخاب"
           />
-          <BlurHashPreviewButton label="تصویر اصلی دسکتاپ" media={form.desktopCover} onOpen={setBlurHashPreview} preview={desktopCoverPreview} />
           {desktopCoverPreview ? (
             <button
               className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-700 transition hover:border-zinc-400 hover:text-zinc-950 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-white dark:hover:text-white"
