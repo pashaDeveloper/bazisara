@@ -26,18 +26,38 @@ export const gameApi = bazisaraApi.injectEndpoints({
       providesTags: ["Game"],
     }),
     suggestGames: builder.query({
-      query: (q) => ({
+      query: (input) => {
+        const params =
+          typeof input === "object" && input !== null
+            ? {
+                ...(input.q ? { q: input.q } : {}),
+                ...(input.titleId ? { titleId: input.titleId } : {}),
+              }
+            : { q: input };
+
+        return {
         url: "/games/suggestions",
         method: "GET",
-        params: { q },
-      }),
+          params,
+        };
+      },
     }),
     suggestPlayStationGallery: builder.query({
-      query: (q) => ({
+      query: (input) => {
+        const params =
+          typeof input === "object" && input !== null
+            ? {
+                ...(input.q ? { q: input.q } : {}),
+                ...(input.titleId ? { titleId: input.titleId } : {}),
+              }
+            : { q: input };
+
+        return {
         url: "/games/playstation-gallery",
         method: "GET",
-        params: { q },
-      }),
+          params,
+        };
+      },
     }),
     updateGame: builder.mutation({
       query: ({ id, formData }) => ({

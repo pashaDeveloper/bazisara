@@ -319,6 +319,12 @@ const gameSchema = new mongoose.Schema(
       min: [0, "Score cannot be negative"],
       max: [5, "Score cannot be more than 5"],
     },
+    playstationTitleId: {
+      type: String,
+      trim: true,
+      default: "",
+      maxLength: [120, "PlayStation Title ID must be at most 120 characters"],
+    },
     playstationNpCommunicationId: {
       type: String,
       trim: true,

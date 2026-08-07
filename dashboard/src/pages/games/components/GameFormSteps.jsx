@@ -49,7 +49,10 @@ function ImageSizeBadge({ src }) {
   if (!size?.width || !size?.height) return null;
 
   return (
-    <span className="absolute bottom-2 left-2 z-20 rounded-md bg-black px-2 py-1 text-[10px] font-bold !text-white shadow-md ring-1 ring-white/20" >
+    <span
+      className="absolute bottom-2 left-2 z-20 rounded-md bg-white px-2 py-1 text-[10px] font-bold !text-zinc-950 shadow-md ring-1 ring-black/20"
+      style={{ backgroundColor: "#fff", color: "#111827" }}
+    >
       {size.width} × {size.height}
     </span>
   );
@@ -196,15 +199,24 @@ function ListTextField({ label, name, onChange, placeholder, value }) {
 
 function GameTitleSuggestField({ form, onChange, setForm }) {
   const [debouncedTitle, setDebouncedTitle] = React.useState("");
+  const [debouncedTitleId, setDebouncedTitleId] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
   const rootRef = React.useRef(null);
   const title = String(form.title || "");
+  const titleId = String(form.playstationTitleId || "");
+  const isNumericTitleIdOnly = /^\d{3,}$/.test(titleId.trim()) && title.trim().length < 2;
 
   React.useEffect(() => {
     const value = title.trim();
     const timer = window.setTimeout(() => setDebouncedTitle(value), 300);
     return () => window.clearTimeout(timer);
   }, [title]);
+
+  React.useEffect(() => {
+    const value = titleId.trim();
+    const timer = window.setTimeout(() => setDebouncedTitleId(value), 300);
+    return () => window.clearTimeout(timer);
+  }, [titleId]);
 
   React.useEffect(() => {
     const handlePointerDown = (event) => {
@@ -215,9 +227,13 @@ function GameTitleSuggestField({ form, onChange, setForm }) {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
-  const { data, isFetching } = useSuggestGamesQuery(debouncedTitle, {
-    skip: debouncedTitle.length < 2,
-  });
+  const { data, isFetching } = useSuggestGamesQuery(
+    { q: debouncedTitle, titleId: debouncedTitleId },
+    {
+      skip: isNumericTitleIdOnly || (debouncedTitle.length < 2 && debouncedTitleId.length < 2),
+    }
+  );
+  const shouldShowSuggestions = title.trim().length >= 2 || titleId.trim().length >= 2;
   const suggestions = Array.isArray(data?.data) ? data.data : [];
 
   const selectSuggestion = (item) => {
@@ -227,29 +243,50 @@ function GameTitleSuggestField({ form, onChange, setForm }) {
     setForm((prev) => ({
       ...prev,
       title: nextTitle,
+      playstationTitleId: item.source === "playstation" ? String(item.titleId || item.externalId || prev.playstationTitleId || "").trim() : prev.playstationTitleId,
       slug: prev.slug || makeGameSlug(nextTitle),
     }));
     setIsOpen(false);
   };
 
   return (
-    <label className="relative flex flex-col gap-y-1" ref={rootRef}>
-      <span className="text-sm text-zinc-700 dark:text-gray-100">عنوان بازی *</span>
-      <input
-        autoComplete="off"
-        className="h-10 w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
-        name="title"
-        onChange={(event) => {
-          onChange(event);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        placeholder="مثلا Rider"
-        value={title}
-      />
-      {isOpen && title.trim().length >= 2 ? (
+    <div className="relative grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px]" ref={rootRef}>
+      <label className="flex flex-col gap-y-1">
+        <span className="text-sm text-zinc-700 dark:text-gray-100">عنوان بازی *</span>
+        <input
+          autoComplete="off"
+          className="h-10 w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition focus:border-green-400 focus:ring-0 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100 dark:focus:border-blue-500"
+          name="title"
+          onChange={(event) => {
+            onChange(event);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="مثلا Rider"
+          value={title}
+        />
+      </label>
+      <label className="flex flex-col gap-y-1">
+        <span className="text-xs text-zinc-500 dark:text-gray-300">PS Title ID</span>
+        <input
+          autoComplete="off"
+          className="h-10 w-full rounded-full border border-gray-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-blue-500 focus:ring-0 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100"
+          dir="ltr"
+          name="playstationTitleId"
+          onChange={(event) => {
+            onChange(event);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="1004"
+          value={titleId}
+        />
+      </label>
+      {isOpen && shouldShowSuggestions ? (
         <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#08243f]">
-          {isFetching ? (
+          {isNumericTitleIdOnly ? (
+            <div className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-300">برای کد ناشر مثل 1004، عنوان بازی را هم وارد کنید.</div>
+          ) : isFetching ? (
             <div className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-300">در حال جستجوی عنوان...</div>
           ) : suggestions.length ? (
             <div className="max-h-72 overflow-y-auto py-1">
@@ -277,14 +314,17 @@ function GameTitleSuggestField({ form, onChange, setForm }) {
           )}
         </div>
       ) : null}
-    </label>
+    </div>
   );
 }
 
-function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, selectedSuggestion }) {
+function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, playstationTitleId, selectedSuggestion }) {
   const [debouncedTitle, setDebouncedTitle] = React.useState("");
+  const [debouncedTitleId, setDebouncedTitleId] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
   const title = String(gameTitle || "").trim();
+  const titleId = String(playstationTitleId || "").trim();
+  const isNumericTitleIdOnly = /^\d{3,}$/.test(titleId) && title.length < 2;
   const pageSize = 12;
   const selectedUrl = String(selectedSuggestion?.url || "");
 
@@ -294,12 +334,18 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, se
   }, [title]);
 
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedTitle]);
+    const timer = window.setTimeout(() => setDebouncedTitleId(titleId), 350);
+    return () => window.clearTimeout(timer);
+  }, [titleId]);
 
-  const { data, isFetching } = useSuggestPlayStationGalleryQuery(debouncedTitle, {
-    skip: debouncedTitle.length < 2,
-  });
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedTitle, debouncedTitleId]);
+
+  const { data, isFetching } = useSuggestPlayStationGalleryQuery(
+    { q: debouncedTitle, titleId: debouncedTitleId },
+    { skip: isNumericTitleIdOnly || (debouncedTitle.length < 2 && debouncedTitleId.length < 2) }
+  );
   const suggestions = Array.isArray(data?.data) ? data.data : [];
   const pageCount = Math.max(1, Math.ceil(suggestions.length / pageSize));
   const visibleSuggestions = suggestions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -313,7 +359,15 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, se
     event.dataTransfer.setData(playStationGalleryDragType, JSON.stringify(item));
   };
 
-  if (debouncedTitle.length < 2) {
+  if (isNumericTitleIdOnly) {
+    return (
+      <div className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-center text-xs text-zinc-500 dark:border-zinc-800">
+        برای کد ناشر مثل 1004، عنوان بازی را هم وارد کنید.
+      </div>
+    );
+  }
+
+  if (debouncedTitle.length < 2 && debouncedTitleId.length < 2) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-center text-xs text-zinc-500 dark:border-zinc-800">
         برای پیشنهاد عکس PlayStation اول عنوان بازی را وارد کنید.
@@ -510,7 +564,7 @@ function XboxIcon({ className = "" }) {
   );
 }
 
-function PlatformTrophiesPreview({ platform = "xbox", state }) {
+function PlatformTrophiesPreview({ onFetch, platform = "xbox", state }) {
   const achievements = Array.isArray(state?.achievements) ? state.achievements : [];
   const visibleAchievements = achievements.slice(0, 12);
   const isPlayStation = platform === "playstation";
@@ -532,9 +586,16 @@ function PlatformTrophiesPreview({ platform = "xbox", state }) {
     <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-black sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${badgeClassName}`}>
+          <button
+            aria-label={`دریافت ${label}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${badgeClassName} transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70`}
+            disabled={state?.status === "loading"}
+            onClick={onFetch}
+            title={`دریافت ${label}`}
+            type="button"
+          >
             <Icon className="h-5 w-5 !text-white" />
-          </span>
+          </button>
           <div className="min-w-0">
             <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100">{label}</div>
             {meta.some(Boolean) ? (
@@ -1354,6 +1415,8 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
 
 export function BasicStep({
   form,
+  onFetchPlayStationTrophies,
+  onFetchXboxAchievements,
   onChange,
   setArrayField,
   setForm,
@@ -1385,7 +1448,11 @@ export function BasicStep({
     });
 
     try {
-      const response = await translateGameIntro({ source, title }).unwrap();
+      const response = await translateGameIntro({
+        source,
+        title,
+        ...(source === "playstation" && form.playstationTitleId ? { playstationTitleId: form.playstationTitleId } : {}),
+      }).unwrap();
       const translatedText = response?.data?.text || "";
       if (!translatedText) throw new Error("Empty translation");
       setForm((prev) => ({
@@ -1438,8 +1505,8 @@ export function BasicStep({
         اگر بازی داخل اکانت PSN سرور نیست، NP Communication ID مثل NPWR18910_00 را وارد کنید.
       </p>
       <div className="grid gap-3 lg:grid-cols-2">
-        <PlatformTrophiesPreview platform="xbox" state={xboxAchievementsState} />
-        <PlatformTrophiesPreview platform="playstation" state={playStationTrophiesState} />
+        <PlatformTrophiesPreview onFetch={onFetchXboxAchievements} platform="xbox" state={xboxAchievementsState} />
+        <PlatformTrophiesPreview onFetch={onFetchPlayStationTrophies} platform="playstation" state={playStationTrophiesState} />
       </div>
       <label className="flex flex-col gap-y-1">
         <span className="text-sm text-zinc-700 dark:text-gray-100">خلاصه کوتاه</span>
@@ -1544,6 +1611,7 @@ export function GameMediaStep({
   setForm,
   setGalleryPreview,
   mobileCoverPreview,
+  playstationTitleId,
   setMobileCoverPreview,
   setTrailerThumbnailPreview,
   trailerThumbnailPreview,
@@ -1639,6 +1707,7 @@ export function GameMediaStep({
         desktopCoverPreview={desktopCoverPreview}
         galleryPreview={galleryPreview}
         gameTitle={gameTitle}
+        playstationTitleId={playstationTitleId}
         imageUploadState={imageUploadState}
         onDeleteUploadedImage={onDeleteUploadedImage}
         onImageUpload={onImageUpload}
@@ -2096,6 +2165,7 @@ export function MediaStep({
   imageUploadState = {},
   onDeleteUploadedImage,
   onImageUpload,
+  playstationTitleId,
   setCoverPreview,
   setDesktopCoverPreview,
   setForm,
@@ -2322,6 +2392,7 @@ export function MediaStep({
           <div className="mb-4">
             <PlayStationGallerySuggestions
               gameTitle={gameTitle}
+              playstationTitleId={playstationTitleId}
               onAdd={setPendingSuggestion}
               onAssign={assignPlayStationImage}
               onClear={() => setPendingSuggestion(null)}

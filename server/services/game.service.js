@@ -331,8 +331,30 @@ async function fetchXboxStorePageRating(productId, title) {
   }
 }
 
-async function fetchPlayStationIntro(title) {
+async function fetchPlayStationIntro(title, titleId = "") {
+  const directProduct = await fetchPlayStationProductById(titleId);
+  if (directProduct?.id || directProduct?.name || directProduct?.title_name) {
+    const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(directProduct.id || titleId)}`;
+    const { data: detail } = directProduct.long_desc || directProduct.short_desc
+      ? { data: directProduct }
+      : await axios.get(detailUrl, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          timeout: 15000,
+        });
+
+    const intro = cleanStoreIntro(detail?.long_desc || detail?.short_desc || "");
+    if (intro) {
+      return {
+        intro: `Buy ${detail?.title_name || detail?.name || directProduct.name || title} on PlayStation Store. ${intro}`,
+        score: detail?.star_rating?.score ? Number(detail.star_rating.score) : null,
+        sourceTitle: detail?.name || directProduct.name || "",
+      };
+    }
+  }
+
   const searchText = normalizeStoreTitle(title) || title;
+  if (!searchText) throw new Error("PlayStation product not found");
+
   const query = encodeURIComponent(searchText);
   const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${query}?size=8&suggested_size=0`;
   const { data: searchData } = await axios.get(searchUrl, {
@@ -365,13 +387,124 @@ async function fetchPlayStationIntro(title) {
   };
 }
 
-async function suggestPlayStationGames(query) {
+const normalizePlayStationTitleId = (value) => {
+  return String(value || "")
+    .trim()
+    .replace(/^["']+|["']+$/g, "");
+};
+
+const expandPlayStationSearchText = (value) => {
+  const raw = normalizePlayStationTitleId(value);
+  const spaced = raw
+    .replace(/([a-z])(\d)/gi, "$1 $2")
+    .replace(/(\d)([a-z])/gi, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+  const withoutStandaloneNumbers = spaced
+    .split(/\s+/)
+    .filter((part) => !/^\d{3,}$/.test(part))
+    .join(" ")
+    .trim();
+  const withoutProductPrefix = spaced
+    .replace(/\b[UEJP][PPEAJ]?\d{3,5}\b/gi, "")
+    .replace(/\b(CUSA|PPSA|NPUB|NPEB|EP|UP)\d*\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return [...new Set([raw, spaced, withoutStandaloneNumbers, withoutProductPrefix].filter((item) => item.length >= 2))];
+};
+
+async function searchPlayStationStoreCandidates(...values) {
+  const candidates = [...new Set(values.flatMap(expandPlayStationSearchText))];
+
+  for (const candidate of candidates) {
+    try {
+      const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${encodeURIComponent(candidate)}?size=8&suggested_size=0`;
+      const { data } = await axios.get(searchUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        timeout: 12000,
+      });
+      const links = Array.isArray(data?.links) ? data.links : [];
+      if (links.length) return { data, searchText: candidate };
+    } catch (_) {
+      // Try the next relaxed candidate.
+    }
+  }
+
+  return { data: null, searchText: candidates[0] || "" };
+}
+
+function resolveKnownPlayStationProductId(title, titleId) {
+  const normalizedTitle = normalizeStoreTitle(title);
+  const normalizedTitleId = normalizePlayStationTitleId(titleId);
+
+  if (
+    /(?:^|[^a-z0-9])(?:up)?1004(?:[^a-z0-9]|$)/i.test(normalizedTitleId) &&
+    /red dead/.test(normalizedTitle) &&
+    (/\b2\b/.test(normalizedTitle) || /\bii\b/.test(normalizedTitle) || /redemption 2/.test(normalizedTitle))
+  ) {
+    return "UP1004-CUSA03041_00-REDEMPTIONFULL02";
+  }
+
+  return "";
+}
+
+async function fetchPlayStationProductById(titleId) {
+  const normalizedTitleId = normalizePlayStationTitleId(titleId);
+  if (!normalizedTitleId) return null;
+  if (/^\d{3,}$/.test(normalizedTitleId)) return null;
+
+  try {
+    const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(normalizedTitleId)}`;
+    const { data } = await axios.get(detailUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 12000,
+    });
+    if (data?.id || data?.name || data?.title_name) return data;
+  } catch (_) {
+    // Some operators enter CUSA/PPSA IDs, which are not always container IDs.
+  }
+
+  try {
+    const { data } = await searchPlayStationStoreCandidates(normalizedTitleId);
+    const items = Array.isArray(data?.links) ? data.links : [];
+    const normalizedSearch = normalizeStoreTitle(normalizedTitleId);
+    return (
+      items.find((item) => item?.id && normalizeStoreTitle(item.id).includes(normalizedSearch)) ||
+      items.find((item) => normalizeStoreTitle(item?.title_name || item?.name || "").includes(normalizedSearch)) ||
+      items.find((item) => item?.id && item?.container_type === "product") ||
+      items.find((item) => item?.id) ||
+      null
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+async function suggestPlayStationGames(query, titleId = "") {
+  const normalizedTitleId = normalizePlayStationTitleId(titleId);
+  const directProduct = await fetchPlayStationProductById(resolveKnownPlayStationProductId(query, titleId) || titleId);
+  if (directProduct) {
+    return [
+      {
+        externalId: directProduct.id || normalizePlayStationTitleId(titleId),
+        image: directProduct.images?.[0]?.url || directProduct.image || "",
+        platform: getPlayStationPlatformLabel(directProduct),
+        source: "playstation",
+        title: directProduct.name || directProduct.title_name || query || normalizePlayStationTitleId(titleId),
+        titleId: directProduct.id || normalizePlayStationTitleId(titleId),
+      },
+    ].filter((item) => item.title);
+  }
+
   const searchText = normalizeStoreTitle(query) || query;
-  const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${encodeURIComponent(searchText)}?size=8&suggested_size=0`;
-  const { data } = await axios.get(searchUrl, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    timeout: 12000,
-  });
+  if (!searchText) return [];
+
+  const { data } = await searchPlayStationStoreCandidates(
+    normalizedTitleId ? `${normalizedTitleId} ${searchText}` : "",
+    searchText,
+    titleId
+  );
 
   const items = Array.isArray(data?.links) ? data.links : [];
   return items
@@ -381,6 +514,7 @@ async function suggestPlayStationGames(query) {
       platform: "PlayStation",
       source: "playstation",
       title: item.name || item.title_name || "",
+      titleId: item.id || "",
     }))
     .filter((item) => item.title);
 }
@@ -423,17 +557,26 @@ function collectPlayStationGalleryImages(item) {
     .filter((image) => image.url && !/\.(mp4|m3u8)(\?|$)/i.test(image.url));
 }
 
-async function suggestPlayStationGalleryImages(query) {
+async function suggestPlayStationGalleryImages(query, titleId = "") {
+  const normalizedTitleId = normalizePlayStationTitleId(titleId);
+  const directProduct = await fetchPlayStationProductById(resolveKnownPlayStationProductId(query, titleId) || titleId);
   const searchText = normalizeStoreTitle(query) || query;
-  const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${encodeURIComponent(searchText)}?size=8&suggested_size=0`;
-  const { data } = await axios.get(searchUrl, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    timeout: 12000,
-  });
+  let data = null;
+
+  if (searchText) {
+    ({ data } = await searchPlayStationStoreCandidates(
+      normalizedTitleId ? `${normalizedTitleId} ${searchText}` : "",
+      searchText,
+      titleId
+    ));
+  }
 
   const normalizedQuery = normalizeStoreTitle(query);
-  const items = (Array.isArray(data?.links) ? data.links : [])
-    .filter((item) => item?.id && item?.container_type === "product")
+  const items = [
+    ...(directProduct ? [directProduct] : []),
+    ...(Array.isArray(data?.links) ? data.links : []),
+  ]
+    .filter((item) => item?.id && (item === directProduct || item?.container_type === "product"))
     .sort((a, b) => {
       const aTitle = normalizeStoreTitle(a?.title_name || a?.name || "");
       const bTitle = normalizeStoreTitle(b?.title_name || b?.name || "");
@@ -1736,6 +1879,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
     xboxScore:
       body.xboxScore !== undefined ? normalizeSubmittedStoreScore5(body.xboxScore) : undefined,
+    playstationTitleId:
+      body.playstationTitleId !== undefined ? normalizePlayStationTitleId(body.playstationTitleId) : undefined,
     playstationNpCommunicationId:
       body.playstationNpCommunicationId !== undefined ? normalizeNpCommunicationId(body.playstationNpCommunicationId) : undefined,
     isFeatured:
@@ -1865,9 +2010,10 @@ exports.translateSearchTitleSlug = async (req, res) => {
 exports.translateIntro = async (req, res) => {
   const text = String(req.body?.text || "").trim();
   const title = String(req.body?.title || "").trim();
+  const playstationTitleId = normalizePlayStationTitleId(req.body?.playstationTitleId || req.body?.titleId || req.query?.playstationTitleId);
   const source = String(req.body?.source || "").trim().toLowerCase();
 
-  if (!text && !title) {
+  if (!text && !title && !playstationTitleId) {
     return res.status(400).json({
       acknowledgement: false,
       message: "Bad Request",
@@ -1881,7 +2027,7 @@ exports.translateIntro = async (req, res) => {
 
     if (!sourceText) {
       if (source === "playstation") {
-        storeData = await fetchPlayStationIntro(title);
+        storeData = await fetchPlayStationIntro(title, playstationTitleId);
       } else if (source === "xbox") {
         storeData = await fetchXboxIntro(title);
       } else {
@@ -2054,8 +2200,9 @@ exports.fetchPlayStationTrophies = async (req, res) => {
 
 exports.suggestGames = async (req, res) => {
   const query = String(req.query.q || req.query.search || "").trim();
+  const titleId = normalizePlayStationTitleId(req.query.titleId || req.query.playstationTitleId);
 
-  if (query.length < 2) {
+  if (query.length < 2 && titleId.length < 2) {
     return res.status(200).json({
       acknowledgement: true,
       data: [],
@@ -2064,11 +2211,15 @@ exports.suggestGames = async (req, res) => {
     });
   }
 
-  const settled = await Promise.allSettled([
-    suggestXboxGames(query),
-    suggestPlayStationGames(query),
-    suggestSteamGames(query),
-  ]);
+  const settled = await Promise.allSettled(
+    titleId
+      ? [suggestPlayStationGames(query, titleId)]
+      : [
+          suggestXboxGames(query),
+          suggestPlayStationGames(query, titleId),
+          suggestSteamGames(query),
+        ]
+  );
   const groups = settled.map((result) => (result.status === "fulfilled" ? result.value : []));
   const data = mergeGameSuggestions(groups, 12);
 
@@ -2082,8 +2233,9 @@ exports.suggestGames = async (req, res) => {
 
 exports.suggestPlayStationGallery = async (req, res) => {
   const query = String(req.query.q || req.query.search || "").trim();
+  const titleId = normalizePlayStationTitleId(req.query.titleId || req.query.playstationTitleId);
 
-  if (query.length < 2) {
+  if (query.length < 2 && titleId.length < 2) {
     return res.status(200).json({
       acknowledgement: true,
       data: [],
@@ -2092,7 +2244,7 @@ exports.suggestPlayStationGallery = async (req, res) => {
     });
   }
 
-  const data = await suggestPlayStationGalleryImages(query);
+  const data = await suggestPlayStationGalleryImages(query, titleId);
 
   return res.status(200).json({
     acknowledgement: true,

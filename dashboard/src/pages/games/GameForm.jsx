@@ -95,6 +95,7 @@ const initialForm = {
   sonyScore: "",
   steamScore: "",
   xboxScore: "",
+  playstationTitleId: "",
   playstationNpCommunicationId: "",
   isFeatured: false,
   showOnlyInCollections: false,
@@ -612,7 +613,7 @@ function GameForm({ mode = "create" }) {
     return () => window.clearTimeout(timer);
   }, [form.title, importGameScores, scoreImportState.status, scoreImportState.title]);
 
-  useEffect(() => {
+  const loadXboxAchievements = async () => {
     const title = String(form.title || "").trim();
     if (title.length < 3) {
       setXboxAchievementsState((prev) =>
@@ -620,56 +621,48 @@ function GameForm({ mode = "create" }) {
           ? prev
           : { achievements: [], message: "", sourceTitle: "", status: "idle", title: "", titleId: "", total: 0 }
       );
-      return undefined;
+      return;
     }
 
-    if (xboxAchievementsState.title === title && xboxAchievementsState.status !== "idle") {
-      return undefined;
-    }
+    setXboxAchievementsState((prev) => ({
+      ...prev,
+      achievements: [],
+      message: "در حال دریافت تروفی‌های Xbox...",
+      sourceTitle: "",
+      status: "loading",
+      title,
+      titleId: "",
+      total: 0,
+    }));
 
-    const timer = window.setTimeout(async () => {
-      setXboxAchievementsState((prev) => ({
-        ...prev,
+    try {
+      const response = await fetchXboxAchievements({ title }).unwrap();
+      const data = response?.data || {};
+      const achievements = Array.isArray(data.achievements) ? data.achievements : [];
+
+      setXboxAchievementsState({
+        achievements,
+        message: achievements.length ? `${achievements.length} تروفی دریافت شد` : "برای این عنوان تروفی پیدا نشد",
+        sourceTitle: data.sourceTitle || "",
+        status: achievements.length ? "success" : "error",
+        title,
+        titleId: data.titleId || "",
+        total: data.total || achievements.length || 0,
+      });
+    } catch (error) {
+      setXboxAchievementsState({
         achievements: [],
-        message: "در حال دریافت تروفی‌های Xbox...",
+        message: getRequestErrorMessage(error, "دریافت تروفی‌های Xbox انجام نشد"),
         sourceTitle: "",
-        status: "loading",
+        status: "error",
         title,
         titleId: "",
         total: 0,
-      }));
+      });
+    }
+  };
 
-      try {
-        const response = await fetchXboxAchievements({ title }).unwrap();
-        const data = response?.data || {};
-        const achievements = Array.isArray(data.achievements) ? data.achievements : [];
-
-        setXboxAchievementsState({
-          achievements,
-          message: achievements.length ? `${achievements.length} تروفی دریافت شد` : "برای این عنوان تروفی پیدا نشد",
-          sourceTitle: data.sourceTitle || "",
-          status: achievements.length ? "success" : "error",
-          title,
-          titleId: data.titleId || "",
-          total: data.total || achievements.length || 0,
-        });
-      } catch (error) {
-        setXboxAchievementsState({
-          achievements: [],
-          message: getRequestErrorMessage(error, "دریافت تروفی‌های Xbox انجام نشد"),
-          sourceTitle: "",
-          status: "error",
-          title,
-          titleId: "",
-          total: 0,
-        });
-      }
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [fetchXboxAchievements, form.title, xboxAchievementsState.status, xboxAchievementsState.title]);
-
-  useEffect(() => {
+  const loadPlayStationTrophies = async () => {
     const title = String(form.title || "").trim();
     const npCommunicationId = normalizeNpCommunicationId(form.playstationNpCommunicationId);
     if (title.length < 3 && !npCommunicationId) {
@@ -678,71 +671,52 @@ function GameForm({ mode = "create" }) {
           ? prev
           : { achievements: [], message: "", npCommunicationId: "", platform: "", sourceTitle: "", status: "idle", title: "", total: 0 }
       );
-      return undefined;
+      return;
     }
 
-    if (
-      playStationTrophiesState.title === title &&
-      playStationTrophiesState.npCommunicationId === npCommunicationId &&
-      playStationTrophiesState.status !== "idle"
-    ) {
-      return undefined;
-    }
+    setPlayStationTrophiesState((prev) => ({
+      ...prev,
+      achievements: [],
+      message: "در حال دریافت تروفی‌های PlayStation...",
+      npCommunicationId,
+      platform: "",
+      sourceTitle: "",
+      status: "loading",
+      title,
+      total: 0,
+    }));
 
-    const timer = window.setTimeout(async () => {
-      setPlayStationTrophiesState((prev) => ({
-        ...prev,
-        achievements: [],
-        message: "در حال دریافت تروفی‌های PlayStation...",
+    try {
+      const response = await fetchPlayStationTrophies({
         npCommunicationId,
+        title,
+      }).unwrap();
+      const data = response?.data || {};
+      const achievements = Array.isArray(data.trophies) ? data.trophies : [];
+
+      setPlayStationTrophiesState({
+        achievements,
+        message: achievements.length ? `${achievements.length} تروفی دریافت شد` : "برای این عنوان تروفی پیدا نشد",
+        npCommunicationId: data.npCommunicationId || "",
+        platform: data.platform || "",
+        sourceTitle: data.sourceTitle || "",
+        status: achievements.length ? "success" : "error",
+        title,
+        total: data.total || achievements.length || 0,
+      });
+    } catch (error) {
+      setPlayStationTrophiesState({
+        achievements: [],
+        message: getRequestErrorMessage(error, "دریافت تروفی‌های PlayStation انجام نشد"),
+        npCommunicationId: "",
         platform: "",
         sourceTitle: "",
-        status: "loading",
+        status: "error",
         title,
         total: 0,
-      }));
-
-      try {
-        const response = await fetchPlayStationTrophies({
-          npCommunicationId,
-          title,
-        }).unwrap();
-        const data = response?.data || {};
-        const achievements = Array.isArray(data.trophies) ? data.trophies : [];
-
-        setPlayStationTrophiesState({
-          achievements,
-          message: achievements.length ? `${achievements.length} تروفی دریافت شد` : "برای این عنوان تروفی پیدا نشد",
-          npCommunicationId: data.npCommunicationId || "",
-          platform: data.platform || "",
-          sourceTitle: data.sourceTitle || "",
-          status: achievements.length ? "success" : "error",
-          title,
-          total: data.total || achievements.length || 0,
-        });
-      } catch (error) {
-        setPlayStationTrophiesState({
-          achievements: [],
-          message: getRequestErrorMessage(error, "دریافت تروفی‌های PlayStation انجام نشد"),
-          npCommunicationId: "",
-          platform: "",
-          sourceTitle: "",
-          status: "error",
-          title,
-          total: 0,
-        });
-      }
-    }, 1400);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    fetchPlayStationTrophies,
-    form.playstationNpCommunicationId,
-    form.title,
-    playStationTrophiesState.npCommunicationId,
-    playStationTrophiesState.status,
-    playStationTrophiesState.title,
-  ]);
+      });
+    }
+  };
 
   const categories = categoriesData?.data || [];
   const genres = genresData?.data || [];
@@ -870,6 +844,7 @@ function GameForm({ mode = "create" }) {
       sonyScore: game.sonyScore ?? "",
       steamScore: game.steamScore ?? "",
       xboxScore: game.xboxScore ?? "",
+      playstationTitleId: game.playstationTitleId || "",
       playstationNpCommunicationId: game.playstationNpCommunicationId || "",
       isFeatured: Boolean(game.isFeatured),
       showOnlyInCollections: Boolean(game.showOnlyInCollections),
@@ -1494,6 +1469,8 @@ function GameForm({ mode = "create" }) {
         return (
           <BasicStep
             form={form}
+            onFetchPlayStationTrophies={loadPlayStationTrophies}
+            onFetchXboxAchievements={loadXboxAchievements}
             onChange={handleChange}
             setArrayField={setArrayField}
             setForm={setForm}
@@ -1510,6 +1487,7 @@ function GameForm({ mode = "create" }) {
             desktopCoverPreview={desktopCoverPreview}
             form={form}
             gameTitle={form.title}
+            playstationTitleId={form.playstationTitleId}
             mobileCoverPreview={mobileCoverPreview}
             galleryPreview={galleryPreview}
             imageUploadState={imageUploadState}
