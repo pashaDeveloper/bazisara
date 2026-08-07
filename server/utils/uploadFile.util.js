@@ -144,11 +144,11 @@ const generateBlurHash = async (file, extension) => {
     .rotate()
     .raw()
     .ensureAlpha()
-    .resize(32, 32, { fit: "inside" })
+    .resize(96, 96, { fit: "inside" })
     .toBuffer({ resolveWithObject: true });
 
   return {
-    hash: encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3),
+    hash: encode(new Uint8ClampedArray(data), info.width, info.height, 6, 5),
     height: info.height,
     width: info.width,
   };

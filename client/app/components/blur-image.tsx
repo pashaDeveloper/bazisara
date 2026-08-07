@@ -23,8 +23,8 @@ function BlurHashCanvas({ hash }: { hash: string }) {
     if (!canvas) return;
 
     try {
-      const width = 48;
-      const height = 48;
+      const width = 96;
+      const height = 96;
       const pixels = decode(hash, width, height);
       const context = canvas.getContext("2d");
       if (!context) return;
@@ -40,7 +40,7 @@ function BlurHashCanvas({ hash }: { hash: string }) {
     }
   }, [hash]);
 
-  return <canvas aria-hidden className="absolute inset-0 h-full w-full scale-105 object-cover blur-sm" height={48} ref={canvasRef} width={48} />;
+  return <canvas aria-hidden className="absolute inset-0 h-full w-full scale-105 object-cover" height={96} ref={canvasRef} width={96} />;
 }
 
 export function BlurImage({
