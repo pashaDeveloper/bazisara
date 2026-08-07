@@ -60,11 +60,11 @@ const getPrepareOptions = (req, customFolder, field) => {
   }
 
   if (isSquare760Image(customFolder, field)) {
-    return { allowEnlargement: true, fit: "cover", resizeHeight: 760, resizeWidth: 760 };
+    return { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 };
   }
 
   if (isSquareCardImage(customFolder, field)) {
-    return { allowEnlargement: true, fit: "cover", resizeHeight: 768, resizeWidth: 768 };
+    return { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 };
   }
 
   if (customFolder === "sliders" && field === "mobileImage") {
@@ -120,8 +120,8 @@ const uploadArvan = (customFolder = null) => {
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, {
                   fit: "cover",
-                  resizeHeight: 512,
-                  resizeWidth: 512,
+                  resizeHeight: 640,
+                  resizeWidth: 640,
                 })
               : null;
             const mobileKey = mobileFile ? makeMobileKey(key) : "";

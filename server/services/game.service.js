@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const axios = require("axios");
+const cheerio = require("cheerio");
 const translate = require("google-translate-api-x");
 const {
   exchangeAccessCodeForAuthTokens,
@@ -23,6 +24,8 @@ const {
   getSearchTerm,
 } = require("../utils/pagination.util");
 const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
+
+let playStation3TitleDbPromise = null;
 
 function makeServiceError(message, statusCode = 502, code = "") {
   const error = new Error(message);
@@ -334,13 +337,9 @@ async function fetchXboxStorePageRating(productId, title) {
 async function fetchPlayStationIntro(title, titleId = "") {
   const directProduct = await fetchPlayStationProductById(titleId);
   if (directProduct?.id || directProduct?.name || directProduct?.title_name) {
-    const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(directProduct.id || titleId)}`;
     const { data: detail } = directProduct.long_desc || directProduct.short_desc
       ? { data: directProduct }
-      : await axios.get(detailUrl, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          timeout: 15000,
-        });
+      : { data: await fetchPlayStationContainer(directProduct.id || titleId) };
 
     const intro = cleanStoreIntro(detail?.long_desc || detail?.short_desc || "");
     if (intro) {
@@ -393,8 +392,24 @@ const normalizePlayStationTitleId = (value) => {
     .replace(/^["']+|["']+$/g, "");
 };
 
+const getPlayStationTitleCode = (value) => {
+  const normalized = normalizePlayStationTitleId(value).replace(/[-_\s]+/g, "").toUpperCase();
+  const match = normalized.match(/^(CUSA|PPSA|NPUB|NPEB|NPUA|NPEA|BLUS|BLES|BCUS|BCES|BCJS|BLJM|NPJB|NPJJ)(\d{4,6})$/);
+  return match ? `${match[1]}${match[2]}` : "";
+};
+
+const getPlayStationLookupRegions = (...values) => {
+  const text = values.map((value) => normalizePlayStationTitleId(value).toUpperCase()).join(" ");
+  const regions = [];
+  if (/(^|[^A-Z0-9])(EP|NPEB|NPEA|BLES|BCES|CUSA|PPSA)|EP\d{4}/.test(text)) regions.push("GB");
+  if (/(^|[^A-Z0-9])(UP|NPUB|NPUA|BLUS|BCUS)|UP\d{4}/.test(text)) regions.push("US");
+  if (/(^|[^A-Z0-9])(JP|NPJB|NPJJ|BLJM|BCJS)|JP\d{4}/.test(text)) regions.push("JP");
+  return [...new Set([...regions, "US", "GB", "JP", "HK", "AE"])];
+};
+
 const expandPlayStationSearchText = (value) => {
   const raw = normalizePlayStationTitleId(value);
+  const titleCode = getPlayStationTitleCode(raw);
   const spaced = raw
     .replace(/([a-z])(\d)/gi, "$1 $2")
     .replace(/(\d)([a-z])/gi, "$1 $2")
@@ -411,27 +426,105 @@ const expandPlayStationSearchText = (value) => {
     .replace(/\s+/g, " ")
     .trim();
 
-  return [...new Set([raw, spaced, withoutStandaloneNumbers, withoutProductPrefix].filter((item) => item.length >= 2))];
+  return [...new Set([raw, titleCode, spaced, withoutStandaloneNumbers, withoutProductPrefix].filter((item) => item.length >= 2))];
 };
 
 async function searchPlayStationStoreCandidates(...values) {
   const candidates = [...new Set(values.flatMap(expandPlayStationSearchText))];
+  const regions = getPlayStationLookupRegions(...values);
 
-  for (const candidate of candidates) {
-    try {
-      const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/19/${encodeURIComponent(candidate)}?size=8&suggested_size=0`;
-      const { data } = await axios.get(searchUrl, {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        timeout: 12000,
-      });
-      const links = Array.isArray(data?.links) ? data.links : [];
-      if (links.length) return { data, searchText: candidate };
-    } catch (_) {
-      // Try the next relaxed candidate.
+  for (const region of regions) {
+    for (const candidate of candidates) {
+      try {
+        const searchUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/${region}/en/19/${encodeURIComponent(candidate)}?size=8&suggested_size=0`;
+        const { data } = await axios.get(searchUrl, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          timeout: 12000,
+        });
+        const links = Array.isArray(data?.links) ? data.links : [];
+        if (links.length) return { data, region, searchText: candidate };
+      } catch (_) {
+        // Try the next relaxed candidate.
+      }
     }
   }
 
   return { data: null, searchText: candidates[0] || "" };
+}
+
+async function fetchPlayStationContainer(productId) {
+  const normalizedProductId = normalizePlayStationTitleId(productId);
+  if (!normalizedProductId || /^\d{3,}$/.test(normalizedProductId)) return null;
+
+  for (const region of getPlayStationLookupRegions(normalizedProductId)) {
+    try {
+      const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${region}/en/19/${encodeURIComponent(normalizedProductId)}`;
+      const { data } = await axios.get(detailUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        timeout: 12000,
+      });
+      if (data?.id || data?.name || data?.title_name) return data;
+    } catch (_) {
+      // Try the same product id in the next store region.
+    }
+  }
+
+  return null;
+}
+
+async function fetchPlayStationPatchMetadata(titleId) {
+  const titleCode = getPlayStationTitleCode(titleId);
+  if (!titleCode) return null;
+
+  const prefix = titleCode.slice(0, 4);
+  const source =
+    prefix === "CUSA"
+      ? `https://orbispatches.com/${titleCode}`
+      : prefix === "PPSA"
+        ? `https://prosperopatches.com/${titleCode}`
+        : "";
+  if (!source) return null;
+
+  try {
+    const { data } = await axios.get(source, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 12000,
+    });
+    const $ = cheerio.load(data);
+    const title = $("h1").first().text().trim() || $("title").first().text().replace(/\|.*$/g, "").replace(titleCode, "").replace(/^[:\s-]+/, "").trim();
+    const bodyText = $("body").text().replace(/\s+/g, " ");
+    const contentId = bodyText.match(/\b[A-Z]{2}\d{4}-[A-Z]{4}\d{5,6}_00-[A-Z0-9_]{4,}\b/)?.[0] || "";
+    return title ? { contentId, source, title, titleCode } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fetchPlayStation3TitleMetadata(titleId) {
+  const titleCode = getPlayStationTitleCode(titleId);
+  if (!/^(NPUB|NPEB|NPUA|NPEA|BLUS|BLES|BCUS|BCES|BCJS|BLJM|NPJB|NPJJ)/.test(titleCode)) return null;
+
+  try {
+    if (!playStation3TitleDbPromise) {
+      playStation3TitleDbPromise = axios
+        .get("https://raw.githubusercontent.com/shinrax2/PS3GameUpdateDownloader/master/titledb.json", {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          timeout: 20000,
+        })
+        .then(({ data }) => (Array.isArray(data?.db) ? data.db : Array.isArray(data?.titles) ? data.titles : Array.isArray(data) ? data : []))
+        .catch((error) => {
+          playStation3TitleDbPromise = null;
+          throw error;
+        });
+    }
+
+    const titles = await playStation3TitleDbPromise;
+    const found = titles.find((item) => normalizePlayStationTitleId(item?.id).replace(/[-_\s]+/g, "").toUpperCase() === titleCode);
+    const title = String(found?.name || "").replace(/\s*\([^)]*\)\s*$/g, "").trim();
+    return title ? { title, titleCode } : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function resolveKnownPlayStationProductId(title, titleId) {
@@ -453,32 +546,56 @@ async function fetchPlayStationProductById(titleId) {
   const normalizedTitleId = normalizePlayStationTitleId(titleId);
   if (!normalizedTitleId) return null;
   if (/^\d{3,}$/.test(normalizedTitleId)) return null;
+  const titleCode = getPlayStationTitleCode(normalizedTitleId);
+
+  const directContainer = /^(CUSA|PPSA)/.test(titleCode) ? null : await fetchPlayStationContainer(normalizedTitleId);
+  if (directContainer) return directContainer;
+
+  const patchMetadata = await fetchPlayStationPatchMetadata(normalizedTitleId);
+  const ps3Metadata = patchMetadata ? null : await fetchPlayStation3TitleMetadata(normalizedTitleId);
+  if (/^(CUSA|PPSA)/.test(titleCode) && !patchMetadata) return null;
+  const patchContainer = patchMetadata?.contentId ? await fetchPlayStationContainer(patchMetadata.contentId) : null;
+  const normalizedPatchContainerTitle = normalizeStoreTitle(patchContainer?.name || patchContainer?.title_name || "");
+  const normalizedPatchTitle = normalizeStoreTitle(patchMetadata?.title || "");
+  if (patchContainer && (!normalizedPatchTitle || normalizedPatchContainerTitle === normalizedPatchTitle)) return patchContainer;
 
   try {
-    const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(normalizedTitleId)}`;
-    const { data } = await axios.get(detailUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      timeout: 12000,
-    });
-    if (data?.id || data?.name || data?.title_name) return data;
-  } catch (_) {
-    // Some operators enter CUSA/PPSA IDs, which are not always container IDs.
-  }
-
-  try {
-    const { data } = await searchPlayStationStoreCandidates(normalizedTitleId);
+    const { data } = await searchPlayStationStoreCandidates(patchMetadata?.title || ps3Metadata?.title, normalizedTitleId, patchMetadata?.contentId);
     const items = Array.isArray(data?.links) ? data.links : [];
     const normalizedSearch = normalizeStoreTitle(normalizedTitleId);
-    return (
+    const normalizedKnownTitle = normalizedPatchTitle || normalizeStoreTitle(ps3Metadata?.title || "");
+    const found =
+      items.find((item) => normalizedKnownTitle && normalizeStoreTitle(item?.title_name || item?.name || "") === normalizedKnownTitle) ||
+      items.find((item) => normalizedKnownTitle && normalizeStoreTitle(item?.title_name || item?.name || "").includes(normalizedKnownTitle)) ||
       items.find((item) => item?.id && normalizeStoreTitle(item.id).includes(normalizedSearch)) ||
       items.find((item) => normalizeStoreTitle(item?.title_name || item?.name || "").includes(normalizedSearch)) ||
       items.find((item) => item?.id && item?.container_type === "product") ||
       items.find((item) => item?.id) ||
-      null
-    );
+      null;
+    if (found) return found;
   } catch (_) {
-    return null;
+    // Fall through to the patch title fallback below.
   }
+
+  if (patchMetadata?.title) {
+    return {
+      id: patchMetadata.contentId || patchMetadata.titleCode || normalizedTitleId,
+      name: patchMetadata.title,
+      playable_platform: patchMetadata.titleCode.startsWith("PPSA") ? ["PS5"] : ["PS4™"],
+      title_name: patchMetadata.title,
+    };
+  }
+
+  if (ps3Metadata?.title) {
+    return {
+      id: ps3Metadata.titleCode || normalizedTitleId,
+      name: ps3Metadata.title,
+      playable_platform: ["PS3™"],
+      title_name: ps3Metadata.title,
+    };
+  }
+
+  return null;
 }
 
 async function suggestPlayStationGames(query, titleId = "") {
@@ -586,11 +703,7 @@ async function suggestPlayStationGalleryImages(query, titleId = "") {
 
   const details = await Promise.allSettled(
     items.map(async (item) => {
-      const detailUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/US/en/19/${encodeURIComponent(item.id)}`;
-      const { data: detail } = await axios.get(detailUrl, {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        timeout: 12000,
-      });
+      const detail = (await fetchPlayStationContainer(item.id)) || item;
       return { item, detail };
     })
   );

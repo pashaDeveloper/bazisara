@@ -36,7 +36,7 @@ const isSquareCardImage = (customFolder, field) => {
 
 const getPrepareOptions = (customFolder, field) =>
   isSquareCardImage(customFolder, field)
-    ? { allowEnlargement: true, fit: "cover", resizeHeight: 768, resizeWidth: 768 }
+    ? { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 }
     : {};
 
 const uploadCloudinary = (customFolder = null) => {
@@ -64,7 +64,7 @@ const uploadCloudinary = (customFolder = null) => {
             const publicId = key.replace(/\.[^.]+$/, "");
             const blurHash = await generateBlurHash(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
-              ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 512, resizeWidth: 512 })
+              ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 640, resizeWidth: 640 })
               : null;
             const result = await uploadBuffer(fileBuffer, {
               public_id: publicId,

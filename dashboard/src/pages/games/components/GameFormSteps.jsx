@@ -267,7 +267,7 @@ function GameTitleSuggestField({ form, onChange, setForm }) {
         />
       </label>
       <label className="flex flex-col gap-y-1">
-        <span className="text-xs text-zinc-500 dark:text-gray-300">PS Title ID</span>
+        <span className="text-xs text-zinc-500 dark:text-gray-300">PS Title ID / Code</span>
         <input
           autoComplete="off"
           className="h-10 w-full rounded-full border border-gray-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-blue-500 focus:ring-0 dark:border-gray-600 dark:bg-[#0a2d4d] dark:text-gray-100"
@@ -278,7 +278,7 @@ function GameTitleSuggestField({ form, onChange, setForm }) {
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="1004"
+          placeholder="CUSA08519 / PPSA01490"
           value={titleId}
         />
       </label>
@@ -370,7 +370,7 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, pl
   if (debouncedTitle.length < 2 && debouncedTitleId.length < 2) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 px-4 py-5 text-center text-xs text-zinc-500 dark:border-zinc-800">
-        برای پیشنهاد عکس PlayStation اول عنوان بازی را وارد کنید.
+        برای پیشنهاد عکس PlayStation، عنوان بازی یا کدی مثل CUSA/PPSA/NPUB را وارد کنید.
       </div>
     );
   }

@@ -23,8 +23,8 @@ function BlurHashCanvas({ hash }: { hash: string }) {
     if (!canvas) return;
 
     try {
-      const width = 32;
-      const height = 32;
+      const width = 48;
+      const height = 48;
       const pixels = decode(hash, width, height);
       const context = canvas.getContext("2d");
       if (!context) return;
@@ -40,7 +40,7 @@ function BlurHashCanvas({ hash }: { hash: string }) {
     }
   }, [hash]);
 
-  return <canvas aria-hidden className="absolute inset-0 h-full w-full scale-105 object-cover" height={32} ref={canvasRef} width={32} />;
+  return <canvas aria-hidden className="absolute inset-0 h-full w-full scale-105 object-cover blur-sm" height={48} ref={canvasRef} width={48} />;
 }
 
 export function BlurImage({
@@ -77,22 +77,24 @@ export function BlurImage({
           : undefined
       }
     >
-      {!loaded && src ? (
+      {blurHash && !loaded ? (
+        <BlurHashCanvas hash={blurHash} />
+      ) : !loaded && src ? (
         <img
           aria-hidden
           alt=""
-          className={`absolute inset-0 h-full w-full scale-105 blur-xl ${imageClassName}`}
+          className={`absolute inset-0 h-full w-full scale-105 blur-md ${imageClassName}`}
+          decoding="async"
           src={src}
           style={imageStyle}
         />
-      ) : blurHash && !loaded ? (
-        <BlurHashCanvas hash={blurHash} />
       ) : null}
       <img
         alt={alt}
-        className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${imageClassName} ${
+        className={`absolute inset-0 h-full w-full transition-opacity duration-150 ${imageClassName} ${
           loaded ? "opacity-100" : "opacity-0"
         }`}
+        decoding="async"
         onError={onError}
         onLoad={() => setLoadedSrc(src)}
         ref={setImageNode}

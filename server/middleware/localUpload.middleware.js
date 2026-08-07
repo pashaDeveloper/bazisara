@@ -33,7 +33,7 @@ const isSquareCardImage = (customFolder, field) => {
 
 const getPrepareOptions = (customFolder, field) =>
   isSquareCardImage(customFolder, field)
-    ? { allowEnlargement: true, fit: "cover", resizeHeight: 768, resizeWidth: 768 }
+    ? { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 }
     : {};
 
 const uploadLocal = (customFolder = null) => {
@@ -63,7 +63,7 @@ const uploadLocal = (customFolder = null) => {
             const filename = `${hashedName}.${extension}`;
             const blurHash = await generateBlurHash(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
-              ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 512, resizeWidth: 512 })
+              ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 640, resizeWidth: 640 })
               : null;
             const mobileFilename = `${hashedName}-mobile.webp`;
             const relativeFolder = baseFolder.split("/").filter(Boolean).join(path.sep);

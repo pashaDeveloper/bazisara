@@ -13,10 +13,10 @@ const imageContentTypes = {
 };
 
 const compressibleImageExtensions = new Set(["avif", "jpg", "jpeg", "jfif", "png", "webp"]);
-const resizeWebpQuality = 78;
-const compressionTargetRatio = 0.35;
-const compressionQualities = [82, 78, 74, 70, 66, 62, 58, 54, 50];
-const defaultMaxImageDimension = 1920;
+const resizeWebpQuality = 88;
+const compressionTargetRatio = 0.6;
+const compressionQualities = [92, 90, 88, 86, 84, 82, 80, 78];
+const defaultMaxImageDimension = 2560;
 
 const folderAliases = {
   avatar: "profile",
