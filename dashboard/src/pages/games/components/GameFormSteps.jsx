@@ -380,7 +380,7 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, pl
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <span className="block text-sm font-bold text-zinc-800 dark:text-zinc-100">پیشنهاد تصاویر PlayStation</span>
-          <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">PS3 / PS4 / PS5 - با درگ یا دکمه به گالری اضافه کنید</span>
+          <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">PS3 / PS4 / PS5 - انتخاب هر مقصد با اندازه همان بخش آپلود می‌شود</span>
         </div>
         {isFetching ? <span className="text-xs text-zinc-500 dark:text-zinc-400">در حال دریافت...</span> : null}
       </div>
@@ -541,6 +541,97 @@ function UploadStateOverlay({ state }) {
         </div>
       ) : null}
     </>
+  );
+}
+
+function formatScoreValue(value, decimals = 2) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  return number.toFixed(decimals);
+}
+
+function normalizeRatingDetails(details, fallbackScore) {
+  if (!details || typeof details !== "object") {
+    return {
+      count: [],
+      score: formatScoreValue(fallbackScore),
+      total: "",
+    };
+  }
+
+  return {
+    count: Array.isArray(details.count) ? details.count : [],
+    score: details.score ? formatScoreValue(details.score) : formatScoreValue(fallbackScore),
+    total: details.total ? String(details.total) : "",
+  };
+}
+
+function ScoreDetailModal({ details, isOpen, label, onClose }) {
+  if (!isOpen) return null;
+
+  const rating = normalizeRatingDetails(details);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{label}</span>
+          <button className="rounded-lg border border-zinc-200 px-3 py-1 text-xs text-zinc-600 transition hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-300" onClick={onClose} type="button">
+            بستن
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl bg-zinc-50 p-3 dark:bg-black">
+            <span className="block text-zinc-500">امتیاز</span>
+            <strong className="mt-1 block text-lg text-zinc-950 dark:text-white">{rating.score}</strong>
+          </div>
+          <div className="rounded-xl bg-zinc-50 p-3 dark:bg-black">
+            <span className="block text-zinc-500">تعداد رأی</span>
+            <strong className="mt-1 block text-lg text-zinc-950 dark:text-white">{rating.total || "-"}</strong>
+          </div>
+        </div>
+        {rating.count.length ? (
+          <div className="mt-4 space-y-2">
+            {rating.count.map((item) => {
+              const score = Number(item.score ?? item.star);
+              const count = Number(item.count || 0);
+              const total = Number(rating.total || 0);
+              const percent = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : 0;
+
+              return (
+                <div className="grid grid-cols-[40px_minmax(0,1fr)_70px] items-center gap-2 text-xs" key={`${score}-${count}`}>
+                  <span className="font-bold text-zinc-700 dark:text-zinc-200">{score} ستاره</span>
+                  <span className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <span className="block h-full rounded-full bg-amber-400" style={{ width: `${percent}%` }} />
+                  </span>
+                  <span className="text-left text-zinc-500">{count.toLocaleString("fa-IR")}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-zinc-500">جزئیات رأی برای این منبع ثبت نشده است.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScoreInput({ details, label, max, min, name, onChange, step, value }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  return (
+    <div className="space-y-2">
+      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label={label} max={max} min={min} name={name} onChange={onChange} step={step} type="number" value={value} />
+      <button
+        className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 transition hover:border-green-500 hover:text-green-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+        onClick={() => setIsOpen(true)}
+        type="button"
+      >
+        نمایش جزئیات
+      </button>
+      <ScoreDetailModal details={details || { score: value }} isOpen={isOpen} label={label} onClose={() => setIsOpen(false)} />
+    </div>
   );
 }
 
@@ -965,8 +1056,8 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
                 onChange={async (file) => {
                   const media = await onImageUpload?.(`dlcs-${index}`, file, {
                     resizeFit: "cover",
-                    resizeHeight: 760,
-                    resizeWidth: 760,
+                    resizeHeight: 768,
+                    resizeWidth: 768,
                   });
                   if (media) updateItem(index, { image: withMediaAlt(media, item.image?.alt || "") });
                 }}
@@ -1132,8 +1223,8 @@ function EditionRowsEditor({ imageUploadState = {}, items = [], onChange, onDele
                 onChange={async (file) => {
                   const media = await onImageUpload?.(`extraEditions-${index}`, file, {
                     resizeFit: "cover",
-                    resizeHeight: 760,
-                    resizeWidth: 760,
+                    resizeHeight: 768,
+                    resizeWidth: 768,
                   });
                   if (media) updateItem(index, { image: withMediaAlt(media, item.image?.alt || "") });
                 }}
@@ -1415,13 +1506,22 @@ function LegacySearchTitleRowsEditor({ items = [], onChange, translateSearchTitl
 
 export function BasicStep({
   form,
+  gameTitle,
+  imageUploadState = {},
   onFetchPlayStationTrophies,
   onFetchXboxAchievements,
   onChange,
+  onRemoteImageUpload,
+  scoreImportState,
   setArrayField,
+  setCoverPreview,
+  setDesktopCoverPreview,
   setForm,
+  setGalleryPreview,
+  setMobileCoverPreview,
   translateGameIntro,
   translateSearchTitleSlug,
+  playstationTitleId,
   playStationTrophiesState,
   xboxAchievementsState,
 }) {
@@ -1433,6 +1533,106 @@ export function BasicStep({
     message: "",
     status: "idle",
   });
+  const [pendingSuggestion, setPendingSuggestion] = React.useState(null);
+
+  const syncGallery = (updater) => {
+    setGalleryPreview?.((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setForm((form) => ({ ...form, gallery: next }));
+      return next;
+    });
+  };
+
+  const uploadPlayStationSuggestion = async (uploadKey, suggestion, options) => {
+    const media = await onRemoteImageUpload?.(uploadKey, suggestion, {
+      allowEnlargement: true,
+      resizeFit: "cover",
+      ...options,
+    });
+    return media ? withMediaAlt(media, suggestion?.title || "") : null;
+  };
+
+  const appendPlayStationImage = async (suggestion) => {
+    const url = String(suggestion?.url || "").trim();
+    if (!url) return;
+
+    const id = `gallery-playstation-${Date.now()}-${makeGameSlug(suggestion?.title || "image")}`;
+    syncGallery((prev) => {
+      if (prev.some((item) => String(item?.sourceUrl || item?.url || item?.media?.url || "") === url)) return prev;
+
+      return [
+        ...prev,
+        {
+          id,
+          kind: "new",
+          platform: suggestion?.platform || "PlayStation",
+          source: "playstation-uploading",
+          sourceUrl: url,
+          title: suggestion?.title || "",
+          type: "image",
+          url,
+        },
+      ];
+    });
+
+    const media = await uploadPlayStationSuggestion(id, suggestion, {
+      resizeHeight: 1080,
+      resizeWidth: 1920,
+    });
+
+    if (!media) {
+      syncGallery((prev) => prev.map((item) => (item.id === id ? { ...item, kind: "error", source: "playstation-error" } : item)));
+      return;
+    }
+
+    syncGallery((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ...media,
+              kind: "uploaded",
+              media,
+              source: "playstation-uploaded",
+              url: media.url,
+            }
+          : item
+      )
+    );
+  };
+
+  const assignPlayStationImage = async (destination, suggestion = pendingSuggestion) => {
+    if (!suggestion?.url) return;
+
+    if (destination === "gallery") {
+      await appendPlayStationImage(suggestion);
+      setPendingSuggestion(null);
+      return;
+    }
+
+    const uploadOptions =
+      destination === "cover"
+        ? { resizeHeight: 768, resizeWidth: 768 }
+        : destination === "mobileCover"
+          ? { resizeHeight: 810, resizeWidth: 1080 }
+          : { resizeHeight: 1080, resizeWidth: 1920 };
+
+    const media = await uploadPlayStationSuggestion(destination, suggestion, uploadOptions);
+    if (!media) return;
+
+    if (destination === "cover") {
+      setForm((prev) => ({ ...prev, cover: withMediaAlt(media, prev.cover?.alt || suggestion?.title || "") }));
+      setCoverPreview?.(media.url);
+    } else if (destination === "mobileCover") {
+      setForm((prev) => ({ ...prev, mobileCover: withMediaAlt(media, prev.mobileCover?.alt || suggestion?.title || "") }));
+      setMobileCoverPreview?.(media.url);
+    } else if (destination === "desktopCover") {
+      setForm((prev) => ({ ...prev, desktopCover: withMediaAlt(media, prev.desktopCover?.alt || suggestion?.title || "") }));
+      setDesktopCoverPreview?.(media.url);
+    }
+
+    setPendingSuggestion(null);
+  };
 
   const handleIntroImport = async (source, target = "summary") => {
     const title = form.title.trim();
@@ -1458,6 +1658,7 @@ export function BasicStep({
       setForm((prev) => ({
         ...prev,
         ...(source === "playstation" && response?.data?.score ? { sonyScore: response.data.score } : {}),
+        ...(source === "playstation" && response?.data?.starRating ? { starRating: response.data.starRating } : {}),
         ...(target === "description"
           ? { shortDescription: translatedText.slice(0, 5000) }
           : { summary: translatedText.slice(0, 160) }),
@@ -1484,6 +1685,12 @@ export function BasicStep({
     descriptionImportState.status === "success"
       ? "text-emerald-600 dark:text-emerald-400"
       : descriptionImportState.status === "error"
+        ? "text-red-500"
+        : "text-zinc-500";
+  const scoreStatusClassName =
+    scoreImportState?.status === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : scoreImportState?.status === "error"
         ? "text-red-500"
         : "text-zinc-500";
 
@@ -1588,6 +1795,31 @@ export function BasicStep({
           <p className={`text-xs ${descriptionStatusClassName}`}>{descriptionImportState.message}</p>
         ) : null}
       </div>
+      <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-zinc-700 dark:text-zinc-300">ابزارهای API</span>
+          {Object.entries(imageUploadState).some(([key, item]) => ["cover", "mobileCover", "desktopCover"].includes(key) && item?.status === "uploading") ? (
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">در حال آپلود تصویر انتخابی...</span>
+          ) : null}
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <ScoreInput label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} value={form.metacriticScore} />
+          <ScoreInput details={form.starRating} label="امتیاز سونی" max="5" min="0" name="sonyScore" onChange={onChange} step="0.01" value={form.sonyScore} />
+          <ScoreInput label="امتیاز استیم" name="steamScore" onChange={onChange} value={form.steamScore} />
+          <ScoreInput label="امتیاز Xbox" max="5" min="0" name="xboxScore" onChange={onChange} step="0.01" value={form.xboxScore} />
+        </div>
+        {scoreImportState?.message ? (
+          <p className={`text-xs ${scoreStatusClassName}`}>{scoreImportState.message}</p>
+        ) : null}
+        <PlayStationGallerySuggestions
+          gameTitle={gameTitle || form.title}
+          playstationTitleId={playstationTitleId || form.playstationTitleId}
+          onAdd={setPendingSuggestion}
+          onAssign={assignPlayStationImage}
+          onClear={() => setPendingSuggestion(null)}
+          selectedSuggestion={pendingSuggestion}
+        />
+      </div>
     </div>
   );
 }
@@ -1604,6 +1836,7 @@ export function GameMediaStep({
   onDeleteUploadedImage,
   onEditDesktopCoverPosition,
   onImageUpload,
+  onRemoteImageUpload,
   onVideoUpload,
   setCoverPreview,
   setDesktopCoverCropFile,
@@ -1711,6 +1944,7 @@ export function GameMediaStep({
         imageUploadState={imageUploadState}
         onDeleteUploadedImage={onDeleteUploadedImage}
         onImageUpload={onImageUpload}
+        onRemoteImageUpload={onRemoteImageUpload}
         setCoverPreview={setCoverPreview}
         setDesktopCoverPreview={setDesktopCoverPreview}
         setForm={setForm}
@@ -1880,13 +2114,6 @@ export function RelatedGamesStep({ form, relatedGameOptions, setArrayField }) {
 }
 
 export function ReleaseStep({ ageRatingOptions, form, onChange, scoreImportState, setForm }) {
-  const scoreStatusClassName =
-    scoreImportState?.status === "success"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : scoreImportState?.status === "error"
-        ? "text-red-500"
-        : "text-zinc-500";
-
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-3">
@@ -1894,15 +2121,6 @@ export function ReleaseStep({ ageRatingOptions, form, onChange, scoreImportState
         <TextField className={borderlessControlClass} dir="ltr" iconClassName={borderlessIconClass} label="وب‌سایت رسمی" name="officialWebsite" onChange={onChange} value={form.officialWebsite} />
         <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="زمان تقریبی گیم‌پلی" name="gameplayTime" onChange={onChange} placeholder="مثلا 25 ساعت" value={form.gameplayTime} />
       </div>
-      <div className="grid gap-4 md:grid-cols-4">
-        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} type="number" value={form.metacriticScore} />
-        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز سونی" max="5" min="0" name="sonyScore" onChange={onChange} step="0.1" type="number" value={form.sonyScore} />
-        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز استیم" name="steamScore" onChange={onChange} type="number" value={form.steamScore} />
-        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label="امتیاز Xbox" max="5" min="0" name="xboxScore" onChange={onChange} step="0.1" type="number" value={form.xboxScore} />
-      </div>
-      {scoreImportState?.message ? (
-        <p className={`text-xs ${scoreStatusClassName}`}>{scoreImportState.message}</p>
-      ) : null}
       <div className="grid gap-4 md:grid-cols-6">
         <StatusSwitch checked={form.isFeatured} className={borderlessSwitchClass} id="isFeatured" label="بازی پرطرفدار" name="isFeatured" onChange={onChange} />
         <StatusSwitch
@@ -2165,6 +2383,7 @@ export function MediaStep({
   imageUploadState = {},
   onDeleteUploadedImage,
   onImageUpload,
+  onRemoteImageUpload,
   playstationTitleId,
   setCoverPreview,
   setDesktopCoverPreview,
@@ -2173,7 +2392,6 @@ export function MediaStep({
   setMobileCoverPreview,
 }) {
   const [draggedId, setDraggedId] = React.useState(null);
-  const [pendingSuggestion, setPendingSuggestion] = React.useState(null);
 
   const syncGallery = (updater) => {
     setGalleryPreview((prev) => {
@@ -2225,59 +2443,55 @@ export function MediaStep({
     });
   };
 
-  const createPlayStationMedia = (suggestion) => {
-    const url = String(suggestion?.url || "").trim();
-    if (!url) return null;
+  const appendPlayStationImage = async (suggestion) => {
+    const sourceUrl = String(suggestion?.url || "").trim();
+    if (!sourceUrl) return;
 
-    return {
-      alt: suggestion?.title || "",
-      public_id: "",
-      type: "image",
-      url,
-    };
-  };
-
-  const appendPlayStationImage = (suggestion) => {
-    const media = createPlayStationMedia(suggestion);
-    if (!media) return;
-
+    const id = `gallery-playstation-${Date.now()}-${makeGameSlug(suggestion?.title || "image")}`;
     syncGallery((prev) => {
-      if (prev.some((item) => String(item?.url || item?.media?.url || "") === media.url)) return prev;
+      if (prev.some((item) => String(item?.sourceUrl || item?.url || item?.media?.url || "") === sourceUrl)) return prev;
 
       return [
         ...prev,
         {
-          id: `gallery-playstation-${Date.now()}-${makeGameSlug(suggestion?.title || "image")}`,
-          kind: "existing",
-          media,
+          id,
+          kind: "new",
           platform: suggestion?.platform || "PlayStation",
-          source: "playstation",
+          source: "playstation-uploading",
+          sourceUrl,
           title: suggestion?.title || "",
           type: "image",
-          url: media.url,
+          url: sourceUrl,
         },
       ];
     });
-  };
 
-  const assignPlayStationImage = (destination, suggestion = pendingSuggestion) => {
-    const media = createPlayStationMedia(suggestion);
-    if (!media) return;
+    const media = await onRemoteImageUpload?.(id, suggestion, {
+      allowEnlargement: true,
+      resizeFit: "cover",
+      resizeHeight: 1080,
+      resizeWidth: 1920,
+    });
 
-    if (destination === "gallery") {
-      appendPlayStationImage(suggestion);
-    } else if (destination === "cover") {
-      setForm((prev) => ({ ...prev, cover: media }));
-      setCoverPreview?.(media.url);
-    } else if (destination === "mobileCover") {
-      setForm((prev) => ({ ...prev, mobileCover: media }));
-      setMobileCoverPreview?.(media.url);
-    } else if (destination === "desktopCover") {
-      setForm((prev) => ({ ...prev, desktopCover: media }));
-      setDesktopCoverPreview?.(media.url);
+    if (!media) {
+      syncGallery((prev) => prev.map((item) => (item.id === id ? { ...item, kind: "error", source: "playstation-error" } : item)));
+      return;
     }
 
-    setPendingSuggestion(null);
+    syncGallery((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ...media,
+              kind: "uploaded",
+              media,
+              source: "playstation-uploaded",
+              url: media.url,
+            }
+          : item
+      )
+    );
   };
 
   const handleGalleryDrop = (event) => {
@@ -2389,16 +2603,6 @@ export function MediaStep({
         >
           <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">گالری</span>
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
-          <div className="mb-4">
-            <PlayStationGallerySuggestions
-              gameTitle={gameTitle}
-              playstationTitleId={playstationTitleId}
-              onAdd={setPendingSuggestion}
-              onAssign={assignPlayStationImage}
-              onClear={() => setPendingSuggestion(null)}
-              selectedSuggestion={pendingSuggestion}
-            />
-          </div>
           <ThumbnailUpload
             immediateUpload={false}
             multiple

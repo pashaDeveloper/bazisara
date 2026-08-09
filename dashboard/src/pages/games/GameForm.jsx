@@ -95,6 +95,7 @@ const initialForm = {
   sonyScore: "",
   steamScore: "",
   xboxScore: "",
+  starRating: null,
   playstationTitleId: "",
   playstationNpCommunicationId: "",
   isFeatured: false,
@@ -562,6 +563,89 @@ function GameForm({ mode = "create" }) {
   const [translateGameIntro] = useTranslateGameIntroMutation();
   const [translateSearchTitleSlug] = useTranslateGameSearchTitleSlugMutation();
 
+  const uploadRemoteImage = async (uploadKey, suggestion, options = {}) => {
+    const url = String(suggestion?.url || "").trim();
+    if (!url) return null;
+    const previousTempMedia = tempUploadedImagesRef.current.get(uploadKey);
+
+    try {
+      setImageUploadState((prev) => ({
+        ...prev,
+        [uploadKey]: {
+          error: "",
+          localPreview: url,
+          originalSize: null,
+          progress: 1,
+          status: "uploading",
+          uploadedSize: null,
+        },
+      }));
+
+      const baseUrl = String(import.meta.env.VITE_BASE_URL || "").replace(/\/$/, "");
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const response = await fetch(`${baseUrl}/uploads/arvan/create-remote`, {
+        body: JSON.stringify({
+          sourceUrl: url,
+          entityName: String(options.entityName || form.title || suggestion?.title || "").trim(),
+          entityType: options.entityType || "game",
+          requireEntityName: options.requireEntityName !== false,
+          resizeFit: options.resizeFit,
+          resizeHeight: options.resizeHeight,
+          resizeWidth: options.resizeWidth,
+          allowEnlargement: options.allowEnlargement,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        method: "POST",
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw {
+          status: response.status,
+          data: payload,
+          message: payload?.description || payload?.message || response.statusText,
+        };
+      }
+
+      const media = normalizeUploadedMedia(payload, "image");
+      if (!media) throw new Error("Remote image upload response is invalid");
+
+      setImageUploadState((prev) => ({
+        ...prev,
+        [uploadKey]: {
+          ...(prev[uploadKey] || {}),
+          error: "",
+          originalSize: media.originalSize || null,
+          progress: 100,
+          status: "done",
+          uploadedSize: media.uploadedSize || null,
+        },
+      }));
+      tempUploadedImagesRef.current.set(uploadKey, media);
+      if (previousTempMedia?.public_id && previousTempMedia.public_id !== media.public_id) {
+        await deleteTemporaryMedia(previousTempMedia);
+      }
+      return media;
+    } catch (error) {
+      const message = getUploadErrorMessage(error) || "دریافت تصویر PlayStation انجام نشد";
+      setImageUploadState((prev) => ({
+        ...prev,
+        [uploadKey]: {
+          ...(prev[uploadKey] || {}),
+          error: message,
+          progress: 0,
+          status: "error",
+        },
+      }));
+      toast.error(message, { id: `${uploadKey}-upload` });
+      if (previousTempMedia) tempUploadedImagesRef.current.set(uploadKey, previousTempMedia);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const title = String(form.title || "").trim();
     if (title.length < 3) {
@@ -596,6 +680,9 @@ function GameForm({ mode = "create" }) {
           if (data.sonyScore !== null && data.sonyScore !== undefined) {
             next.sonyScore = data.sonyScore;
             labels.push("سونی");
+          }
+          if (data.starRating) {
+            next.starRating = data.starRating;
           }
           return next;
         });
@@ -847,6 +934,7 @@ function GameForm({ mode = "create" }) {
       sonyScore: game.sonyScore ?? "",
       steamScore: game.steamScore ?? "",
       xboxScore: game.xboxScore ?? "",
+      starRating: game.starRating || null,
       playstationTitleId: game.playstationTitleId || "",
       playstationNpCommunicationId: game.playstationNpCommunicationId || "",
       isFeatured: Boolean(game.isFeatured),
@@ -1423,6 +1511,10 @@ function GameForm({ mode = "create" }) {
         formData.append(key, JSON.stringify(value || []));
         return;
       }
+      if (key === "starRating") {
+        formData.append(key, value ? JSON.stringify(value) : "");
+        return;
+      }
       formData.append(key, String(value ?? ""));
     });
 
@@ -1481,6 +1573,17 @@ function GameForm({ mode = "create" }) {
             translateSearchTitleSlug={translateSearchTitleSlug}
             playStationTrophiesState={playStationTrophiesState}
             xboxAchievementsState={xboxAchievementsState}
+            gameTitle={form.title}
+            playstationTitleId={form.playstationTitleId}
+            imageUploadState={imageUploadState}
+            onDeleteUploadedImage={deleteUploadedImage}
+            onImageUpload={handleImageUpload}
+            onRemoteImageUpload={uploadRemoteImage}
+            scoreImportState={scoreImportState}
+            setCoverPreview={setCoverPreview}
+            setDesktopCoverPreview={setDesktopCoverPreview}
+            setGalleryPreview={setGalleryPreview}
+            setMobileCoverPreview={setMobileCoverPreview}
           />
         );
       case "media":
@@ -1498,6 +1601,7 @@ function GameForm({ mode = "create" }) {
             onDeleteMainImage={deleteMainImage}
             onDeleteUploadedImage={deleteUploadedImage}
             onImageUpload={handleImageUpload}
+            onRemoteImageUpload={uploadRemoteImage}
             onVideoUpload={handleVideoUpload}
             setCoverPreview={setCoverPreview}
             setDesktopCoverPreview={setDesktopCoverPreview}

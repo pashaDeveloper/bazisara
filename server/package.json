@@ -24,6 +24,8 @@
     "seed:game-collections": "node scripts/seedGameCollections.js",
     "db:backfill-public-ids": "node scripts/backfillPublicIds.js",
     "db:sync-indexes": "node scripts/syncIndexes.js",
+    "storage:dry-run-delete-blur": "node scripts/deleteArvanBlurPreviews.js",
+    "storage:delete-blur": "node scripts/deleteArvanBlurPreviews.js --delete",
     "seed:catalog": "npm run seed:icons && npm run seed:filters && npm run seed:categories && npm run seed:genres && npm run seed:companies && npm run seed:brands && npm run seed:platforms && npm run seed:category-filters && npm run seed:tags && npm run seed:samples && npm run seed:game-collections",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -346,6 +346,7 @@ async function fetchPlayStationIntro(title, titleId = "") {
       return {
         intro: `Buy ${detail?.title_name || detail?.name || directProduct.name || title} on PlayStation Store. ${intro}`,
         score: detail?.star_rating?.score ? Number(detail.star_rating.score) : null,
+        starRating: normalizeStarRating(detail?.star_rating),
         sourceTitle: detail?.name || directProduct.name || "",
       };
     }
@@ -382,6 +383,7 @@ async function fetchPlayStationIntro(title, titleId = "") {
   return {
     intro: `Buy ${detail?.title_name || detail?.name || selected.name || title} on PlayStation Store. ${intro}`,
     score: detail?.star_rating?.score ? Number(detail.star_rating.score) : null,
+    starRating: normalizeStarRating(detail?.star_rating),
     sourceTitle: detail?.name || selected.name || "",
   };
 }
@@ -1272,15 +1274,48 @@ function normalizeScore100(value) {
 function normalizeScore5(value) {
   const score = Number(value);
   if (!Number.isFinite(score)) return null;
-  const roundedHalfStarScore = Math.round(score * 2) / 2;
-  return Math.max(0, Math.min(5, roundedHalfStarScore));
+  return Math.max(0, Math.min(5, Number(score.toFixed(2))));
 }
 
 function normalizeSubmittedStoreScore5(value) {
   const score = toNumber(value);
   if (score === null) return null;
   if (score > 5) return normalizeScore5(score / 20);
-  return Math.max(0, Math.min(5, Number(score.toFixed(1))));
+  return normalizeScore5(score);
+}
+
+function normalizeStarRating(value) {
+  if (!value || typeof value !== "object") return undefined;
+  const score = normalizeScore5(value.score);
+  const total = Number(value.total);
+  const count = Array.isArray(value.count)
+    ? value.count
+        .map((item) => ({
+          count: Math.max(0, Math.round(Number(item?.count || 0))),
+          score: Math.max(1, Math.min(5, Math.round(Number(item?.score ?? item?.star ?? 0)))),
+        }))
+        .filter((item) => item.score >= 1 && item.score <= 5)
+    : [];
+
+  if (score === null && !Number.isFinite(total) && !count.length) return undefined;
+
+  return {
+    total: Number.isFinite(total) ? String(Math.max(0, Math.round(total))) : "",
+    score: score === null ? "" : score.toFixed(2),
+    count,
+  };
+}
+
+function parseStarRatingValue(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value === "object") return normalizeStarRating(value) ?? null;
+
+  try {
+    return normalizeStarRating(JSON.parse(value)) ?? null;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function fetchSteamScores(title) {
@@ -1373,6 +1408,7 @@ async function fetchPlayStationScores(title) {
   return {
     sourceTitle: data.sourceTitle,
     sonyScore: normalizeScore5(data.score),
+    starRating: data.starRating ?? null,
   };
 }
 
@@ -1391,6 +1427,7 @@ async function fetchAllStoreScores(title) {
     metacriticScore: steamData.metacriticScore ?? null,
     sourceTitle: steamData.sourceTitle || xboxData.sourceTitle || playStationData.sourceTitle || "",
     sonyScore: playStationData.sonyScore ?? null,
+    starRating: playStationData.starRating ?? null,
     steamScore: steamData.steamScore ?? null,
     xboxScore: xboxData.xboxScore ?? null,
   };
@@ -1992,6 +2029,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
     xboxScore:
       body.xboxScore !== undefined ? normalizeSubmittedStoreScore5(body.xboxScore) : undefined,
+    starRating:
+      body.starRating !== undefined ? parseStarRatingValue(body.starRating) : undefined,
     playstationTitleId:
       body.playstationTitleId !== undefined ? normalizePlayStationTitleId(body.playstationTitleId) : undefined,
     playstationNpCommunicationId:
@@ -2158,6 +2197,7 @@ exports.translateIntro = async (req, res) => {
       description: "متن معرفی ترجمه شد",
       data: {
         score: storeData?.score ?? null,
+        starRating: storeData?.starRating ?? null,
         source,
         sourceText,
         sourceTitle: storeData?.sourceTitle || "",

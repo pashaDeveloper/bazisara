@@ -15,6 +15,8 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
+const squareCardSize = 768;
+
 const uploadBuffer = (buffer, options) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
@@ -31,13 +33,14 @@ const isSquareCardImage = (customFolder, field) => {
   return (
     (folder === "games" && ["cover", "dlcImages", "extraEditionImages"].includes(field)) ||
     (folder === "genres" && field === "image") ||
-    (folder === "game-collections" && field === "image")
+    (folder === "game-collections" && field === "image") ||
+    (folder === "magazines" && field === "cardCover")
   );
 };
 
 const getPrepareOptions = (customFolder, field) =>
   isSquareCardImage(customFolder, field)
-    ? { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 }
+    ? { allowEnlargement: true, fit: "cover", resizeHeight: squareCardSize, resizeWidth: squareCardSize }
     : {};
 
 const uploadCloudinary = (customFolder = null) => {

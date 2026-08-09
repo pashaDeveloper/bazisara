@@ -47,6 +47,23 @@ const reviewItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const ratingBreakdownSchema = new mongoose.Schema(
+  {
+    score: { type: Number, default: null },
+    count: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+const starRatingSchema = new mongoose.Schema(
+  {
+    total: { type: String, trim: true, default: "" },
+    score: { type: String, trim: true, default: "" },
+    count: [ratingBreakdownSchema],
+  },
+  { _id: false }
+);
+
 const platformSizeSchema = new mongoose.Schema(
   {
     platform: { type: ObjectId, ref: "Platform", default: null },
@@ -321,6 +338,7 @@ const gameSchema = new mongoose.Schema(
       min: [0, "Score cannot be negative"],
       max: [5, "Score cannot be more than 5"],
     },
+    starRating: starRatingSchema,
     playstationTitleId: {
       type: String,
       trim: true,

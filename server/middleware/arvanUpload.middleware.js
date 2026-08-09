@@ -3,7 +3,6 @@ const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const {
   getResourceType,
   generateBlurHash,
-  makeBlurPreview,
   makeImageVariant,
   makeObjectName,
   prepareFile,
@@ -38,21 +37,15 @@ const getPublicUrl = (key) => {
 
 const makeMobileKey = (key) => key.replace(/\.[^.]+$/, "-mobile.webp");
 const makeBlurKey = (key) => key.replace(/\.[^.]+$/, "-blur.webp");
+const squareCardSize = 768;
 
 const isSquareCardImage = (customFolder, field) => {
   const folder = String(customFolder || "").toLowerCase();
   return (
     (folder === "games" && ["cover", "dlcImages", "extraEditionImages"].includes(field)) ||
     (folder === "genres" && field === "image") ||
-    (folder === "game-collections" && field === "image")
-  );
-};
-
-const isSquare760Image = (customFolder, field) => {
-  const folder = String(customFolder || "").toLowerCase();
-  return (
-    (folder === "games" && ["dlcImages", "extraEditionImages"].includes(field)) ||
-    (folder === "game-collections" && field === "image")
+    (folder === "game-collections" && field === "image") ||
+    (folder === "magazines" && field === "cardCover")
   );
 };
 
@@ -61,12 +54,8 @@ const getPrepareOptions = (req, customFolder, field) => {
     return { allowEnlargement: true, fit: "cover", resizeHeight: 1080, resizeWidth: 1920 };
   }
 
-  if (isSquare760Image(customFolder, field)) {
-    return { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 };
-  }
-
   if (isSquareCardImage(customFolder, field)) {
-    return { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 };
+    return { allowEnlargement: true, fit: "cover", resizeHeight: squareCardSize, resizeWidth: squareCardSize };
   }
 
   if (customFolder === "sliders" && field === "mobileImage") {
@@ -119,7 +108,6 @@ const uploadArvan = (customFolder = null) => {
             const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const { filename, key } = makeObjectName(customFolder, extension, req.body);
             const blurHash = await generateBlurHash(file, extension);
-            const blurFile = await makeBlurPreview(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, {
                   fit: "cover",
@@ -127,7 +115,7 @@ const uploadArvan = (customFolder = null) => {
                   resizeWidth: 640,
                 })
               : null;
-            const blurKey = blurFile ? makeBlurKey(key) : "";
+            const blurKey = blurHash ? makeBlurKey(key) : "";
             const mobileKey = mobileFile ? makeMobileKey(key) : "";
 
             console.log("[ARVAN_UPLOAD] prepared file", {
@@ -168,18 +156,6 @@ const uploadArvan = (customFolder = null) => {
               );
             }
 
-            if (blurFile) {
-              await s3Client.send(
-                new PutObjectCommand({
-                  Bucket: process.env.ARVAN_S3_BUCKET,
-                  Key: blurKey,
-                  Body: blurFile.fileBuffer,
-                  ContentType: blurFile.contentType,
-                  ACL: getObjectAcl(),
-                })
-              );
-            }
-
             req.uploadedFiles[field].push({
               url: getPublicUrl(key),
               public_id: key,
@@ -189,7 +165,7 @@ const uploadArvan = (customFolder = null) => {
                     hash: blurHash.hash,
                     width: blurHash.width,
                     height: blurHash.height,
-                    url: blurFile ? getPublicUrl(blurKey) : "",
+                    url: "",
                     public_id: blurKey,
                   }
                 : undefined,

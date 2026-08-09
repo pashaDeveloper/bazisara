@@ -22,18 +22,21 @@ const getBaseUrl = (req) => {
   return process.env.LOCAL_UPLOAD_BASE_URL || `${req.protocol}://${req.get("host")}`;
 };
 
+const squareCardSize = 768;
+
 const isSquareCardImage = (customFolder, field) => {
   const folder = String(customFolder || "").toLowerCase();
   return (
     (folder === "games" && ["cover", "dlcImages", "extraEditionImages"].includes(field)) ||
     (folder === "genres" && field === "image") ||
-    (folder === "game-collections" && field === "image")
+    (folder === "game-collections" && field === "image") ||
+    (folder === "magazines" && field === "cardCover")
   );
 };
 
 const getPrepareOptions = (customFolder, field) =>
   isSquareCardImage(customFolder, field)
-    ? { allowEnlargement: true, fit: "cover", resizeHeight: 1024, resizeWidth: 1024 }
+    ? { allowEnlargement: true, fit: "cover", resizeHeight: squareCardSize, resizeWidth: squareCardSize }
     : {};
 
 const uploadLocal = (customFolder = null) => {
