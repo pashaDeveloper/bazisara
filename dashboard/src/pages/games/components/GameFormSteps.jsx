@@ -1508,6 +1508,7 @@ export function BasicStep({
   form,
   gameTitle,
   imageUploadState = {},
+  mergePlatformReleases,
   onFetchPlayStationTrophies,
   onFetchXboxAchievements,
   onChange,
@@ -1659,6 +1660,9 @@ export function BasicStep({
         ...prev,
         ...(source === "playstation" && response?.data?.score ? { sonyScore: response.data.score } : {}),
         ...(source === "playstation" && response?.data?.starRating ? { starRating: response.data.starRating } : {}),
+        ...(response?.data?.platformReleases?.length && typeof mergePlatformReleases === "function"
+          ? { platformReleases: mergePlatformReleases(prev.platformReleases, response.data.platformReleases) }
+          : {}),
         ...(target === "description"
           ? { shortDescription: translatedText.slice(0, 5000) }
           : { summary: translatedText.slice(0, 160) }),
@@ -1805,7 +1809,7 @@ export function BasicStep({
         <div className="grid gap-4 md:grid-cols-4">
           <ScoreInput label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} value={form.metacriticScore} />
           <ScoreInput details={form.starRating} label="امتیاز سونی" max="5" min="0" name="sonyScore" onChange={onChange} step="0.01" value={form.sonyScore} />
-          <ScoreInput label="امتیاز استیم" name="steamScore" onChange={onChange} value={form.steamScore} />
+          <ScoreInput details={form.steamRating} label="امتیاز استیم" max="5" min="0" name="steamScore" onChange={onChange} step="0.01" value={form.steamScore} />
           <ScoreInput label="امتیاز Xbox" max="5" min="0" name="xboxScore" onChange={onChange} step="0.01" value={form.xboxScore} />
         </div>
         {scoreImportState?.message ? (

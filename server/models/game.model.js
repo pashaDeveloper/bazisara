@@ -330,7 +330,7 @@ const gameSchema = new mongoose.Schema(
       type: Number,
       default: null,
       min: [0, "Score cannot be negative"],
-      max: [100, "Score cannot be more than 100"],
+      max: [5, "Score cannot be more than 5"],
     },
     xboxScore: {
       type: Number,
@@ -339,6 +339,7 @@ const gameSchema = new mongoose.Schema(
       max: [5, "Score cannot be more than 5"],
     },
     starRating: starRatingSchema,
+    steamRating: starRatingSchema,
     playstationTitleId: {
       type: String,
       trim: true,

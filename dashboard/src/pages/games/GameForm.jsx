@@ -96,6 +96,7 @@ const initialForm = {
   steamScore: "",
   xboxScore: "",
   starRating: null,
+  steamRating: null,
   playstationTitleId: "",
   playstationNpCommunicationId: "",
   isFeatured: false,
@@ -468,6 +469,62 @@ function toPlatformReleaseArray(value, fallbackPlatforms = [], fallbackReleaseDa
     .filter((item) => item.platform || item.releaseDate);
 }
 
+const platformReleaseAliases = {
+  PS4: ["ps4", "playstation4", "playstation 4", "پلی استیشن ۴", "پلی استیشن 4"],
+  PS5: ["ps5", "playstation5", "playstation 5", "پلی استیشن ۵", "پلی استیشن 5"],
+  xbox: ["xbox", "ایکس باکس", "اکس باکس"],
+  xbox_one: ["xboxone", "xbox one", "ایکس باکس وان", "اکس باکس وان"],
+  xbox_series: ["xboxseries", "xbox series", "xbox series x|s", "xbox series x/s", "ایکس باکس سری ایکس/اس"],
+};
+
+function normalizePlatformSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[|/\\_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findPlatformIdByReleaseKey(platforms, release) {
+  const key = String(release?.platformKey || release?.platform || release?.platformName || "").trim();
+  const aliases = platformReleaseAliases[key] || [key, release?.platformName].filter(Boolean);
+  const normalizedAliases = aliases.map(normalizePlatformSearchText).filter(Boolean);
+  if (!normalizedAliases.length) return "";
+
+  const scored = platforms
+    .map((platform) => {
+      const fields = [platform.slug, platform.name, platform.name_fa, platform.name_en, platform.label]
+        .map(normalizePlatformSearchText)
+        .filter(Boolean);
+      const exact = fields.some((field) => normalizedAliases.includes(field));
+      const contains = fields.some((field) => normalizedAliases.some((alias) => field.includes(alias) || alias.includes(field)));
+      return { id: platform._id, score: exact ? 2 : contains ? 1 : 0 };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return scored[0]?.id || "";
+}
+
+function mergeImportedPlatformReleases(currentItems, importedItems, platforms) {
+  const rows = Array.isArray(currentItems) ? [...currentItems] : [];
+  (Array.isArray(importedItems) ? importedItems : []).forEach((item) => {
+    const platform = findPlatformIdByReleaseKey(platforms, item);
+    const releaseDate = formatDate(item?.releaseDate);
+    if (!platform || !releaseDate) return;
+
+    const existingIndex = rows.findIndex((row) => row.platform === platform);
+    if (existingIndex >= 0) {
+      rows[existingIndex] = { ...rows[existingIndex], releaseDate: rows[existingIndex].releaseDate || releaseDate };
+      return;
+    }
+
+    rows.push({ platform, releaseDate });
+  });
+
+  return rows.filter((item) => String(item.platform || "").trim() || String(item.releaseDate || "").trim());
+}
+
 function toLinkArray(value) {
   if (!value) return [];
   if (Array.isArray(value)) {
@@ -562,6 +619,8 @@ function GameForm({ mode = "create" }) {
   const [fetchPlayStationTrophies] = useFetchPlayStationTrophiesMutation();
   const [translateGameIntro] = useTranslateGameIntroMutation();
   const [translateSearchTitleSlug] = useTranslateGameSearchTitleSlugMutation();
+  const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
+  const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
 
   const uploadRemoteImage = async (uploadKey, suggestion, options = {}) => {
     const url = String(suggestion?.url || "").trim();
@@ -652,6 +711,7 @@ function GameForm({ mode = "create" }) {
       setScoreImportState((prev) => (prev.status === "idle" ? prev : { message: "", status: "idle", title: "" }));
       return undefined;
     }
+    if (!platforms.length) return undefined;
 
     if (scoreImportState.title === title && scoreImportState.status !== "idle") {
       return undefined;
@@ -673,6 +733,9 @@ function GameForm({ mode = "create" }) {
             next.steamScore = data.steamScore;
             labels.push("استیم");
           }
+          if (data.steamRating) {
+            next.steamRating = data.steamRating;
+          }
           if (data.xboxScore !== null && data.xboxScore !== undefined) {
             next.xboxScore = data.xboxScore;
             labels.push("Xbox");
@@ -683,6 +746,10 @@ function GameForm({ mode = "create" }) {
           }
           if (data.starRating) {
             next.starRating = data.starRating;
+          }
+          if (data.platformReleases?.length) {
+            next.platformReleases = mergeImportedPlatformReleases(prev.platformReleases, data.platformReleases, platforms);
+            labels.push("تاریخ انتشار");
           }
           return next;
         });
@@ -701,7 +768,7 @@ function GameForm({ mode = "create" }) {
     }, 1000);
 
     return () => window.clearTimeout(timer);
-  }, [form.title, importGameScores, scoreImportState.status, scoreImportState.title]);
+  }, [form.title, importGameScores, platforms, scoreImportState.status, scoreImportState.title]);
 
   const loadXboxAchievements = async () => {
     const title = String(form.title || "").trim();
@@ -813,7 +880,6 @@ function GameForm({ mode = "create" }) {
   const companies = companiesData?.data || [];
   const tags = tagsData?.data || [];
   const gameKeywords = gameKeywordsData?.data || [];
-  const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
   const collections = collectionsData?.data || [];
   const brands = brandsData?.data || [];
   const icons = iconsData?.data || [];
@@ -840,7 +906,6 @@ function GameForm({ mode = "create" }) {
     [gameKeywords]
   );
   const collectionOptions = useMemo(() => collections.map((item) => ({ label: item.title_fa, value: item._id })), [collections]);
-  const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
   const brandOptions = useMemo(
     () => brands.map((item) => ({ label: item.title_fa || item.title_en || item.name || item.code || item._id, value: item._id })),
     [brands]
@@ -935,6 +1000,7 @@ function GameForm({ mode = "create" }) {
       steamScore: game.steamScore ?? "",
       xboxScore: game.xboxScore ?? "",
       starRating: game.starRating || null,
+      steamRating: game.steamRating || null,
       playstationTitleId: game.playstationTitleId || "",
       playstationNpCommunicationId: game.playstationNpCommunicationId || "",
       isFeatured: Boolean(game.isFeatured),
@@ -1511,7 +1577,7 @@ function GameForm({ mode = "create" }) {
         formData.append(key, JSON.stringify(value || []));
         return;
       }
-      if (key === "starRating") {
+      if (key === "starRating" || key === "steamRating") {
         formData.append(key, value ? JSON.stringify(value) : "");
         return;
       }
@@ -1576,6 +1642,7 @@ function GameForm({ mode = "create" }) {
             gameTitle={form.title}
             playstationTitleId={form.playstationTitleId}
             imageUploadState={imageUploadState}
+            mergePlatformReleases={(current, imported) => mergeImportedPlatformReleases(current, imported, platforms)}
             onDeleteUploadedImage={deleteUploadedImage}
             onImageUpload={handleImageUpload}
             onRemoteImageUpload={uploadRemoteImage}

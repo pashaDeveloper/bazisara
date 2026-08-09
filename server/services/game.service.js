@@ -256,6 +256,84 @@ function cleanStoreIntro(value) {
   return text.slice(0, 5000);
 }
 
+function normalizeReleaseDateValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function makePlatformRelease(platformKey, releaseDate, platformName = "") {
+  const date = normalizeReleaseDateValue(releaseDate);
+  if (!date) return null;
+
+  return {
+    platformKey,
+    platformName: platformName || platformKey,
+    releaseDate: date,
+  };
+}
+
+function mergePlatformReleaseData(...groups) {
+  const seen = new Set();
+  const releases = [];
+
+  groups.flat().forEach((item) => {
+    if (!item?.releaseDate || !item?.platformKey) return;
+    const key = `${String(item.platformKey).toLowerCase()}:${item.releaseDate}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    releases.push(item);
+  });
+
+  return releases;
+}
+
+function getPlayStationReleaseData(detail) {
+  const releaseDate = detail?.release_date || detail?.releaseDate || detail?.localized_release_date;
+  const platforms = Array.isArray(detail?.playable_platform)
+    ? detail.playable_platform
+    : Array.isArray(detail?.platforms)
+      ? detail.platforms
+      : [];
+
+  return mergePlatformReleaseData(
+    platforms
+      .map((platform) => String(platform || "").toUpperCase())
+      .filter((platform) => platform === "PS4" || platform === "PS5")
+      .map((platform) => makePlatformRelease(platform, releaseDate, platform))
+  );
+}
+
+function getXboxReleaseData(product) {
+  const releaseDate =
+    product?.MarketProperties?.[0]?.OriginalReleaseDate ||
+    product?.MarketProperties?.[0]?.OriginalReleaseDateTime ||
+    product?.Properties?.OriginalReleaseDate;
+  if (!releaseDate) return [];
+
+  const platforms = new Set(["xbox"]);
+  const platformProperties = product?.Properties || {};
+  const platformsText = JSON.stringify({
+    platforms: platformProperties.Platforms,
+    optimized: platformProperties.XboxConsoleGenOptimized,
+    categories: platformProperties.Categories,
+  }).toLowerCase();
+
+  if (platformsText.includes("series")) platforms.add("xbox_series");
+  if (platformsText.includes("xboxone") || platformsText.includes("xbox one")) platforms.add("xbox_one");
+
+  return mergePlatformReleaseData(
+    [...platforms].map((platform) =>
+      makePlatformRelease(
+        platform,
+        releaseDate,
+        platform === "xbox_series" ? "Xbox Series X|S" : platform === "xbox_one" ? "Xbox One" : "Xbox"
+      )
+    )
+  );
+}
+
 function normalizeStoreTitle(value) {
   return String(value || "")
     .toLowerCase()
@@ -345,6 +423,7 @@ async function fetchPlayStationIntro(title, titleId = "") {
     if (intro) {
       return {
         intro: `Buy ${detail?.title_name || detail?.name || directProduct.name || title} on PlayStation Store. ${intro}`,
+        platformReleases: getPlayStationReleaseData(detail),
         score: detail?.star_rating?.score ? Number(detail.star_rating.score) : null,
         starRating: normalizeStarRating(detail?.star_rating),
         sourceTitle: detail?.name || directProduct.name || "",
@@ -382,6 +461,7 @@ async function fetchPlayStationIntro(title, titleId = "") {
 
   return {
     intro: `Buy ${detail?.title_name || detail?.name || selected.name || title} on PlayStation Store. ${intro}`,
+    platformReleases: getPlayStationReleaseData(detail),
     score: detail?.star_rating?.score ? Number(detail.star_rating.score) : null,
     starRating: normalizeStarRating(detail?.star_rating),
     sourceTitle: detail?.name || selected.name || "",
@@ -757,6 +837,7 @@ async function fetchXboxIntro(title) {
 
     return {
       intro,
+      platformReleases: getXboxReleaseData(product),
       score: pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
       sourceTitle: localized.ProductTitle || title,
     };
@@ -784,6 +865,7 @@ async function fetchXboxIntro(title) {
 
   return {
     intro,
+    platformReleases: getXboxReleaseData(product),
     score: pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
     sourceTitle: localized.ProductTitle || selected.Title || "",
   };
@@ -1306,6 +1388,27 @@ function normalizeStarRating(value) {
   };
 }
 
+function normalizeSteamRating(value) {
+  if (!value || typeof value !== "object") return undefined;
+  const totalReviews = Number(value.totalReviews ?? value.total ?? 0);
+  const totalPositive = Number(value.totalPositive ?? value.positive ?? 0);
+  const explicitScore = toNumber(value.score);
+  const score =
+    explicitScore !== null
+      ? normalizeScore5(explicitScore)
+      : totalReviews > 0
+        ? normalizeScore5((Math.max(0, totalPositive) / totalReviews) * 5)
+        : null;
+
+  if (score === null && !Number.isFinite(totalReviews)) return undefined;
+
+  return {
+    total: Number.isFinite(totalReviews) ? String(Math.max(0, Math.round(totalReviews))) : "",
+    score: score === null ? "" : score.toFixed(2),
+    count: [],
+  };
+}
+
 function parseStarRatingValue(value) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -1349,13 +1452,15 @@ async function fetchSteamScores(title) {
   const reviewSummary = reviewData?.query_summary || {};
   const totalPositive = Number(reviewSummary.total_positive || 0);
   const totalReviews = Number(reviewSummary.total_reviews || 0);
-  const steamScore = totalReviews > 0 ? Math.round((totalPositive / totalReviews) * 100) : null;
+  const steamRating = normalizeSteamRating({ totalPositive, totalReviews });
+  const steamScore = steamRating?.score ? Number(steamRating.score) : null;
   const metacriticScore = normalizeScore100(detail?.metacritic?.score || selected?.metascore);
 
   return {
     appid,
     metacriticScore,
     sourceTitle: detail.name || selected.name || "",
+    steamRating: steamRating ?? null,
     steamScore,
   };
 }
@@ -1400,12 +1505,14 @@ async function fetchXboxScores(title) {
   return {
     sourceTitle: data.sourceTitle,
     xboxScore: normalizeScore5(data.score),
+    platformReleases: data.platformReleases || [],
   };
 }
 
 async function fetchPlayStationScores(title) {
   const data = await fetchPlayStationIntro(title);
   return {
+    platformReleases: data.platformReleases || [],
     sourceTitle: data.sourceTitle,
     sonyScore: normalizeScore5(data.score),
     starRating: data.starRating ?? null,
@@ -1425,9 +1532,14 @@ async function fetchAllStoreScores(title) {
 
   return {
     metacriticScore: steamData.metacriticScore ?? null,
+    platformReleases: mergePlatformReleaseData(
+      playStationData.platformReleases || [],
+      xboxData.platformReleases || []
+    ),
     sourceTitle: steamData.sourceTitle || xboxData.sourceTitle || playStationData.sourceTitle || "",
     sonyScore: playStationData.sonyScore ?? null,
     starRating: playStationData.starRating ?? null,
+    steamRating: steamData.steamRating ?? null,
     steamScore: steamData.steamScore ?? null,
     xboxScore: xboxData.xboxScore ?? null,
   };
@@ -2026,11 +2138,13 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     sonyScore:
       body.sonyScore !== undefined ? normalizeSubmittedStoreScore5(body.sonyScore) : undefined,
     steamScore:
-      body.steamScore !== undefined ? toNumber(body.steamScore) : undefined,
+      body.steamScore !== undefined ? normalizeSubmittedStoreScore5(body.steamScore) : undefined,
     xboxScore:
       body.xboxScore !== undefined ? normalizeSubmittedStoreScore5(body.xboxScore) : undefined,
     starRating:
       body.starRating !== undefined ? parseStarRatingValue(body.starRating) : undefined,
+    steamRating:
+      body.steamRating !== undefined ? parseStarRatingValue(body.steamRating) : undefined,
     playstationTitleId:
       body.playstationTitleId !== undefined ? normalizePlayStationTitleId(body.playstationTitleId) : undefined,
     playstationNpCommunicationId:
@@ -2198,6 +2312,7 @@ exports.translateIntro = async (req, res) => {
       data: {
         score: storeData?.score ?? null,
         starRating: storeData?.starRating ?? null,
+        platformReleases: storeData?.platformReleases || [],
         source,
         sourceText,
         sourceTitle: storeData?.sourceTitle || "",
