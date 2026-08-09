@@ -97,6 +97,7 @@ const initialForm = {
   xboxScore: "",
   starRating: null,
   steamRating: null,
+  xboxRating: null,
   playstationTitleId: "",
   playstationNpCommunicationId: "",
   isFeatured: false,
@@ -740,6 +741,9 @@ function GameForm({ mode = "create" }) {
             next.xboxScore = data.xboxScore;
             labels.push("Xbox");
           }
+          if (data.xboxRating) {
+            next.xboxRating = data.xboxRating;
+          }
           if (data.sonyScore !== null && data.sonyScore !== undefined) {
             next.sonyScore = data.sonyScore;
             labels.push("سونی");
@@ -769,6 +773,62 @@ function GameForm({ mode = "create" }) {
 
     return () => window.clearTimeout(timer);
   }, [form.title, importGameScores, platforms, scoreImportState.status, scoreImportState.title]);
+
+  const loadGameScores = async () => {
+    const title = String(form.title || "").trim();
+    if (title.length < 3) {
+      setScoreImportState({ message: "برای دریافت امتیازها، عنوان بازی را وارد کنید", status: "error", title: "" });
+      return;
+    }
+
+    setScoreImportState({ message: "در حال دریافت امتیازها...", status: "loading", title });
+
+    try {
+      const response = await importGameScores({ source: "all", title }).unwrap();
+      const data = response?.data || {};
+      const labels = [];
+
+      setForm((prev) => {
+        const next = { ...prev };
+        if (data.metacriticScore !== null && data.metacriticScore !== undefined) {
+          next.metacriticScore = data.metacriticScore;
+          labels.push("متاکریتیک");
+        }
+        if (data.steamScore !== null && data.steamScore !== undefined) {
+          next.steamScore = data.steamScore;
+          labels.push("استیم");
+        }
+        if (data.steamRating) next.steamRating = data.steamRating;
+        if (data.xboxScore !== null && data.xboxScore !== undefined) {
+          next.xboxScore = data.xboxScore;
+          labels.push("Xbox");
+        }
+        if (data.xboxRating) next.xboxRating = data.xboxRating;
+        if (data.sonyScore !== null && data.sonyScore !== undefined) {
+          next.sonyScore = data.sonyScore;
+          labels.push("سونی");
+        }
+        if (data.starRating) next.starRating = data.starRating;
+        if (data.platformReleases?.length) {
+          next.platformReleases = mergeImportedPlatformReleases(prev.platformReleases, data.platformReleases, platforms);
+          labels.push("تاریخ انتشار");
+        }
+        return next;
+      });
+
+      setScoreImportState({
+        message: labels.length ? `${labels.join("، ")} دریافت شد` : "امتیازی برای این عنوان پیدا نشد",
+        status: labels.length ? "success" : "error",
+        title,
+      });
+    } catch (error) {
+      setScoreImportState({
+        message: getRequestErrorMessage(error, "دریافت امتیازها انجام نشد"),
+        status: "error",
+        title,
+      });
+    }
+  };
 
   const loadXboxAchievements = async () => {
     const title = String(form.title || "").trim();
@@ -1001,6 +1061,7 @@ function GameForm({ mode = "create" }) {
       xboxScore: game.xboxScore ?? "",
       starRating: game.starRating || null,
       steamRating: game.steamRating || null,
+      xboxRating: game.xboxRating || null,
       playstationTitleId: game.playstationTitleId || "",
       playstationNpCommunicationId: game.playstationNpCommunicationId || "",
       isFeatured: Boolean(game.isFeatured),
@@ -1577,7 +1638,7 @@ function GameForm({ mode = "create" }) {
         formData.append(key, JSON.stringify(value || []));
         return;
       }
-      if (key === "starRating" || key === "steamRating") {
+      if (key === "starRating" || key === "steamRating" || key === "xboxRating") {
         formData.append(key, value ? JSON.stringify(value) : "");
         return;
       }
@@ -1631,6 +1692,7 @@ function GameForm({ mode = "create" }) {
           <BasicStep
             form={form}
             onFetchPlayStationTrophies={loadPlayStationTrophies}
+            onFetchScores={loadGameScores}
             onFetchXboxAchievements={loadXboxAchievements}
             onChange={handleChange}
             setArrayField={setArrayField}

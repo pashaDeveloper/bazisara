@@ -340,6 +340,7 @@ const gameSchema = new mongoose.Schema(
     },
     starRating: starRatingSchema,
     steamRating: starRatingSchema,
+    xboxRating: starRatingSchema,
     playstationTitleId: {
       type: String,
       trim: true,

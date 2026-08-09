@@ -322,6 +322,7 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, pl
   const [debouncedTitle, setDebouncedTitle] = React.useState("");
   const [debouncedTitleId, setDebouncedTitleId] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [selectedImage, setSelectedImage] = React.useState(null);
   const title = String(gameTitle || "").trim();
   const titleId = String(playstationTitleId || "").trim();
   const isNumericTitleIdOnly = /^\d{3,}$/.test(titleId) && title.length < 2;
@@ -402,8 +403,15 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, pl
               >
                 <div className="relative aspect-video overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                   <img alt={item.title || "PlayStation"} className="h-full w-full object-cover" src={item.url} />
+                  <button
+                    aria-label="نمایش بزرگ تصویر"
+                    className="absolute inset-0 z-10 cursor-zoom-in bg-transparent"
+                    onClick={() => setSelectedImage(item)}
+                    title="نمایش بزرگ"
+                    type="button"
+                  />
                   <ImageSizeBadge src={item.url} />
-                  <span className="absolute right-2 top-2 rounded-md bg-white/95 px-2 py-1 text-[10px] font-bold text-zinc-950 shadow-md ring-1 ring-black/10">
+                  <span className="pointer-events-none absolute right-2 top-2 z-20 rounded-md bg-white/95 px-2 py-1 text-[10px] font-bold text-zinc-950 shadow-md ring-1 ring-black/10">
                     {item.platform || "PlayStation"}
                   </span>
                 </div>
@@ -471,6 +479,29 @@ function PlayStationGallerySuggestions({ gameTitle, onAdd, onAssign, onClear, pl
           تصویری از PlayStation برای این عنوان پیدا نشد.
         </div>
       )}
+      {selectedImage ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setSelectedImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative h-[62vh] w-[92vw] overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl lg:w-[33vw]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              aria-label="بستن تصویر"
+              className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-lg font-bold text-zinc-950 shadow-lg transition hover:bg-white"
+              onClick={() => setSelectedImage(null)}
+              type="button"
+            >
+              ×
+            </button>
+            <img alt={selectedImage.title || "PlayStation"} className="h-full w-full object-contain" src={selectedImage.url} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -551,25 +582,125 @@ function formatScoreValue(value, decimals = 2) {
 }
 
 function normalizeRatingDetails(details, fallbackScore) {
+  const hasScore = details && typeof details === "object" && details.score !== undefined && details.score !== null && details.score !== "";
+  const hasFallbackScore = fallbackScore !== undefined && fallbackScore !== null && fallbackScore !== "";
+
   if (!details || typeof details !== "object") {
     return {
       count: [],
-      score: formatScoreValue(fallbackScore),
+      score: hasFallbackScore ? formatScoreValue(fallbackScore) : "",
       total: "",
     };
   }
 
   return {
     count: Array.isArray(details.count) ? details.count : [],
-    score: details.score ? formatScoreValue(details.score) : formatScoreValue(fallbackScore),
+    score: hasScore ? formatScoreValue(details.score) : hasFallbackScore ? formatScoreValue(fallbackScore) : "",
     total: details.total ? String(details.total) : "",
   };
 }
 
-function ScoreDetailModal({ details, isOpen, label, onClose }) {
+function toEditableNumber(value) {
+  return String(value || "")
+    .replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
+    .replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit))
+    .trim();
+}
+
+function clampNumber(value, min, max) {
+  const number = Number(toEditableNumber(value));
+  if (!Number.isFinite(number)) return "";
+  return String(Math.min(max, Math.max(min, number)));
+}
+
+function calculateRatingFromCounts(rating, countRows) {
+  const rows = countRows.map((item) => ({
+    count: clampNumber(item.count, 0, Number.MAX_SAFE_INTEGER),
+    score: clampNumber(item.score ?? item.star, 1, 5),
+  }));
+  const total = rows.reduce((sum, item) => sum + Number(item.count || 0), 0);
+  const weighted = rows.reduce((sum, item) => sum + Number(item.score || 0) * Number(item.count || 0), 0);
+
+  return {
+    ...rating,
+    count: rows,
+    score: total > 0 ? (weighted / total).toFixed(2) : rating.score,
+    total: total > 0 ? String(total) : rating.total,
+  };
+}
+
+function moveCaretToEnd(element) {
+  const selection = window.getSelection?.();
+  const range = document.createRange?.();
+  if (!selection || !range) return;
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function EditableRatingText({ ariaLabel, children, className, max, min, onCommit }) {
+  const normalizeValue = (value) => {
+    if (min === undefined && max === undefined) return toEditableNumber(value);
+    const number = Number(toEditableNumber(value));
+    if (!Number.isFinite(number)) return "";
+    return String(Math.min(max ?? number, Math.max(min ?? number, number)));
+  };
+
+  const handleInput = (event) => {
+    if (max === undefined && min === undefined) return;
+    const normalized = normalizeValue(event.currentTarget.textContent);
+    if (normalized && normalized !== event.currentTarget.textContent) {
+      event.currentTarget.textContent = normalized;
+      moveCaretToEnd(event.currentTarget);
+    }
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.currentTarget.blur();
+    }
+  };
+
+  return (
+    <span
+      aria-label={ariaLabel}
+      className={`${className} cursor-text rounded px-1 outline-none transition focus:bg-white focus:ring-2 focus:ring-green-500/30 dark:focus:bg-zinc-950`}
+      contentEditable
+      onBlur={(event) => onCommit?.(normalizeValue(event.currentTarget.textContent))}
+      onInput={handleInput}
+      onKeyDown={handleKeyDown}
+      role="textbox"
+      suppressContentEditableWarning
+      tabIndex={0}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ScoreDetailModal({ details, fallbackScore, isOpen, label, onChange, onClose }) {
   if (!isOpen) return null;
 
-  const rating = normalizeRatingDetails(details);
+  const rating = normalizeRatingDetails(details, fallbackScore);
+  const canEdit = typeof onChange === "function";
+  const updateRating = (patch) => {
+    if (!canEdit) return;
+    onChange({ ...rating, ...patch, count: patch.count || rating.count });
+  };
+  const updateCountRow = (index, patch) => {
+    const rows = rating.count.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
+    updateRating(calculateRatingFromCounts(rating, rows));
+  };
+  const addCountRow = () => {
+    const usedScores = new Set(rating.count.map((item) => Number(item.score ?? item.star)).filter(Boolean));
+    const nextScore = [5, 4, 3, 2, 1].find((score) => !usedScores.has(score)) || 5;
+    updateRating(calculateRatingFromCounts(rating, [...rating.count, { count: "0", score: String(nextScore) }]));
+  };
+  const removeCountRow = (index) => {
+    updateRating(calculateRatingFromCounts(rating, rating.count.filter((_, itemIndex) => itemIndex !== index)));
+  };
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4" role="dialog" aria-modal="true">
@@ -583,42 +714,100 @@ function ScoreDetailModal({ details, isOpen, label, onClose }) {
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-xl bg-zinc-50 p-3 dark:bg-black">
             <span className="block text-zinc-500">امتیاز</span>
-            <strong className="mt-1 block text-lg text-zinc-950 dark:text-white">{rating.score}</strong>
+            {canEdit ? (
+              <EditableRatingText ariaLabel="ویرایش امتیاز" className="mt-1 block text-lg font-bold text-zinc-950 dark:text-white" max={5} min={0} onCommit={(value) => updateRating({ score: clampNumber(value, 0, 5) })}>
+                {rating.score || "-"}
+              </EditableRatingText>
+            ) : (
+              <strong className="mt-1 block text-lg text-zinc-950 dark:text-white">{rating.score || "-"}</strong>
+            )}
           </div>
           <div className="rounded-xl bg-zinc-50 p-3 dark:bg-black">
             <span className="block text-zinc-500">تعداد رأی</span>
-            <strong className="mt-1 block text-lg text-zinc-950 dark:text-white">{rating.total || "-"}</strong>
+            {canEdit ? (
+              <EditableRatingText ariaLabel="ویرایش تعداد رأی" className="mt-1 block text-lg font-bold text-zinc-950 dark:text-white" onCommit={(value) => updateRating({ total: clampNumber(value, 0, Number.MAX_SAFE_INTEGER) })}>
+                {rating.total || "-"}
+              </EditableRatingText>
+            ) : (
+              <strong className="mt-1 block text-lg text-zinc-950 dark:text-white">{rating.total || "-"}</strong>
+            )}
           </div>
         </div>
-        {rating.count.length ? (
-          <div className="mt-4 space-y-2">
-            {rating.count.map((item) => {
+        <div className="mt-4 space-y-2">
+          {canEdit ? (
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">رأی‌دهندگان</span>
+              <button
+                aria-label="افزودن ردیف امتیاز"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:border-green-500 hover:text-green-600 dark:border-zinc-800 dark:text-zinc-300"
+                onClick={addCountRow}
+                title="افزودن ردیف"
+                type="button"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+          {rating.count.length ? (
+            rating.count.map((item, index) => {
               const score = Number(item.score ?? item.star);
               const count = Number(item.count || 0);
               const total = Number(rating.total || 0);
               const percent = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : 0;
 
               return (
-                <div className="grid grid-cols-[40px_minmax(0,1fr)_70px] items-center gap-2 text-xs" key={`${score}-${count}`}>
-                  <span className="font-bold text-zinc-700 dark:text-zinc-200">{score} ستاره</span>
+                <div className={`grid items-center gap-2 text-xs ${canEdit ? "grid-cols-[52px_minmax(0,1fr)_70px_30px]" : "grid-cols-[40px_minmax(0,1fr)_70px]"}`} key={`${index}-${score}-${count}`}>
+                  {canEdit ? (
+                    <span className="font-bold text-zinc-700 dark:text-zinc-200">
+                      <EditableRatingText ariaLabel="ویرایش ستاره" className="inline-block min-w-4 text-center" max={5} min={1} onCommit={(value) => updateCountRow(index, { score: clampNumber(value, 1, 5) })}>
+                        {score || ""}
+                      </EditableRatingText>
+                      ستاره
+                    </span>
+                  ) : (
+                    <span className="font-bold text-zinc-700 dark:text-zinc-200">{score} ستاره</span>
+                  )}
                   <span className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                     <span className="block h-full rounded-full bg-amber-400" style={{ width: `${percent}%` }} />
                   </span>
-                  <span className="text-left text-zinc-500">{count.toLocaleString("fa-IR")}</span>
+                  {canEdit ? (
+                    <EditableRatingText ariaLabel="ویرایش تعداد رأی ردیف" className="block text-left text-zinc-500" onCommit={(value) => updateCountRow(index, { count: clampNumber(value, 0, Number.MAX_SAFE_INTEGER) })}>
+                      {count}
+                    </EditableRatingText>
+                  ) : (
+                    <span className="text-left text-zinc-500">{count.toLocaleString("fa-IR")}</span>
+                  )}
+                  {canEdit ? (
+                    <button
+                      aria-label="حذف ردیف امتیاز"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 transition hover:border-red-500 hover:text-red-500 dark:border-zinc-800"
+                      onClick={() => removeCountRow(index)}
+                      title="حذف"
+                      type="button"
+                    >
+                      <Trash className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                 </div>
               );
-            })}
-          </div>
-        ) : (
-          <p className="mt-4 text-xs text-zinc-500">جزئیات رأی برای این منبع ثبت نشده است.</p>
-        )}
+            })
+          ) : (
+            <p className="text-xs text-zinc-500">جزئیات رأی برای این منبع ثبت نشده است.</p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function ScoreInput({ details, label, max, min, name, onChange, step, value }) {
+function ScoreInput({ details, label, max, min, name, onChange, onDetailsChange, step, value }) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const handleDetailsChange = (nextDetails) => {
+    onDetailsChange?.(nextDetails);
+    if (nextDetails?.score !== undefined && nextDetails.score !== null && nextDetails.score !== "") {
+      onChange?.({ target: { name, value: nextDetails.score } });
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -630,7 +819,7 @@ function ScoreInput({ details, label, max, min, name, onChange, step, value }) {
       >
         نمایش جزئیات
       </button>
-      <ScoreDetailModal details={details || { score: value }} isOpen={isOpen} label={label} onClose={() => setIsOpen(false)} />
+      <ScoreDetailModal details={details} fallbackScore={value} isOpen={isOpen} label={label} onChange={onDetailsChange ? handleDetailsChange : undefined} onClose={() => setIsOpen(false)} />
     </div>
   );
 }
@@ -952,6 +1141,12 @@ function ImageAltOverlay({ onChange, value }) {
 function withMediaAlt(media, alt) {
   if (!media) return media;
   if (typeof media === "object") return { ...media, alt };
+  return media;
+}
+
+function withMediaBlur(media, blur, fallbackUrl = "") {
+  if (media && typeof media === "object") return { ...media, blur };
+  if (fallbackUrl) return { blur, type: "image", url: fallbackUrl };
   return media;
 }
 
@@ -1510,6 +1705,7 @@ export function BasicStep({
   imageUploadState = {},
   mergePlatformReleases,
   onFetchPlayStationTrophies,
+  onFetchScores,
   onFetchXboxAchievements,
   onChange,
   onRemoteImageUpload,
@@ -1802,15 +1998,56 @@ export function BasicStep({
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm text-zinc-700 dark:text-zinc-300">ابزارهای API</span>
-          {Object.entries(imageUploadState).some(([key, item]) => ["cover", "mobileCover", "desktopCover"].includes(key) && item?.status === "uploading") ? (
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">در حال آپلود تصویر انتخابی...</span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {Object.entries(imageUploadState).some(([key, item]) => ["cover", "mobileCover", "desktopCover"].includes(key) && item?.status === "uploading") ? (
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">در حال آپلود تصویر انتخابی...</span>
+            ) : null}
+            <button
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-400 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300"
+              disabled={scoreImportState?.status === "loading"}
+              onClick={onFetchScores}
+              type="button"
+            >
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] !text-white">★</span>
+              {scoreImportState?.status === "loading" ? "در حال دریافت..." : "دریافت امتیازها"}
+            </button>
+          </div>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           <ScoreInput label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} value={form.metacriticScore} />
-          <ScoreInput details={form.starRating} label="امتیاز سونی" max="5" min="0" name="sonyScore" onChange={onChange} step="0.01" value={form.sonyScore} />
-          <ScoreInput details={form.steamRating} label="امتیاز استیم" max="5" min="0" name="steamScore" onChange={onChange} step="0.01" value={form.steamScore} />
-          <ScoreInput label="امتیاز Xbox" max="5" min="0" name="xboxScore" onChange={onChange} step="0.01" value={form.xboxScore} />
+          <ScoreInput
+            details={form.starRating}
+            label="امتیاز سونی"
+            max="5"
+            min="0"
+            name="sonyScore"
+            onChange={onChange}
+            onDetailsChange={(value) => setForm((prev) => ({ ...prev, starRating: value }))}
+            step="0.01"
+            value={form.sonyScore}
+          />
+          <ScoreInput
+            details={form.steamRating}
+            label="امتیاز استیم"
+            max="5"
+            min="0"
+            name="steamScore"
+            onChange={onChange}
+            onDetailsChange={(value) => setForm((prev) => ({ ...prev, steamRating: value }))}
+            step="0.01"
+            value={form.steamScore}
+          />
+          <ScoreInput
+            details={form.xboxRating}
+            label="امتیاز Xbox"
+            max="5"
+            min="0"
+            name="xboxScore"
+            onChange={onChange}
+            onDetailsChange={(value) => setForm((prev) => ({ ...prev, xboxRating: value }))}
+            step="0.01"
+            value={form.xboxScore}
+          />
         </div>
         {scoreImportState?.message ? (
           <p className={`text-xs ${scoreStatusClassName}`}>{scoreImportState.message}</p>
@@ -1862,9 +2099,11 @@ export function GameMediaStep({
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 768 × 768</p>
           <ThumbnailUpload
             altValue={form.cover?.alt || ""}
+            blurValue={form.cover?.blur}
             immediateUpload={false}
             name="cover"
             onAltChange={(alt) => setForm((prev) => ({ ...prev, cover: withMediaAlt(prev.cover, alt) }))}
+            onBlurChange={(blur) => setForm((prev) => ({ ...prev, cover: withMediaBlur(prev.cover, blur, coverPreview) }))}
             onRemove={() => onDeleteMainImage?.("cover", setCoverPreview)}
             profilePreview
             preview={coverPreview}
@@ -1888,9 +2127,11 @@ export function GameMediaStep({
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1080 × 810</p>
           <ThumbnailUpload
             altValue={form.mobileCover?.alt || ""}
+            blurValue={form.mobileCover?.blur}
             immediateUpload={false}
             name="mobileCover"
             onAltChange={(alt) => setForm((prev) => ({ ...prev, mobileCover: withMediaAlt(prev.mobileCover, alt) }))}
+            onBlurChange={(blur) => setForm((prev) => ({ ...prev, mobileCover: withMediaBlur(prev.mobileCover, blur, mobileCoverPreview) }))}
             onRemove={() => onDeleteMainImage?.("mobileCover", setMobileCoverPreview)}
             profilePreview
             preview={mobileCoverPreview}
@@ -1914,9 +2155,11 @@ export function GameMediaStep({
           <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 1920 × 1080</p>
           <ThumbnailUpload
             altValue={form.desktopCover?.alt || ""}
+            blurValue={form.desktopCover?.blur}
             immediateUpload={false}
             name="desktopCover"
             onAltChange={(alt) => setForm((prev) => ({ ...prev, desktopCover: withMediaAlt(prev.desktopCover, alt) }))}
+            onBlurChange={(blur) => setForm((prev) => ({ ...prev, desktopCover: withMediaBlur(prev.desktopCover, blur, desktopCoverPreview) }))}
             onRemove={() => onDeleteMainImage?.("desktopCover", setDesktopCoverPreview)}
             profilePreview
             preview={desktopCoverPreview}
@@ -2396,6 +2639,7 @@ export function MediaStep({
   setMobileCoverPreview,
 }) {
   const [draggedId, setDraggedId] = React.useState(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = React.useState(null);
 
   const syncGallery = (updater) => {
     setGalleryPreview((prev) => {
@@ -2565,6 +2809,7 @@ export function MediaStep({
 
   const removeItem = (item) => {
     if (item.source !== "playstation") onDeleteUploadedImage?.(item.id, item.media || item);
+    setSelectedGalleryImage((current) => (current?.id === item.id ? null : current));
     syncGallery((prev) => prev.filter((current) => current.id !== item.id));
   };
 
@@ -2633,6 +2878,12 @@ export function MediaStep({
                 >
                   <div className="relative aspect-square overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black">
                     <img alt="gallery" className="h-full w-full object-cover" src={item.url} />
+                    <button
+                      aria-label="نمایش بزرگ تصویر"
+                      className="absolute inset-0 z-10 cursor-zoom-in bg-transparent"
+                      onClick={() => setSelectedGalleryImage(item)}
+                      type="button"
+                    />
                     <ImageSizeBadge src={item.url} />
                     <UploadStateOverlay state={imageUploadState[item.id]} />
                     <ImageAltOverlay onChange={(alt) => updateGalleryAlt(item.id, alt)} value={item.alt || item.media?.alt || ""} />
@@ -2674,6 +2925,24 @@ export function MediaStep({
           )}
         </div>
       </div>
+      {selectedGalleryImage ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setSelectedGalleryImage(null)}>
+          <div
+            className="relative h-[62vh] w-[92vw] overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl lg:w-[33vw]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              aria-label="بستن"
+              className="absolute left-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/90 text-zinc-950 shadow-lg transition hover:bg-white"
+              onClick={() => setSelectedGalleryImage(null)}
+              type="button"
+            >
+              ×
+            </button>
+            <img alt={selectedGalleryImage.alt || gameTitle || "gallery"} className="h-full w-full object-contain" src={selectedGalleryImage.url} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

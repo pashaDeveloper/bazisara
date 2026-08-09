@@ -163,9 +163,11 @@ function isMediaObject(value) {
 }
 
 function ArticleImagePicker({
+  blurValue,
   field,
   label,
   onChange,
+  onBlurChange,
   preview,
   resizeHeight,
   resizeWidth,
@@ -178,6 +180,7 @@ function ArticleImagePicker({
         اندازه پیشنهادی: {resizeWidth} × {resizeHeight}
       </p>
       <ThumbnailUpload
+        blurValue={blurValue}
         immediateUpload
         immediateUploadOptions={{
           entityType: "magazines",
@@ -189,6 +192,7 @@ function ArticleImagePicker({
         onRemove={() => onChange(deletedMediaValue)}
         profilePreview
         preview={preview}
+        onBlurChange={onBlurChange}
         setThumbnail={onChange}
         setThumbnailPreview={setPreview}
         title="انتخاب"
@@ -510,9 +514,9 @@ function ArticleForm({ mode = "create" }) {
       publishedAt: formatDate(article.publishedAt),
       isFeatured: Boolean(article.isFeatured),
       status: article.status || "active",
-      cover: null,
-      cardCover: null,
-      contentCover: null,
+      cover: article.cover || null,
+      cardCover: article.cardCover || null,
+      contentCover: article.contentCover || null,
     });
     setCoverPreview(article.cover?.url || "");
     setCardCoverPreview(article.cardCover?.url || article.cover?.url || "");
@@ -798,18 +802,22 @@ function ArticleForm({ mode = "create" }) {
             </label>
             <div className="grid gap-4 lg:grid-cols-2">
               <ArticleImagePicker
+                blurValue={form.cardCover?.blur}
                 field="cardCover"
                 label="تصویر کارت"
                 onChange={(media) => setForm((prev) => ({ ...prev, cardCover: media }))}
+                onBlurChange={(blur) => setForm((prev) => ({ ...prev, cardCover: { ...(prev.cardCover || {}), url: prev.cardCover?.url || cardCoverPreview, type: prev.cardCover?.type || "image", blur } }))}
                 preview={cardCoverPreview}
                 resizeHeight={768}
                 resizeWidth={768}
                 setPreview={setCardCoverPreview}
               />
               <ArticleImagePicker
+                blurValue={form.contentCover?.blur}
                 field="contentCover"
                 label="تصویر جزئیات مجله"
                 onChange={(media) => setForm((prev) => ({ ...prev, contentCover: media }))}
+                onBlurChange={(blur) => setForm((prev) => ({ ...prev, contentCover: { ...(prev.contentCover || {}), url: prev.contentCover?.url || contentCoverPreview, type: prev.contentCover?.type || "image", blur } }))}
                 preview={contentCoverPreview}
                 resizeHeight={1080}
                 resizeWidth={1920}

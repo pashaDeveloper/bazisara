@@ -838,12 +838,17 @@ async function fetchXboxIntro(title) {
       (item) => item?.AggregateTimeSpan === "AllTime"
     );
     const pageRating = await fetchXboxStorePageRating(directProductId, localized.ProductTitle || title);
+    const xboxRating = normalizeXboxRating({
+      averageRating: pageRating ?? allTimeRating?.AverageRating,
+      total: allTimeRating?.RatingCount || allTimeRating?.TotalRatings || allTimeRating?.UsersRated,
+    });
 
     return {
       intro,
       platformReleases: getXboxReleaseData(product),
-      score: pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
+      score: xboxRating?.score ? Number(xboxRating.score) : pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
       sourceTitle: localized.ProductTitle || title,
+      xboxRating: xboxRating ?? null,
     };
   }
 
@@ -866,12 +871,17 @@ async function fetchXboxIntro(title) {
     (item) => item?.AggregateTimeSpan === "AllTime"
   );
   const pageRating = await fetchXboxStorePageRating(selected.ProductId, localized.ProductTitle || selected.Title || title);
+  const xboxRating = normalizeXboxRating({
+    averageRating: pageRating ?? allTimeRating?.AverageRating,
+    total: allTimeRating?.RatingCount || allTimeRating?.TotalRatings || allTimeRating?.UsersRated,
+  });
 
   return {
     intro,
     platformReleases: getXboxReleaseData(product),
-    score: pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
+    score: xboxRating?.score ? Number(xboxRating.score) : pageRating ?? (allTimeRating?.AverageRating ? Number(allTimeRating.AverageRating) : null),
     sourceTitle: localized.ProductTitle || selected.Title || "",
+    xboxRating: xboxRating ?? null,
   };
 }
 
@@ -1413,6 +1423,21 @@ function normalizeSteamRating(value) {
   };
 }
 
+function normalizeXboxRating(value) {
+  if (!value || typeof value !== "object") return undefined;
+  const totalValue = value.total ?? value.ratingCount ?? value.RatingCount ?? value.TotalRatings ?? value.UsersRated;
+  const total = Number(totalValue);
+  const score = normalizeScore5(value.score ?? value.averageRating ?? value.AverageRating);
+
+  if (score === null && !Number.isFinite(total)) return undefined;
+
+  return {
+    total: Number.isFinite(total) ? String(Math.max(0, Math.round(total))) : "",
+    score: score === null ? "" : score.toFixed(2),
+    count: [],
+  };
+}
+
 function parseStarRatingValue(value) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -1509,6 +1534,7 @@ async function fetchXboxScores(title) {
   return {
     sourceTitle: data.sourceTitle,
     xboxScore: normalizeScore5(data.score),
+    xboxRating: data.xboxRating ?? null,
     platformReleases: data.platformReleases || [],
   };
 }
@@ -1545,6 +1571,7 @@ async function fetchAllStoreScores(title) {
     starRating: playStationData.starRating ?? null,
     steamRating: steamData.steamRating ?? null,
     steamScore: steamData.steamScore ?? null,
+    xboxRating: xboxData.xboxRating ?? null,
     xboxScore: xboxData.xboxScore ?? null,
   };
 }
@@ -2149,6 +2176,8 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.starRating !== undefined ? parseStarRatingValue(body.starRating) : undefined,
     steamRating:
       body.steamRating !== undefined ? parseStarRatingValue(body.steamRating) : undefined,
+    xboxRating:
+      body.xboxRating !== undefined ? parseStarRatingValue(body.xboxRating) : undefined,
     playstationTitleId:
       body.playstationTitleId !== undefined ? normalizePlayStationTitleId(body.playstationTitleId) : undefined,
     playstationNpCommunicationId:
