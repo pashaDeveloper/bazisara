@@ -415,7 +415,8 @@ const gameSchema = new mongoose.Schema(
 gameSchema.pre("save", async function (next) {
   try {
     if (!this.gameId) {
-      this.gameId = await nextPublicId("gameId", "GM");
+      const playStationProductId = String(this.playstationTitleId || "").trim().toUpperCase();
+      this.gameId = playStationProductId || (await nextPublicId("gameId", "GM"));
     }
 
     next();

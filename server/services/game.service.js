@@ -113,13 +113,17 @@ const populateGame = (query) =>
     .populate("filterDefinitions", "key label type options min max unit")
     .populate("filterValues.genres", "name icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
-    .populate("relatedGames", "gameId title slug cover")
+    .populate("relatedGames", "gameId playstationTitleId title slug cover")
     .populate("creator", "name email avatar role adminId");
 
 function gameIdentityFilter(id) {
   const value = String(id || "").trim();
   const filters = [];
   filters.push(...publicIdOrLegacyFilters("gameId", value, "GM"));
+  if (value) {
+    filters.push({ gameId: value.toUpperCase() });
+    filters.push({ playstationTitleId: value.toUpperCase() });
+  }
   if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
   if (filters.length > 1) return { $or: filters };
   if (filters.length === 1) return filters[0];
@@ -2152,6 +2156,10 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
   };
+
+  if (payload.playstationTitleId) {
+    payload.gameId = payload.playstationTitleId;
+  }
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;

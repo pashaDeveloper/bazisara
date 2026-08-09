@@ -49,6 +49,7 @@ export type NamedEntity = {
 export type Game = {
   _id: string;
   gameId?: string;
+  playstationTitleId?: string;
   title: string;
   slug?: string;
   shortDescription?: string;
@@ -249,8 +250,8 @@ export async function getApiItem<T>(path: string, id: string) {
   }
 }
 
-export function gameRouteId(game: Pick<Game, "_id" | "gameId">) {
-  return game.gameId ? String(game.gameId) : game._id;
+export function gameRouteId(game: Pick<Game, "_id" | "gameId" | "playstationTitleId">) {
+  return game.playstationTitleId ? String(game.playstationTitleId) : game.gameId ? String(game.gameId) : game._id;
 }
 
 export function articleRouteId(article: Pick<Article, "_id" | "magazineId">) {

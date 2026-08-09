@@ -365,7 +365,7 @@ function populateArticle(query) {
     .populate("creator", "name email avatar")
     .populate("tags", "name slug")
     .populate("platforms", "name name_fa name_en slug image")
-    .populate("relatedGames", "gameId title slug cover");
+    .populate("relatedGames", "gameId playstationTitleId title slug cover");
 }
 
 function articleIdentityFilter(id) {
