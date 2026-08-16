@@ -2,7 +2,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
-const { generateBlurHash, getResourceType, makeBlurPreview, makeImageVariant, prepareFile } = require("../utils/uploadFile.util");
+const { getResourceType, makeBlurPreview, makeImageVariant, prepareFile } = require("../utils/uploadFile.util");
 
 const uploadRoot = path.join(__dirname, "..", "uploads");
 
@@ -64,7 +64,6 @@ const uploadLocal = (customFolder = null) => {
             const prepareOptions = getPrepareOptions(customFolder, field);
             const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const filename = `${hashedName}.${extension}`;
-            const blurHash = await generateBlurHash(file, extension);
             const blurFile = await makeBlurPreview(file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, { fit: "cover", resizeHeight: 640, resizeWidth: 640 })
@@ -96,11 +95,13 @@ const uploadLocal = (customFolder = null) => {
               url: `${getBaseUrl(req)}/uploads/${publicPath}`,
               public_id: publicId,
               key: publicId,
-              blur: blurHash
+              blur: blurFile
                 ? {
-                    hash: blurHash.hash,
-                    width: blurHash.width,
-                    height: blurHash.height,
+                    hash: "",
+                    width: blurFile.width,
+                    height: blurFile.height,
+                    quality: blurFile.quality,
+                    blurAmount: blurFile.blurAmount,
                     url: blurFile ? `${getBaseUrl(req)}/uploads/${blurPublicPath}` : "",
                     public_id: blurPublicId,
                   }

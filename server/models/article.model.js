@@ -10,6 +10,8 @@ const mediaSchema = new mongoose.Schema(
       url: { type: String, default: "" },
       width: { type: Number, default: null },
       height: { type: Number, default: null },
+      quality: { type: Number, default: null },
+      blurAmount: { type: Number, default: null },
     },
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
@@ -133,7 +135,7 @@ const magazineSchema = new mongoose.Schema(
 magazineSchema.pre("save", async function (next) {
   try {
     if (!this.magazineId) {
-      this.magazineId = await nextPublicId("magazineId", "MG");
+      this.magazineId = await nextPublicId("magazineId", "MAG");
     }
 
     next();

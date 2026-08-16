@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Article, Game, Media } from "../lib/api";
-import { articleRouteId, gameRouteId, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../lib/api";
+import { articleRouteId, gameRouteId, mediaBlurUrl, mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
 import { DashboardCardSkeleton } from "./cards";
 import { BlurImage } from "./blur-image";
@@ -89,7 +89,7 @@ function ContentCard({
     >
       <div className="relative aspect-square overflow-hidden rounded-xl">
         {image ? (
-          <BlurImage alt={title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <div className="h-full w-full animate-pulse rounded-xl bg-zinc-800/20" />
         )}
@@ -220,7 +220,7 @@ function ArticleListCard({ article }: { article: Article }) {
     >
       <div className="relative h-[96px] w-[96px] overflow-hidden rounded-[1.2rem] border border-[#e1e7f1] bg-white lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]">
         {image ? (
-          <BlurImage alt={article.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={article.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <div className="h-full w-full animate-pulse rounded-[1.7rem] bg-zinc-100" />
         )}

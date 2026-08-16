@@ -82,6 +82,7 @@ export const gameModeOptions = [
 ];
 
 export const dlcTypeOptions = [
+  { label: "DLC - محتوای اضافه", value: "dlc" },
   { label: "Story - داستانی", value: "story" },
   { label: "Item - آیتم", value: "item" },
   { label: "Map - نقشه", value: "map" },

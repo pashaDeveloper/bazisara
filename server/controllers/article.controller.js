@@ -16,6 +16,10 @@ exports.generateArticleSlug = async (req, res) => {
   await articleService.generateArticleSlug(req, res);
 };
 
+exports.reserveArticleUploadId = async (req, res) => {
+  await articleService.reserveArticleUploadId(req, res);
+};
+
 exports.updateArticle = async (req, res) => {
   await articleService.updateArticle(req, res);
 };

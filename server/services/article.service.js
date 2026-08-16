@@ -7,7 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
-const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
+const { nextPublicId, publicIdOrLegacyFilters, publicIdPattern } = require("../utils/publicId.util");
 
 function makeSlug(value, { allowPersian = true } = {}) {
   const invalidCharsPattern = allowPersian ? /[^a-z0-9\u0600-\u06ff-]+/g : /[^a-z0-9-]+/g;
@@ -292,6 +292,10 @@ function normalizeArticlePayload(body, uploadedFiles) {
   const slugSource = body.slug !== undefined ? body.slug : title;
   const payload = {
     title,
+    magazineId:
+      body.magazineId !== undefined && publicIdPattern("MAG").test(String(body.magazineId).trim())
+        ? String(body.magazineId).trim().toUpperCase()
+        : undefined,
     slug: slugSource !== undefined ? makeSlug(slugSource) : undefined,
     excerpt: body.excerpt !== undefined ? String(body.excerpt).trim() : undefined,
     content: body.content !== undefined ? String(body.content) : undefined,
@@ -371,12 +375,24 @@ function populateArticle(query) {
 function articleIdentityFilter(id) {
   const value = String(id || "").trim();
   const filters = [];
+  filters.push(...publicIdOrLegacyFilters("magazineId", value, "MAG"));
   filters.push(...publicIdOrLegacyFilters("magazineId", value, "MG"));
   if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
   if (filters.length > 1) return { $or: filters };
   if (filters.length === 1) return filters[0];
   return null;
 }
+
+exports.reserveArticleUploadId = async (req, res) => {
+  const magazineId = await nextPublicId("magazineId", "MAG");
+
+  res.status(200).json({
+    acknowledgement: true,
+    message: "OK",
+    description: "کد مجله برای آپلود رزرو شد",
+    data: { magazineId },
+  });
+};
 
 exports.generateArticleSlug = async (req, res) => {
   const title = String(req.body?.title || "").trim();
@@ -432,6 +448,14 @@ exports.createArticle = async (req, res) => {
       acknowledgement: false,
       message: "Conflict",
       description: "این اسلاگ قبلا برای مجله دیگری ثبت شده است",
+    });
+  }
+
+  if (payload.magazineId && (await Article.exists({ magazineId: payload.magazineId }))) {
+    return res.status(409).json({
+      acknowledgement: false,
+      message: "Conflict",
+      description: "این کد مجله قبلا استفاده شده است",
     });
   }
 

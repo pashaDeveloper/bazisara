@@ -38,40 +38,45 @@ function UploadOverlay({ state }) {
 
 function normalizeBlurValue(value) {
   if (!value || typeof value !== "object") {
-    return { hash: "", height: "", public_id: "", url: "", width: "" };
+    return { blurAmount: "", hash: "", height: "", public_id: "", quality: "", url: "", width: "" };
   }
 
   return {
+    blurAmount: value.blurAmount ?? "",
     hash: value.hash || "",
     height: value.height ?? "",
     public_id: value.public_id || "",
+    quality: value.quality ?? "",
     url: value.url || "",
     width: value.width ?? "",
   };
 }
 
-function BlurHashControl({ blurValue, onChange }) {
+function BlurPreviewControl({ blurValue, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const value = normalizeBlurValue(blurValue);
 
   const update = (field, nextValue) => {
     const next = { ...value, [field]: nextValue };
     onChange?.({
-      hash: String(next.hash || "").trim(),
+      hash: "",
+      blurAmount: next.blurAmount === "" ? null : Number(next.blurAmount),
       height: next.height === "" ? null : Number(next.height),
       public_id: String(next.public_id || "").trim(),
+      quality: next.quality === "" ? null : Number(next.quality),
       url: String(next.url || "").trim(),
       width: next.width === "" ? null : Number(next.width),
     });
   };
+  const previewBlurAmount = Number.isFinite(Number(value.blurAmount)) ? Number(value.blurAmount) : 12;
 
   return (
     <>
       <button
-        aria-label="نمایش و تنظیم BlurHash"
+        aria-label="نمایش و تنظیم نسخه کم‌کیفیت"
         className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-sm font-black text-amber-700 shadow-sm transition hover:border-amber-500 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300"
         onClick={() => setIsOpen(true)}
-        title="نمایش و تنظیم BlurHash"
+        title="نمایش و تنظیم نسخه کم‌کیفیت"
         type="button"
       >
         !
@@ -80,16 +85,12 @@ function BlurHashControl({ blurValue, onChange }) {
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 px-4" role="dialog" aria-modal="true" onClick={() => setIsOpen(false)}>
           <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between gap-3">
-              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">BlurHash / نسخه بلور</span>
+              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">نسخه کم‌کیفیت تصویر</span>
               <button className="rounded-lg border border-zinc-200 px-3 py-1 text-xs text-zinc-600 transition hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-300" onClick={() => setIsOpen(false)} type="button">
                 بستن
               </button>
             </div>
             <div className="space-y-3">
-              <label className="space-y-1">
-                <span className="text-xs text-zinc-500">Hash</span>
-                <input className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-500 dark:border-zinc-800 dark:bg-black dark:text-white" dir="ltr" onChange={(event) => update("hash", event.target.value)} value={value.hash} />
-              </label>
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Blur URL</span>
                 <input className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-500 dark:border-zinc-800 dark:bg-black dark:text-white" dir="ltr" onChange={(event) => update("url", event.target.value)} value={value.url} />
@@ -104,9 +105,31 @@ function BlurHashControl({ blurValue, onChange }) {
                   <input className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-500 dark:border-zinc-800 dark:bg-black dark:text-white" min="0" onChange={(event) => update("height", event.target.value)} type="number" value={value.height} />
                 </label>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-500">Quality</span>
+                  <input className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-500 dark:border-zinc-800 dark:bg-black dark:text-white" max="100" min="1" onChange={(event) => update("quality", event.target.value)} type="number" value={value.quality} />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-500">Blur px</span>
+                  <input className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-500 dark:border-zinc-800 dark:bg-black dark:text-white" max="40" min="0" onChange={(event) => update("blurAmount", event.target.value)} type="number" value={value.blurAmount} />
+                </label>
+              </div>
               {value.url ? (
-                <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
-                  <img alt="BlurHash" className="h-24 w-full object-cover" src={value.url} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
+                    <div className="border-b border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">فایل 64px</div>
+                    <img alt="نسخه کم‌کیفیت" className="h-28 w-full object-cover" src={value.url} />
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
+                    <div className="border-b border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">نمایش در سایت</div>
+                    <img
+                      alt="پیش‌نمایش بلور"
+                      className="h-28 w-full scale-110 object-cover"
+                      src={value.url}
+                      style={{ filter: `blur(${previewBlurAmount}px)` }}
+                    />
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -177,7 +200,7 @@ function ThumbnailUpload({
       try {
         const resolvedUploadOptions =
           typeof immediateUploadOptions === "function"
-            ? immediateUploadOptions(file)
+            ? await immediateUploadOptions(file)
             : immediateUploadOptions;
         const response = await uploadImageWithProgress(file, (progress) => {
           setInternalUploadState((prev) => ({
@@ -356,7 +379,7 @@ function ThumbnailUpload({
             type="file"
           />
         </label>
-        {typeof onBlurChange === "function" ? <BlurHashControl blurValue={blurValue} onChange={onBlurChange} /> : null}
+        {typeof onBlurChange === "function" ? <BlurPreviewControl blurValue={blurValue} onChange={onBlurChange} /> : null}
       </div>
 
       {showPreview ? (

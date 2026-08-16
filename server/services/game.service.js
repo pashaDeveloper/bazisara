@@ -105,6 +105,7 @@ const populateGame = (query) =>
     .populate("platforms", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("platformReleases.platform", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("platformSizes.platform", "name slug parent image fontFile svgIcon")
+    .populate("platformDownloadLinks.platform", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("extraEditions.items.platform", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
@@ -291,6 +292,190 @@ function mergePlatformReleaseData(...groups) {
   });
 
   return releases;
+}
+
+function normalizePsxHubVersion(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const number = Number(raw);
+  if (!Number.isFinite(number)) return raw;
+  if (number >= 1000000) {
+    const major = Math.floor(number / 1000000);
+    const rest = String(number % 1000000).padStart(6, "0");
+    return `${String(major).padStart(2, "0")}.${rest.slice(0, 3)}.${rest.slice(3)}`;
+  }
+  if (number >= 100) {
+    return `${Math.floor(number / 100)}.${String(number % 100).padStart(2, "0")}`;
+  }
+  return raw;
+}
+
+function normalizeDownloadParts(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((part) => {
+      const partNumber = Number(part?.partNumber);
+      return {
+        externalId: String(part?.externalId || part?.id || "").trim(),
+        partNumber: Number.isFinite(partNumber) ? partNumber : null,
+        fileName: String(part?.fileName || "").trim(),
+        contentType: String(part?.contentType || part?.type || "").trim(),
+        size: String(part?.size ?? part?.fileSize ?? "").trim(),
+        hash: String(part?.hash || "").trim(),
+        url: String(part?.url || part?.downloadUrl || part?.link || "").trim(),
+      };
+    })
+    .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size);
+}
+
+function getDownloadPartsTotalSize(parts, fallbackSize = "") {
+  const total = (Array.isArray(parts) ? parts : []).reduce((sum, part) => {
+    const value = Number(part?.size);
+    return Number.isFinite(value) ? sum + value : sum;
+  }, 0);
+
+  return total ? String(total) : String(fallbackSize || "").trim();
+}
+
+function makeMediaFromUrl(url, alt = "") {
+  const imageUrl = String(url || "").trim();
+  if (!imageUrl) return "";
+
+  return {
+    alt: String(alt || "").trim(),
+    type: "image",
+    url: imageUrl,
+  };
+}
+
+function normalizePsxHubDlcs(games) {
+  const seen = new Set();
+  return (Array.isArray(games) ? games : [])
+    .flatMap((game) =>
+      (Array.isArray(game?.dlcList) ? game.dlcList : []).map((dlc) => ({
+        ...dlc,
+        parentConsole: game?.console || game?.consoleTitle || "",
+        parentRegion: game?.region || game?.piecesRegion || "",
+        parentTitleId: game?.gameTitle || "",
+      }))
+    )
+    .map((dlc) => {
+      const parts = normalizeDownloadParts(dlc?.pieces || dlc?.latestVersionPieces || dlc?.downloadPieces);
+      const title = String(dlc?.title || "").trim();
+      const key = String(dlc?.id || title || parts[0]?.url || "").trim();
+      if (!key || seen.has(key)) return null;
+      seen.add(key);
+
+      const contentType = parts.find((part) => part.contentType)?.contentType || "Dlc";
+      const type = String(contentType).toLowerCase() === "dlc" ? "dlc" : contentType;
+      const size = getDownloadPartsTotalSize(parts, dlc?.totalPiecesSize || dlc?.versionSize || dlc?.size);
+      const version = normalizePsxHubVersion(dlc?.latestVersion || dlc?.version);
+
+      return {
+        externalId: dlc?.id ?? null,
+        image: makeMediaFromUrl(dlc?.image, title),
+        parts,
+        platformKey: String(dlc?.parentConsole || "").trim().toUpperCase(),
+        region: String(dlc?.parentRegion || "").trim(),
+        title,
+        titleId: String(dlc?.parentTitleId || "").trim().toUpperCase(),
+        type,
+        version,
+        versionSize: [version ? `v${version}` : "", size ? `${size} MB` : ""].filter(Boolean).join(" - "),
+      };
+    })
+    .filter(Boolean);
+}
+
+function getPsxHubGameList(data) {
+  return Array.isArray(data?.games)
+    ? data.games
+    : Array.isArray(data?.gameList)
+      ? data.gameList
+      : [];
+}
+
+function getPsxHubCandidateGroups(data) {
+  const root = data?.data || data;
+  if (Array.isArray(root)) return root;
+
+  const arrays = [root?.results, root?.items, root?.matches, root?.gameGroups, root?.groups].filter(Array.isArray);
+  if (arrays[0]) return arrays[0];
+
+  const rootGames = Array.isArray(root?.games) ? root.games : [];
+  const gamesLookLikeGroups = rootGames.some((item) =>
+    Array.isArray(item?.games) ||
+    Array.isArray(item?.gameList) ||
+    Array.isArray(item?.items) ||
+    Array.isArray(item?.results)
+  );
+  if (gamesLookLikeGroups) return rootGames;
+
+  return [root];
+}
+
+function makePsxHubSourceUrl(title) {
+  return `https://psxhub.ir/api/GetGame/GetGameGroupWithPieces/${encodeURIComponent(title)}`;
+}
+
+function normalizePsxHubGroup(data, safeTitle, sourceUrl, index = 0) {
+  const gameList = getPsxHubGameList(data);
+  const rows = gameList
+    .map((item) => {
+      const updateParts = normalizeDownloadParts(item?.latestVersionPieces || item?.pieces || item?.downloadPieces);
+      const baseParts = normalizeDownloadParts(item?.ps4BasePieces || item?.basePieces);
+      const parts = [...baseParts, ...updateParts];
+      const consoleTitle = String(item?.consoleTitle || item?.console || "").trim();
+      const size = getDownloadPartsTotalSize(parts, item?.totalLatestVersionPiecesSize || item?.totalPs4BasePiecesSize || item?.size || item?.fileSize || item?.versionSize);
+
+      return {
+        externalId: item?.id ?? null,
+        image: String(item?.image || data?.image || "").trim(),
+        platformKey: consoleTitle.toUpperCase(),
+        platformTitle: consoleTitle,
+        region: String(item?.region || item?.piecesRegion || "").trim(),
+        size,
+        sourceTitle: String(item?.title || data?.title || safeTitle).trim(),
+        sourceUrl,
+        titleId: String(item?.gameTitle || "").trim().toUpperCase(),
+        version: normalizePsxHubVersion(item?.latestVersion || item?.version),
+        downloadUrl: String(item?.downloadUrl || item?.url || parts[0]?.url || "").trim(),
+        notes: String(item?.description || item?.notes || data?.description || "").trim(),
+        parts,
+      };
+    })
+    .filter((item) => item.platformTitle || item.titleId || item.version || item.downloadUrl || item.parts.length);
+
+  return {
+    externalId: data?.id ?? data?.gameId ?? null,
+    fixedTitle: String(data?.fixedTitle || data?.title || safeTitle).trim(),
+    image: String(data?.image || "").trim(),
+    index,
+    sourceUrl,
+    title: String(data?.title || safeTitle).trim(),
+    dlcs: normalizePsxHubDlcs(gameList),
+    downloads: rows,
+  };
+}
+
+async function fetchPsxHubDownloads(title) {
+  const safeTitle = String(title || "").trim();
+  if (!safeTitle) throw makeServiceError("Game title is required", 400, "PSXHUB_TITLE_REQUIRED");
+
+  const url = makePsxHubSourceUrl(safeTitle);
+  const { data } = await axios.get(url, {
+    headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0" },
+    timeout: 20000,
+  });
+
+  const matches = getPsxHubCandidateGroups(data)
+    .map((item, index) => normalizePsxHubGroup(item, safeTitle, url, index))
+    .filter((item) => item.title || item.fixedTitle || item.downloads.length || item.dlcs.length);
+  const selected = matches[0] || normalizePsxHubGroup(data, safeTitle, url, 0);
+
+  return {
+    ...selected,
+    matches,
+  };
 }
 
 function getPlayStationReleaseData(detail) {
@@ -2135,6 +2320,23 @@ function normalizePayload(body, uploadedFiles, currentGame) {
             size: String(item?.size || "").trim(),
           }))
         : undefined,
+    platformDownloadLinks:
+      body.platformDownloadLinks !== undefined
+        ? parseObjectArray(body.platformDownloadLinks, (item) => ({
+            platform: String(item?.platform || "").trim() || null,
+            platformTitle: String(item?.platformTitle || "").trim(),
+            platformDescription: String(item?.platformDescription || "").trim(),
+            titleId: String(item?.titleId || item?.gameTitle || "").trim().toUpperCase(),
+            region: String(item?.region || "").trim().toUpperCase(),
+            regionDescription: String(item?.regionDescription || "").trim(),
+            version: String(item?.version || "").trim(),
+            size: String(item?.size || "").trim(),
+            downloadUrl: String(item?.downloadUrl || item?.url || item?.link || "").trim(),
+            sourceUrl: String(item?.sourceUrl || "").trim(),
+            notes: String(item?.notes || "").trim(),
+            parts: normalizeDownloadParts(item?.parts),
+          }))
+        : undefined,
     platformReleases:
       body.platformReleases !== undefined
         ? parseObjectArray(body.platformReleases, (item) => ({
@@ -2253,6 +2455,13 @@ async function validatePayload(payload) {
     await ensureExists(
       Platform,
       payload.platformSizes.map((item) => item.platform).filter(Boolean),
+      "Platform"
+    );
+  }
+  if (payload.platformDownloadLinks !== undefined) {
+    await ensureExists(
+      Platform,
+      payload.platformDownloadLinks.map((item) => item.platform).filter(Boolean),
       "Platform"
     );
   }
@@ -2421,6 +2630,37 @@ exports.importScores = async (req, res) => {
           : source === "xbox"
             ? "دریافت امتیاز از Xbox انجام نشد"
             : "دریافت امتیاز انجام نشد",
+    });
+  }
+};
+
+exports.importPsxHubDownloads = async (req, res) => {
+  const title = String(req.body?.title || req.query?.title || "").trim();
+
+  if (!title) {
+    return res.status(400).json({
+      acknowledgement: false,
+      message: "Bad Request",
+      description: "عنوان بازی برای دریافت لینک‌های دانلود الزامی است",
+    });
+  }
+
+  try {
+    const data = await fetchPsxHubDownloads(title);
+
+    res.status(200).json({
+      acknowledgement: true,
+      message: "OK",
+      description: data.downloads.length
+        ? "اطلاعات دانلود از PSXHub دریافت شد"
+        : "برای این عنوان اطلاعات دانلودی پیدا نشد",
+      data,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 502).json({
+      acknowledgement: false,
+      message: "PSXHub Import Failed",
+      description: "دریافت اطلاعات دانلود از PSXHub انجام نشد",
     });
   }
 };

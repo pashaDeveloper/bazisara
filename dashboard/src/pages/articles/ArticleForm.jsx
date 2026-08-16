@@ -23,7 +23,7 @@ import { useGetGamesQuery } from "@/services/gameApi";
 import { useGetPlatformsQuery } from "@/services/platformApi";
 import { useGetIconsQuery } from "@/services/iconApi";
 import { useCreateTagMutation, useGetTagsQuery } from "@/services/tagApi";
-import { useCreateArticleMutation, useGenerateArticleSlugMutation, useGetArticleQuery, useUpdateArticleMutation } from "@/services/articleApi";
+import { useCreateArticleMutation, useGenerateArticleSlugMutation, useGetArticleQuery, useReserveArticleUploadIdMutation, useUpdateArticleMutation } from "@/services/articleApi";
 import { getUploadErrorMessage, normalizeUploadedMedia, uploadImageWithProgress } from "@/utils/immediateUpload";
 
 function getTodayDateInput() {
@@ -35,6 +35,7 @@ function getTodayDateInput() {
 }
 
 const initialForm = {
+  magazineId: "",
   title: "",
   slug: "",
   excerpt: "",
@@ -164,6 +165,7 @@ function isMediaObject(value) {
 
 function ArticleImagePicker({
   blurValue,
+  getEntityName,
   field,
   label,
   onChange,
@@ -182,12 +184,14 @@ function ArticleImagePicker({
       <ThumbnailUpload
         blurValue={blurValue}
         immediateUpload
-        immediateUploadOptions={{
+        immediateUploadOptions={async () => ({
+          entityName: await getEntityName?.(),
           entityType: "magazines",
+          requireEntityName: true,
           resizeFit: "cover",
           resizeHeight,
           resizeWidth,
-        }}
+        })}
         name={field}
         onRemove={() => onChange(deletedMediaValue)}
         profilePreview
@@ -262,7 +266,7 @@ function splitFaqAnswerMedia(answer, existingMedia = []) {
   return { answer: cleanAnswer, media };
 }
 
-function FaqRowsEditor({ items = [], onChange }) {
+function FaqRowsEditor({ getEntityName, items = [], onChange }) {
   const rows = Array.isArray(items) && items.length ? items : [{ question: "", answer: "", media: [] }];
   const [uploadingIndex, setUploadingIndex] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
@@ -304,7 +308,11 @@ function FaqRowsEditor({ items = [], onChange }) {
     try {
       const mediaItems = [];
       for (const file of files) {
-        const response = await uploadImageWithProgress(file, null, { entityType: "magazines" });
+        const response = await uploadImageWithProgress(file, null, {
+          entityName: await getEntityName?.(),
+          entityType: "magazines",
+          requireEntityName: true,
+        });
         const media = normalizeUploadedMedia(response, getFaqMediaType(file));
         if (media?.url) mediaItems.push({ ...media, type: getFaqMediaType(file, media) });
       }
@@ -451,6 +459,7 @@ function ArticleForm({ mode = "create" }) {
   const [quickCreate, setQuickCreate] = useState(null);
   const [quickCreateForm, setQuickCreateForm] = useState(quickCreateInitialValues);
   const [quickCreateImagePreview, setQuickCreateImagePreview] = useState("");
+  const [articleUploadCode, setArticleUploadCode] = useState("");
   const slugManuallyEditedRef = useRef(isEdit);
 
   const { data: articleData, isLoading: isLoadingArticle } = useGetArticleQuery(id, { skip: !isEdit || !id });
@@ -463,6 +472,7 @@ function ArticleForm({ mode = "create" }) {
   const [createCategory, createCategoryState] = useCreateCategoryMutation();
   const [createTag, createTagState] = useCreateTagMutation();
   const [generateArticleSlug, generateSlugState] = useGenerateArticleSlugMutation();
+  const [reserveArticleUploadId] = useReserveArticleUploadIdMutation();
   const [updateArticle, updateState] = useUpdateArticleMutation();
 
   const categories = categoriesData?.data || [];
@@ -489,12 +499,26 @@ function ArticleForm({ mode = "create" }) {
     [form.relatedGames, games]
   );
 
+  const ensureArticleUploadCode = async () => {
+    const existingCode = String(articleUploadCode || form.magazineId || "").trim();
+    if (existingCode) return existingCode;
+
+    const response = await reserveArticleUploadId().unwrap();
+    const magazineId = String(response?.data?.magazineId || "").trim();
+    if (!magazineId) throw new Error("Magazine upload code was not returned");
+
+    setArticleUploadCode(magazineId);
+    setForm((prev) => ({ ...prev, magazineId }));
+    return magazineId;
+  };
+
   useEffect(() => {
     const article = articleData?.data;
     if (!article) return;
 
     setForm({
       ...initialForm,
+      magazineId: article.magazineId || "",
       title: article.title || "",
       slug: article.slug || "",
       excerpt: article.excerpt || "",
@@ -521,6 +545,7 @@ function ArticleForm({ mode = "create" }) {
     setCoverPreview(article.cover?.url || "");
     setCardCoverPreview(article.cardCover?.url || article.cover?.url || "");
     setContentCoverPreview(article.contentCover?.url || article.cover?.url || "");
+    setArticleUploadCode(article.magazineId || "");
     setSlugManuallyEdited(true);
     slugManuallyEditedRef.current = true;
   }, [articleData]);
@@ -730,7 +755,7 @@ function ArticleForm({ mode = "create" }) {
     const formData = new FormData();
     const activeAuthor = activeAdmin.name || activeAdmin.email || form.author || "";
 
-    Object.entries({ ...form, author: activeAuthor }).forEach(([key, value]) => {
+    Object.entries({ ...form, magazineId: articleUploadCode || form.magazineId, author: activeAuthor }).forEach(([key, value]) => {
       if (key === "cover" || key === "cardCover" || key === "contentCover") {
         if (value instanceof File) formData.append(key, value);
         else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
@@ -803,6 +828,7 @@ function ArticleForm({ mode = "create" }) {
             <div className="grid gap-4 lg:grid-cols-2">
               <ArticleImagePicker
                 blurValue={form.cardCover?.blur}
+                getEntityName={ensureArticleUploadCode}
                 field="cardCover"
                 label="تصویر کارت"
                 onChange={(media) => setForm((prev) => ({ ...prev, cardCover: media }))}
@@ -814,6 +840,7 @@ function ArticleForm({ mode = "create" }) {
               />
               <ArticleImagePicker
                 blurValue={form.contentCover?.blur}
+                getEntityName={ensureArticleUploadCode}
                 field="contentCover"
                 label="تصویر جزئیات مجله"
                 onChange={(media) => setForm((prev) => ({ ...prev, contentCover: media }))}
@@ -837,7 +864,7 @@ function ArticleForm({ mode = "create" }) {
           </div>
         );
       case "faqs":
-        return <FaqRowsEditor items={form.faqs} onChange={(value) => setArrayField("faqs", value)} />;
+        return <FaqRowsEditor getEntityName={ensureArticleUploadCode} items={form.faqs} onChange={(value) => setArrayField("faqs", value)} />;
       case "relations": {
         return (
           <div className="space-y-4">

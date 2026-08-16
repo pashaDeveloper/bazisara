@@ -17,6 +17,8 @@ export type Media = {
     url?: string;
     width?: number | null;
     height?: number | null;
+    quality?: number | null;
+    blurAmount?: number | null;
   };
   mobile?: {
     url?: string;
@@ -196,11 +198,6 @@ export function mediaUrl(media?: Media | string | null) {
 export function mediaBlurUrl(media?: Media | string | null) {
   if (!media || typeof media === "string") return "";
   return mediaUrl(media.blur?.url || "");
-}
-
-export function mediaBlurHash(media?: Media | string | null) {
-  if (!media || typeof media === "string") return "";
-  return media.blur?.hash || "";
 }
 
 export function mediaMobileUrl(media?: Media | string | null) {

@@ -11,6 +11,8 @@ const mediaSchema = new mongoose.Schema(
       url: { type: String, default: "" },
       width: { type: Number, default: null },
       height: { type: Number, default: null },
+      quality: { type: Number, default: null },
+      blurAmount: { type: Number, default: null },
     },
     mobile: {
       url: { type: String, default: "" },
@@ -69,6 +71,37 @@ const platformSizeSchema = new mongoose.Schema(
     platform: { type: ObjectId, ref: "Platform", default: null },
     variant: { type: String, trim: true, default: "" },
     size: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const downloadPartSchema = new mongoose.Schema(
+  {
+    externalId: { type: String, trim: true, default: "" },
+    partNumber: { type: Number, default: null },
+    fileName: { type: String, trim: true, default: "" },
+    contentType: { type: String, trim: true, default: "" },
+    size: { type: String, trim: true, default: "" },
+    hash: { type: String, trim: true, default: "" },
+    url: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const platformDownloadLinkSchema = new mongoose.Schema(
+  {
+    platform: { type: ObjectId, ref: "Platform", default: null },
+    platformTitle: { type: String, trim: true, default: "" },
+    platformDescription: { type: String, trim: true, default: "" },
+    titleId: { type: String, trim: true, default: "" },
+    region: { type: String, trim: true, default: "" },
+    regionDescription: { type: String, trim: true, default: "" },
+    version: { type: String, trim: true, default: "" },
+    size: { type: String, trim: true, default: "" },
+    downloadUrl: { type: String, trim: true, default: "" },
+    sourceUrl: { type: String, trim: true, default: "" },
+    notes: { type: String, trim: true, default: "" },
+    parts: [downloadPartSchema],
   },
   { _id: false }
 );
@@ -245,6 +278,7 @@ const gameSchema = new mongoose.Schema(
     platforms: [{ type: ObjectId, ref: "Platform" }],
     platformReleases: [platformReleaseSchema],
     platformSizes: [platformSizeSchema],
+    platformDownloadLinks: [platformDownloadLinkSchema],
     gameModes: [{ type: String, trim: true }],
     offlinePlayers: [offlinePlayerSchema],
     onlinePlayers: [{ type: String, trim: true }],

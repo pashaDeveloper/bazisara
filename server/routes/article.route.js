@@ -22,6 +22,7 @@ router.get("/all", optionalVerifyAdmin, articleController.getArticles);
 router.get("/:id", optionalVerifyAdmin, articleController.getArticle);
 
 router.post("/slug", ...articleAccess, articleController.generateArticleSlug);
+router.post("/reserve-upload-id", ...articleAccess, articleController.reserveArticleUploadId);
 
 registerStoragePost(
   router,

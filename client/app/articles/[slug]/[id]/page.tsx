@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { BlurImage } from "../../../components/blur-image";
 import { SkeletonBlock } from "../../../components/cards";
 import type { Article, Game, NamedEntity } from "../../../lib/api";
-import { formatPersianDate, getApiItem, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../../../lib/api";
+import { formatPersianDate, getApiItem, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -121,7 +121,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-right text-[12px] font-bold text-zinc-600">
                   <div className="flex items-center gap-2">
                     {authorImage ? (
-                      <BlurImage alt={authorName} blurHash={mediaBlurHash(authorAvatar)} blurSrc={mediaBlurUrl(authorAvatar)} className="h-10 w-10 rounded-full" src={authorImage} />
+                      <BlurImage alt={authorName} blurSrc={mediaBlurUrl(authorAvatar)} className="h-10 w-10 rounded-full" src={authorImage} />
                     ) : (
                       <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-900 text-center text-base font-black leading-10 text-white">
                         {authorName.slice(0, 1)}
@@ -155,7 +155,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               <div className="relative">
                 <div className="overflow-hidden bg-zinc-900">
                   {image ? (
-                    <BlurImage alt={article.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="aspect-[16/10] w-full" src={image} />
+                    <BlurImage alt={article.title} blurSrc={mediaBlurUrl(heroMedia)} className="aspect-[16/10] w-full" src={image} />
                   ) : (
                     <SkeletonBlock className="aspect-[16/10] w-full rounded-none bg-zinc-200" />
                   )}
@@ -221,7 +221,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                                 media?.type === "video" ? (
                                   <video className="w-full rounded-xl" controls key={`${media.url}-${mediaIndex}`} playsInline preload="metadata" src={mediaUrl(media)} />
                                 ) : (
-                                  <BlurImage alt="" blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="w-full rounded-xl aspect-[16/9]" key={`${media.url}-${mediaIndex}`} src={mediaUrl(media)} />
+                                  <BlurImage alt="" blurSrc={mediaBlurUrl(media)} className="w-full rounded-xl aspect-[16/9]" key={`${media.url}-${mediaIndex}`} src={mediaUrl(media)} />
                                 )
                               )}
                             </div>
@@ -273,7 +273,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   <div className="w-20 shrink-0 text-center" key={game?._id || index}>
                     <div className="mx-auto h-16 w-16 overflow-hidden rounded-full border-2 border-orange-500 bg-zinc-800">
                       {imageUrl ? (
-                        <BlurImage alt={label} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={imageUrl} />
+                        <BlurImage alt={label} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={imageUrl} />
                       ) : (
                         <SkeletonBlock className="h-full w-full rounded-none bg-zinc-200" />
                       )}

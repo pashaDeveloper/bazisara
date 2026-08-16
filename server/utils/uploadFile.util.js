@@ -1,6 +1,5 @@
 const crypto = require("crypto");
 const path = require("path");
-const { encode } = require("blurhash");
 const sharp = require("sharp");
 
 const imageContentTypes = {
@@ -14,6 +13,8 @@ const imageContentTypes = {
 
 const compressibleImageExtensions = new Set(["avif", "jpg", "jpeg", "jfif", "png", "webp"]);
 const resizeWebpQuality = 88;
+const blurPreviewQuality = 35;
+const blurPreviewDisplayAmount = 12;
 const compressionTargetRatio = 0.6;
 const compressionQualities = [92, 90, 88, 86, 84, 82, 80, 78];
 const defaultMaxImageDimension = 2560;
@@ -130,30 +131,6 @@ const shouldAutoResize = (metadata) => {
 
 const isAnimatedImage = (metadata) => metadata.pages && metadata.pages > 1;
 
-const generateBlurHash = async (file, extension) => {
-  if (!compressibleImageExtensions.has(extension)) {
-    return null;
-  }
-
-  const metadata = await sharp(file.buffer, { animated: true }).metadata();
-  if (isAnimatedImage(metadata)) {
-    return null;
-  }
-
-  const { data, info } = await sharp(file.buffer)
-    .rotate()
-    .raw()
-    .ensureAlpha()
-    .resize(160, 160, { fit: "inside" })
-    .toBuffer({ resolveWithObject: true });
-
-  return {
-    hash: encode(new Uint8ClampedArray(data), info.width, info.height, 8, 7),
-    height: info.height,
-    width: info.width,
-  };
-};
-
 const makeBlurPreview = async (file, extension) => {
   if (!compressibleImageExtensions.has(extension)) {
     return null;
@@ -164,7 +141,7 @@ const makeBlurPreview = async (file, extension) => {
     return null;
   }
 
-  const maxDimension = 72;
+  const maxDimension = 64;
   const ratio = Math.min(1, maxDimension / Math.max(metadata.width || maxDimension, metadata.height || maxDimension));
   const width = Math.max(1, Math.round((metadata.width || maxDimension) * ratio));
   const height = Math.max(1, Math.round((metadata.height || maxDimension) * ratio));
@@ -177,11 +154,10 @@ const makeBlurPreview = async (file, extension) => {
       width,
       withoutEnlargement: true,
     })
-    .blur(6)
     .webp({
-      alphaQuality: 80,
+      alphaQuality: 55,
       effort: 5,
-      quality: 52,
+      quality: blurPreviewQuality,
       smartSubsample: true,
     })
     .toBuffer();
@@ -191,6 +167,8 @@ const makeBlurPreview = async (file, extension) => {
     extension: "webp",
     fileBuffer,
     height,
+    quality: blurPreviewQuality,
+    blurAmount: blurPreviewDisplayAmount,
     width,
   };
 };
@@ -366,7 +344,6 @@ const getResourceType = (mimetype) => {
 
 module.exports = {
   getResourceType,
-  generateBlurHash,
   makeBlurPreview,
   makeImageVariant,
   makeObjectName,

@@ -32,6 +32,12 @@ export const articleApi = bazisaraApi.injectEndpoints({
         body: { title },
       }),
     }),
+    reserveArticleUploadId: builder.mutation({
+      query: () => ({
+        url: "/magazines/reserve-upload-id",
+        method: "POST",
+      }),
+    }),
     updateArticle: builder.mutation({
       query: ({ id, formData }) => ({
         url: `/magazines/${id}`,
@@ -56,6 +62,7 @@ export const {
   useGenerateArticleSlugMutation,
   useGetArticleQuery,
   useGetArticlesQuery,
+  useReserveArticleUploadIdMutation,
   useUpdateArticleMutation,
 } = articleApi;
 

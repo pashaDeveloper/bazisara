@@ -95,6 +95,13 @@ export const gameApi = bazisaraApi.injectEndpoints({
         body,
       }),
     }),
+    importPsxHubDownloads: builder.mutation({
+      query: (body) => ({
+        url: "/games/import-psxhub-downloads",
+        method: "POST",
+        body,
+      }),
+    }),
     fetchXboxAchievements: builder.mutation({
       query: (body) => ({
         url: "/games/xbox-achievements",
@@ -120,6 +127,7 @@ export const {
   useSuggestGamesQuery,
   useSuggestPlayStationGalleryQuery,
   useImportGameScoresMutation,
+  useImportPsxHubDownloadsMutation,
   useFetchXboxAchievementsMutation,
   useUpdateGameMutation,
   useDeleteGameMutation,

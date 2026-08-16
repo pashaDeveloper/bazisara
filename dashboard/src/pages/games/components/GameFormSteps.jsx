@@ -800,7 +800,29 @@ function ScoreDetailModal({ details, fallbackScore, isOpen, label, onChange, onC
   );
 }
 
-function ScoreInput({ details, label, max, min, name, onChange, onDetailsChange, step, value }) {
+function ScoreFetchButton({ isLoading, label, onClick }) {
+  return (
+    <button
+      aria-label={label}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-sm font-black text-amber-700 shadow-sm transition hover:border-amber-500 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-80 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300"
+      disabled={isLoading}
+      onClick={onClick}
+      title={label}
+      type="button"
+    >
+      {isLoading ? (
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-amber-700 dark:border-amber-900 dark:border-t-amber-300"
+        />
+      ) : (
+        "!"
+      )}
+    </button>
+  );
+}
+
+function ScoreInput({ actionButton = null, details, label, max, min, name, onChange, onDetailsChange, step, value }) {
   const [isOpen, setIsOpen] = React.useState(false);
   const handleDetailsChange = (nextDetails) => {
     onDetailsChange?.(nextDetails);
@@ -811,7 +833,14 @@ function ScoreInput({ details, label, max, min, name, onChange, onDetailsChange,
 
   return (
     <div className="space-y-2">
-      <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label={label} max={max} min={min} name={name} onChange={onChange} step={step} type="number" value={value} />
+      {actionButton ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_32px] items-end gap-2">
+          <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label={label} max={max} min={min} name={name} onChange={onChange} step={step} type="number" value={value} />
+          <div className="pb-1">{actionButton}</div>
+        </div>
+      ) : (
+        <TextField className={borderlessControlClass} iconClassName={borderlessIconClass} label={label} max={max} min={min} name={name} onChange={onChange} step={step} type="number" value={value} />
+      )}
       <button
         className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 transition hover:border-green-500 hover:text-green-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
         onClick={() => setIsOpen(true)}
@@ -1103,6 +1132,309 @@ function PlatformReleaseRowsEditor({ items = [], onChange, onCreatePlatform, pla
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+const platformBadgeClasses = [
+  "bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:ring-sky-900",
+  "bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:ring-emerald-900",
+  "bg-violet-100 text-violet-800 ring-violet-200 dark:bg-violet-950/60 dark:text-violet-200 dark:ring-violet-900",
+  "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900",
+];
+
+const regionBadgeClasses = [
+  "bg-rose-100 text-rose-800 ring-rose-200 dark:bg-rose-950/60 dark:text-rose-200 dark:ring-rose-900",
+  "bg-cyan-100 text-cyan-800 ring-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-200 dark:ring-cyan-900",
+  "bg-lime-100 text-lime-800 ring-lime-200 dark:bg-lime-950/60 dark:text-lime-200 dark:ring-lime-900",
+  "bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-200 dark:bg-fuchsia-950/60 dark:text-fuchsia-200 dark:ring-fuchsia-900",
+];
+
+function PlatformDownloadLinksEditor({
+  apiTitle = "",
+  importState,
+  items = [],
+  onApiTitleChange,
+  onApplyPsxHubMatch,
+  onChange,
+  onImportDownloads,
+  platformOptions,
+}) {
+  const hasLinkData = (item) =>
+    [
+      item.platform,
+      item.platformTitle,
+      item.platformDescription,
+      item.titleId,
+      item.region,
+      item.regionDescription,
+      item.version,
+      item.size,
+      item.downloadUrl,
+      item.notes,
+      ...(Array.isArray(item.parts) ? item.parts.map((part) => part?.url || part?.fileName || part?.hash || part?.contentType || part?.size) : []),
+    ].some((value) => String(value || "").trim());
+  const rows = (Array.isArray(items) ? items : []).filter(hasLinkData);
+  const [openPlatforms, setOpenPlatforms] = React.useState({});
+  const [openRegions, setOpenRegions] = React.useState({});
+  const savedRowsCount = rows.length;
+  const totalPartsCount = rows.reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
+
+  const getPlatformLabel = (item) =>
+    item.platformTitle ||
+    platformOptions.find((option) => option.value === item.platform)?.label ||
+    "بدون پلتفرم";
+
+  const groupedPlatforms = rows.reduce((groups, item) => {
+    const platformLabel = getPlatformLabel(item);
+    const platformKey = `${item.platform || ""}:${platformLabel}`;
+    if (!groups[platformKey]) groups[platformKey] = { label: platformLabel, rows: [] };
+    groups[platformKey].rows.push(item);
+    return groups;
+  }, {});
+
+  const togglePlatform = (key) => setOpenPlatforms((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleRegion = (key) => setOpenRegions((prev) => ({ ...prev, [key]: !prev[key] }));
+  const updateGroupedRows = (predicate, patch) => {
+    onChange?.((Array.isArray(items) ? items : []).map((item) => (predicate(item) ? { ...item, ...patch } : item)));
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="block text-sm font-bold text-zinc-800 dark:text-zinc-100">لینک‌های دانلود بر اساس پلتفرم</span>
+          <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+            {savedRowsCount ? `${savedRowsCount} سرگروه لینک، ${totalPartsCount} پارت` : "هنوز لینکی ثبت نشده"}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="space-y-1">
+            <span className="block text-xs font-bold text-zinc-600 dark:text-zinc-400">نام API PSXHub</span>
+            <input
+              className="h-10 w-56 rounded-xl border border-zinc-200 bg-white px-3 text-left text-xs text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
+              dir="ltr"
+              onChange={(event) => onApiTitleChange?.(event.target.value)}
+              placeholder="Elden Ring"
+              value={apiTitle}
+            />
+          </label>
+          <button
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-100 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-300"
+            disabled={importState?.status === "loading"}
+            onClick={onImportDownloads}
+            type="button"
+          >
+            {importState?.status === "loading" ? "در حال دریافت..." : "دریافت از PSXHub"}
+          </button>
+        </div>
+      </div>
+
+      {importState?.message ? (
+        <div className={`rounded-lg border px-3 py-2 text-xs font-bold ${
+          importState.status === "error"
+            ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300"
+            : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-300"
+        }`}>
+          {importState.message}
+        </div>
+      ) : null}
+
+      {Array.isArray(importState?.matches) && importState.matches.length ? (
+        <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+          {importState.matches.map((match, index) => {
+            const downloadsCount = Array.isArray(match?.downloads) ? match.downloads.length : 0;
+            const partsCount = (match?.downloads || []).reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-black" key={`${match?.externalId || match?.title || index}:${index}`}>
+                <div className="min-w-0">
+                  <div className="break-words text-sm font-black text-zinc-800 dark:text-zinc-100">
+                    {match?.fixedTitle || match?.title || "بدون عنوان"}
+                  </div>
+                  {match?.title && match.title !== match.fixedTitle ? (
+                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{match.title}</div>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
+                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:ring-sky-900">{downloadsCount} لینک</span>
+                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">{partsCount} پارت</span>
+                  </div>
+                </div>
+                <button
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-100 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-300"
+                  onClick={() => onApplyPsxHubMatch?.(match)}
+                  type="button"
+                >
+                  انتخاب و افزودن
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {savedRowsCount ? (
+        <div className="space-y-3">
+          {Object.entries(groupedPlatforms).map(([platformKey, platformGroup], platformIndex) => {
+            const platformPartsCount = platformGroup.rows.reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
+            const platformDescription = String(platformGroup.rows.find((item) => item.platformDescription)?.platformDescription || "").trim();
+            const regions = platformGroup.rows.reduce((groups, item) => {
+              const regionLabel = String(item.region || "بدون ریجن").trim();
+              const regionKey = `${platformKey}:${regionLabel}`;
+              if (!groups[regionKey]) groups[regionKey] = { label: regionLabel, rows: [] };
+              groups[regionKey].rows.push(item);
+              return groups;
+            }, {});
+
+            return (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950" key={platformKey}>
+                <button
+                  aria-expanded={Boolean(openPlatforms[platformKey])}
+                  className="flex w-full items-center justify-between gap-3 p-3 text-right"
+                  onClick={() => togglePlatform(platformKey)}
+                  type="button"
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-base font-black text-zinc-800 dark:border-zinc-700 dark:text-zinc-100">
+                      {openPlatforms[platformKey] ? "-" : "+"}
+                    </span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${platformBadgeClasses[platformIndex % platformBadgeClasses.length]}`}>
+                      {platformGroup.label}
+                    </span>
+                  </span>
+                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{Object.keys(regions).length} ریجن / {platformPartsCount} پارت</span>
+                </button>
+
+                {openPlatforms[platformKey] ? (
+                  <div className="space-y-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
+                    <TextareaField
+                      label="توضیحات پلتفرم"
+                      name={`platform-description-${platformKey}`}
+                      onChange={(event) =>
+                        updateGroupedRows(
+                          (item) => {
+                            const itemPlatformLabel = getPlatformLabel(item);
+                            return `${item.platform || ""}:${itemPlatformLabel}` === platformKey;
+                          },
+                          { platformDescription: event.target.value }
+                        )
+                      }
+                      rows={2}
+                      value={platformDescription}
+                    />
+
+                    {Object.entries(regions).map(([regionKey, regionGroup], regionIndex) => {
+                      const regionPartsCount = regionGroup.rows.reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
+                      const regionDescription = String(regionGroup.rows.find((item) => item.regionDescription)?.regionDescription || "").trim();
+                      return (
+                        <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black" key={regionKey}>
+                          <button
+                            aria-expanded={Boolean(openRegions[regionKey])}
+                            className="flex w-full items-center justify-between gap-3 p-3 text-right"
+                            onClick={() => toggleRegion(regionKey)}
+                            type="button"
+                          >
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-base font-black text-zinc-800 dark:border-zinc-700 dark:text-zinc-100">
+                                {openRegions[regionKey] ? "-" : "+"}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${regionBadgeClasses[regionIndex % regionBadgeClasses.length]}`}>
+                                {regionGroup.label}
+                              </span>
+                            </span>
+                            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{regionGroup.rows.length} لینک / {regionPartsCount} پارت</span>
+                          </button>
+
+                          {openRegions[regionKey] ? (
+                            <div className="space-y-3 border-t border-zinc-200 p-3 dark:border-zinc-800">
+                              <TextareaField
+                                label="توضیحات ریجن"
+                                name={`region-description-${regionKey}`}
+                                onChange={(event) =>
+                                  updateGroupedRows(
+                                    (item) => {
+                                      const itemPlatformLabel = getPlatformLabel(item);
+                                      const itemPlatformKey = `${item.platform || ""}:${itemPlatformLabel}`;
+                                      const itemRegionLabel = String(item.region || "بدون ریجن").trim();
+                                      return `${itemPlatformKey}:${itemRegionLabel}` === regionKey;
+                                    },
+                                    { regionDescription: event.target.value }
+                                  )
+                                }
+                                rows={2}
+                                value={regionDescription}
+                              />
+
+                              {regionGroup.rows.map((item, index) => (
+                                <div className="space-y-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950" key={`${regionKey}:${item.titleId || index}:${item.version || ""}`}>
+                                  <div className="flex flex-wrap gap-2">
+                                    {item.titleId ? <span className="rounded-md bg-zinc-100 px-2.5 py-1 text-[11px] font-bold !text-black ring-1 ring-zinc-200 dark:bg-white dark:!text-black dark:ring-zinc-700">{item.titleId}</span> : null}
+                                    {item.version ? <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-800 ring-1 ring-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-200 dark:ring-indigo-900">v{item.version}</span> : null}
+                                    {item.size ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">حجم: {item.size}</span> : null}
+                                  </div>
+
+                                  {item.notes ? (
+                                    <div className="rounded-md border border-zinc-200 bg-white p-2 text-xs leading-6 text-zinc-700 dark:border-zinc-800 dark:bg-black dark:text-zinc-300">
+                                      {item.notes}
+                                    </div>
+                                  ) : null}
+
+                                  {item.downloadUrl ? (
+                                    <div className="flex flex-wrap gap-2">
+                                      <span className="rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-black text-teal-800 ring-1 ring-teal-200 dark:bg-teal-950/60 dark:text-teal-200 dark:ring-teal-900">
+                                        لینک اصلی
+                                      </span>
+                                      <span className="break-all rounded-md bg-white px-2.5 py-1 text-left text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-black dark:text-zinc-300 dark:ring-zinc-800" dir="ltr">
+                                        {item.downloadUrl}
+                                      </span>
+                                    </div>
+                                  ) : null}
+
+                                  {Array.isArray(item.parts) && item.parts.length ? (
+                                    <div className="space-y-2">
+                                      {item.parts.map((part, partIndex) => (
+                                        <div className="rounded-md border border-zinc-200 bg-white p-2 text-xs dark:border-zinc-800 dark:bg-black" key={`${part.externalId || partIndex}:${part.url || part.fileName}`}>
+                                          <div className="mb-2 flex flex-wrap gap-2 text-zinc-600 dark:text-zinc-300">
+                                            <span className="rounded-full bg-pink-100 px-2.5 py-1 text-[11px] font-black text-pink-800 ring-1 ring-pink-200 dark:bg-pink-950/60 dark:text-pink-200 dark:ring-pink-900">
+                                              Part {part.partNumber ?? partIndex}
+                                            </span>
+                                            {part.contentType ? <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-black text-cyan-800 ring-1 ring-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-200 dark:ring-cyan-900">{part.contentType}</span> : null}
+                                            {part.size ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-black text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">{part.size} MB</span> : null}
+                                            {part.fileName ? <span className="break-all rounded-md bg-slate-100 px-2.5 py-1 text-left text-[11px] font-bold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800" dir="ltr">{part.fileName}</span> : null}
+                                          </div>
+                                          {part.hash ? (
+                                            <div className="mb-2 flex flex-wrap gap-2">
+                                              <span className="rounded-full bg-purple-100 px-2.5 py-1 text-[11px] font-black text-purple-800 ring-1 ring-purple-200 dark:bg-purple-950/60 dark:text-purple-200 dark:ring-purple-900">
+                                                Hash
+                                              </span>
+                                              <span className="break-all rounded-md bg-white px-2.5 py-1 text-left text-xs text-zinc-600 ring-1 ring-zinc-200 dark:bg-black dark:text-zinc-300 dark:ring-zinc-800" dir="ltr">{part.hash}</span>
+                                            </div>
+                                          ) : null}
+                                          {part.url ? (
+                                            <div className="flex flex-wrap gap-2">
+                                              <span className="rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-black text-teal-800 ring-1 ring-teal-200 dark:bg-teal-950/60 dark:text-teal-200 dark:ring-teal-900">
+                                                لینک
+                                              </span>
+                                              <span className="break-all rounded-md bg-white px-2.5 py-1 text-left text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-black dark:text-zinc-300 dark:ring-zinc-800" dir="ltr">{part.url}</span>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1703,9 +2035,8 @@ export function BasicStep({
   form,
   gameTitle,
   imageUploadState = {},
-  mergePlatformReleases,
   onFetchPlayStationTrophies,
-  onFetchScores,
+  onFetchScore,
   onFetchXboxAchievements,
   onChange,
   onRemoteImageUpload,
@@ -1856,9 +2187,6 @@ export function BasicStep({
         ...prev,
         ...(source === "playstation" && response?.data?.score ? { sonyScore: response.data.score } : {}),
         ...(source === "playstation" && response?.data?.starRating ? { starRating: response.data.starRating } : {}),
-        ...(response?.data?.platformReleases?.length && typeof mergePlatformReleases === "function"
-          ? { platformReleases: mergePlatformReleases(prev.platformReleases, response.data.platformReleases) }
-          : {}),
         ...(target === "description"
           ? { shortDescription: translatedText.slice(0, 5000) }
           : { summary: translatedText.slice(0, 160) }),
@@ -1887,12 +2215,8 @@ export function BasicStep({
       : descriptionImportState.status === "error"
         ? "text-red-500"
         : "text-zinc-500";
-  const scoreStatusClassName =
-    scoreImportState?.status === "success"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : scoreImportState?.status === "error"
-        ? "text-red-500"
-        : "text-zinc-500";
+  const isScoreLoading = (source) =>
+    scoreImportState?.status === "loading" && scoreImportState?.source === source;
 
   return (
       <div className="grid gap-4">
@@ -2002,20 +2326,12 @@ export function BasicStep({
             {Object.entries(imageUploadState).some(([key, item]) => ["cover", "mobileCover", "desktopCover"].includes(key) && item?.status === "uploading") ? (
               <span className="text-xs text-zinc-500 dark:text-zinc-400">در حال آپلود تصویر انتخابی...</span>
             ) : null}
-            <button
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-400 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300"
-              disabled={scoreImportState?.status === "loading"}
-              onClick={onFetchScores}
-              type="button"
-            >
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] !text-white">★</span>
-              {scoreImportState?.status === "loading" ? "در حال دریافت..." : "دریافت امتیازها"}
-            </button>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           <ScoreInput label="امتیاز متاکریتیک" name="metacriticScore" onChange={onChange} value={form.metacriticScore} />
           <ScoreInput
+            actionButton={<ScoreFetchButton isLoading={isScoreLoading("playstation")} label="دریافت امتیاز سونی" onClick={() => onFetchScore?.("playstation")} />}
             details={form.starRating}
             label="امتیاز سونی"
             max="5"
@@ -2027,6 +2343,7 @@ export function BasicStep({
             value={form.sonyScore}
           />
           <ScoreInput
+            actionButton={<ScoreFetchButton isLoading={isScoreLoading("steam")} label="دریافت امتیاز استیم" onClick={() => onFetchScore?.("steam")} />}
             details={form.steamRating}
             label="امتیاز استیم"
             max="5"
@@ -2038,6 +2355,7 @@ export function BasicStep({
             value={form.steamScore}
           />
           <ScoreInput
+            actionButton={<ScoreFetchButton isLoading={isScoreLoading("xbox")} label="دریافت امتیاز Xbox" onClick={() => onFetchScore?.("xbox")} />}
             details={form.xboxRating}
             label="امتیاز Xbox"
             max="5"
@@ -2049,9 +2367,6 @@ export function BasicStep({
             value={form.xboxScore}
           />
         </div>
-        {scoreImportState?.message ? (
-          <p className={`text-xs ${scoreStatusClassName}`}>{scoreImportState.message}</p>
-        ) : null}
         <PlayStationGallerySuggestions
           gameTitle={gameTitle || form.title}
           playstationTitleId={playstationTitleId || form.playstationTitleId}
@@ -2416,6 +2731,22 @@ export function PlatformSizesStep({ form, onQuickCreate, platformOptions, setArr
         title="حجم نسخه‌های پلتفرم"
       />
     </div>
+  );
+}
+
+export function PlatformDownloadLinksStep({ form, onApplyPsxHubMatch, onImportDownloads, onQuickCreate, platformOptions, psxHubImportState, setArrayField, setForm }) {
+  return (
+    <PlatformDownloadLinksEditor
+      apiTitle={form.psxHubApiTitle}
+      importState={psxHubImportState}
+      items={form.platformDownloadLinks}
+      onApiTitleChange={(value) => setForm?.((prev) => ({ ...prev, psxHubApiTitle: value }))}
+      onApplyPsxHubMatch={onApplyPsxHubMatch}
+      onChange={(value) => setArrayField("platformDownloadLinks", value)}
+      onCreatePlatform={(target) => onQuickCreate?.("platform", target)}
+      onImportDownloads={onImportDownloads}
+      platformOptions={platformOptions}
+    />
   );
 }
 

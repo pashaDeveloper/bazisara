@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Article, Game } from "../lib/api";
-import { articleRouteId, gameRouteId, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../lib/api";
+import { articleRouteId, gameRouteId, mediaBlurUrl, mediaUrl } from "../lib/api";
 import { slugify } from "../lib/slug";
 import { BlurImage } from "./blur-image";
 
@@ -32,7 +32,7 @@ export function GameCard({ game }: { game: Game }) {
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
         {image ? (
-          <BlurImage alt={media?.alt || game.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={media?.alt || game.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}
@@ -61,7 +61,7 @@ export function ArticleCard({ article }: { article: Article }) {
     >
       <div className="h-20 w-20 overflow-hidden rounded-xl bg-zinc-900 sm:h-24 sm:w-24">
         {image ? (
-          <BlurImage alt={article.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={article.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}

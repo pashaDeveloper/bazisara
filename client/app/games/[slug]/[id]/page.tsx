@@ -22,7 +22,7 @@ import { BlurImage } from "../../../components/blur-image";
 import { SkeletonBlock } from "../../../components/cards";
 import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
-import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurHash, mediaBlurUrl, mediaUrl } from "../../../lib/api";
+import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
 import { TrailerPlayOverlay } from "./trailer-play-overlay";
 
@@ -292,7 +292,6 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
       {heroImage ? (
         <BlurImage
           alt={heroMedia?.alt || game.title}
-          blurHash={mediaBlurHash(heroMedia)}
           blurSrc={mediaBlurUrl(heroMedia)}
           className="absolute inset-0 h-full w-full"
           imageStyle={{ objectPosition: objectPosition(heroMedia) }}
@@ -342,7 +341,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
-            <BlurImage alt={heroMedia?.alt || game.title} blurHash={mediaBlurHash(heroMedia)} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
+            <BlurImage alt={heroMedia?.alt || game.title} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
           ) : (
             <SkeletonBlock className="h-full w-full rounded-none" />
           )}
@@ -511,7 +510,7 @@ function GameRail({ title, games }: { title: string; games: Game[] }) {
               dir="ltr"
             >
               <div className="aspect-square overflow-hidden rounded-md bg-[#edf1f6]">
-                {image ? <BlurImage alt={item.title} blurHash={mediaBlurHash(media)} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} /> : <SkeletonBlock className="h-full w-full" />}
+                {image ? <BlurImage alt={item.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} /> : <SkeletonBlock className="h-full w-full" />}
               </div>
               <h3 className="mt-3 line-clamp-2 min-h-10 text-left text-[13px] font-bold leading-5 text-[#2e394f]">{item.title}</h3>
             </Link>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Slider } from "../lib/api";
-import { mediaBlurHash, mediaBlurUrl, mediaUrl } from "../lib/api";
+import { mediaBlurUrl, mediaUrl } from "../lib/api";
 import { BlurImage } from "./blur-image";
 
 function SliderSkeleton() {
@@ -29,10 +29,8 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
     .map((slider) => ({
       ...slider,
       imageUrl: mediaUrl(slider.image) || mediaUrl(slider.mobileImage),
-      imageBlurHash: mediaBlurHash(slider.image) || mediaBlurHash(slider.mobileImage),
       imageBlurUrl: mediaBlurUrl(slider.image) || mediaBlurUrl(slider.mobileImage),
       mobileImageUrl: mediaUrl(slider.mobileImage) || mediaUrl(slider.image),
-      mobileImageBlurHash: mediaBlurHash(slider.mobileImage) || mediaBlurHash(slider.image),
       mobileImageBlurUrl: mediaBlurUrl(slider.mobileImage) || mediaBlurUrl(slider.image),
     }))
     .filter((slider) => slider.imageUrl && !failedSlideIds.includes(slider._id));
@@ -75,7 +73,6 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
             >
               <BlurImage
                 src={slide.mobileImageUrl}
-                blurHash={slide.mobileImageBlurHash}
                 blurSrc={slide.mobileImageBlurUrl}
                 alt={slide.title || ""}
                 className="h-full w-full"
@@ -109,7 +106,6 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
         <div className="relative h-[397px] w-full">
           <BlurImage
             src={activeSlide.imageUrl}
-            blurHash={activeSlide.imageBlurHash}
             blurSrc={activeSlide.imageBlurUrl}
             alt={activeSlide.title || ""}
             className="h-full w-full"

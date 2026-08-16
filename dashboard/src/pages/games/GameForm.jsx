@@ -16,6 +16,7 @@ import {
   useGetGameQuery,
   useGetGamesQuery,
   useImportGameScoresMutation,
+  useImportPsxHubDownloadsMutation,
   useTranslateGameIntroMutation,
   useTranslateGameSearchTitleSlugMutation,
   useUpdateGameMutation,
@@ -41,6 +42,7 @@ import {
   DlcStep,
   EditionsStep,
   GameMediaStep,
+  PlatformDownloadLinksStep,
   PlatformReleasesStep,
   PlatformSizesStep,
   PlayersStep,
@@ -54,6 +56,7 @@ import {
 
 const initialForm = {
   title: "",
+  psxHubApiTitle: "",
   summary: "",
   slug: "",
   shortDescription: "",
@@ -74,6 +77,7 @@ const initialForm = {
   platforms: [],
   platformReleases: [],
   platformSizes: [],
+  platformDownloadLinks: [],
   gameModes: [],
   offlinePlayers: [],
   onlinePlayers: [],
@@ -442,6 +446,100 @@ function toObjectArray(value, fallback = []) {
   return fallback;
 }
 
+function toPlatformDownloadLinkArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => ({
+        platform: item?.platform?._id || item?.platform || "",
+        platformTitle: String(item?.platformTitle || "").trim(),
+        platformDescription: String(item?.platformDescription || "").trim(),
+        titleId: String(item?.titleId || item?.gameTitle || "").trim(),
+        region: String(item?.region || "").trim(),
+        regionDescription: String(item?.regionDescription || "").trim(),
+        version: String(item?.version || "").trim(),
+        size: String(item?.size || "").trim(),
+        downloadUrl: String(item?.downloadUrl || item?.url || item?.link || "").trim(),
+        sourceUrl: String(item?.sourceUrl || "").trim(),
+        notes: String(item?.notes || "").trim(),
+        parts: (Array.isArray(item?.parts) ? item.parts : [])
+          .map((part) => {
+            const partNumber = Number(part?.partNumber);
+            return {
+              externalId: String(part?.externalId || part?.id || "").trim(),
+              partNumber: Number.isFinite(partNumber) ? partNumber : null,
+              fileName: String(part?.fileName || "").trim(),
+              contentType: String(part?.contentType || part?.type || "").trim(),
+              size: String(part?.size ?? part?.fileSize ?? "").trim(),
+              hash: String(part?.hash || "").trim(),
+              url: String(part?.url || part?.downloadUrl || part?.link || "").trim(),
+            };
+          })
+          .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size),
+      }))
+      .filter((item) =>
+        item.platform ||
+        item.platformTitle ||
+        item.platformDescription ||
+        item.titleId ||
+        item.region ||
+        item.regionDescription ||
+        item.version ||
+        item.size ||
+        item.downloadUrl ||
+        item.sourceUrl ||
+        item.notes ||
+        item.parts.length
+      );
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return toPlatformDownloadLinkArray(parsed);
+  } catch (_) {}
+
+  return [];
+}
+
+function toDlcArray(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => ({
+      externalId: item?.externalId ?? item?.id ?? "",
+      title: String(item?.title || "").trim(),
+      type: String(item?.type || "").trim().toLowerCase() === "dlc" ? "dlc" : String(item?.type || "").trim(),
+      version: String(item?.version || "").trim(),
+      versionSize: String(item?.versionSize || item?.size || "").trim(),
+      titleId: String(item?.titleId || "").trim(),
+      region: String(item?.region || "").trim(),
+      platformKey: String(item?.platformKey || "").trim(),
+      image: item?.image?.url ? item.image : typeof item?.image === "string" ? item.image : item?.image || "",
+      parts: (Array.isArray(item?.parts) ? item.parts : [])
+        .map((part) => {
+          const partNumber = Number(part?.partNumber);
+          return {
+            externalId: String(part?.externalId || part?.id || "").trim(),
+            partNumber: Number.isFinite(partNumber) ? partNumber : null,
+            fileName: String(part?.fileName || "").trim(),
+            contentType: String(part?.contentType || part?.type || "").trim(),
+            size: String(part?.size ?? part?.fileSize ?? "").trim(),
+            hash: String(part?.hash || "").trim(),
+            url: String(part?.url || part?.downloadUrl || part?.link || "").trim(),
+          };
+        })
+        .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size),
+    }))
+    .filter(
+      (item) =>
+        item.title ||
+        item.type ||
+        item.versionSize ||
+        item.image ||
+        item.parts.length
+    );
+}
+
 function toSearchTitleArray(value) {
   if (!Array.isArray(value)) return [];
   return value
@@ -507,6 +605,98 @@ function findPlatformIdByReleaseKey(platforms, release) {
   return scored[0]?.id || "";
 }
 
+function findPlatformIdByDownloadKey(platforms, item) {
+  return findPlatformIdByReleaseKey(platforms, {
+    platformKey: item?.platformKey || item?.platformTitle,
+    platformName: item?.platformTitle,
+  });
+}
+
+function mergeImportedPlatformDownloadLinks(currentItems, importedItems, platforms) {
+  const rows = Array.isArray(currentItems) ? [...currentItems] : [];
+  (Array.isArray(importedItems) ? importedItems : []).forEach((item) => {
+    const nextItem = {
+      platform: item?.platform || findPlatformIdByDownloadKey(platforms, item),
+      platformTitle: String(item?.platformTitle || item?.platformKey || "").trim(),
+      platformDescription: String(item?.platformDescription || "").trim(),
+      titleId: String(item?.titleId || "").trim(),
+      region: String(item?.region || "").trim(),
+      regionDescription: String(item?.regionDescription || "").trim(),
+      version: String(item?.version || "").trim(),
+      size: String(item?.size || "").trim(),
+      downloadUrl: String(item?.downloadUrl || "").trim(),
+      sourceUrl: String(item?.sourceUrl || "").trim(),
+      notes: String(item?.notes || "").trim(),
+      parts: Array.isArray(item?.parts) ? item.parts : [],
+    };
+    if (!nextItem.platform && !nextItem.titleId && !nextItem.version && !nextItem.sourceUrl && !nextItem.parts.length) return;
+
+    const key = [nextItem.platform || nextItem.platformTitle, nextItem.titleId, nextItem.region, nextItem.version]
+      .map((part) => String(part || "").toLowerCase())
+      .join(":");
+    const existingIndex = rows.findIndex((row) =>
+      [row.platform || row.platformTitle, row.titleId, row.region, row.version]
+        .map((part) => String(part || "").toLowerCase())
+        .join(":") === key
+    );
+
+    if (existingIndex >= 0) {
+      rows[existingIndex] = {
+        ...nextItem,
+        ...rows[existingIndex],
+        downloadUrl: rows[existingIndex].downloadUrl || nextItem.downloadUrl,
+        sourceUrl: rows[existingIndex].sourceUrl || nextItem.sourceUrl,
+        parts: rows[existingIndex].parts?.length ? rows[existingIndex].parts : nextItem.parts,
+      };
+      return;
+    }
+
+    rows.push(nextItem);
+  });
+
+  return toPlatformDownloadLinkArray(rows);
+}
+
+function mergeImportedDlcs(currentItems, importedItems) {
+  const rows = toDlcArray(currentItems);
+  toDlcArray(importedItems).forEach((item) => {
+    const key = [
+      item.externalId,
+      item.title,
+      item.titleId,
+      item.region,
+      item.version,
+    ]
+      .map((part) => String(part || "").toLowerCase())
+      .join(":");
+    const existingIndex = rows.findIndex((row) =>
+      [
+        row.externalId,
+        row.title,
+        row.titleId,
+        row.region,
+        row.version,
+      ]
+        .map((part) => String(part || "").toLowerCase())
+        .join(":") === key
+    );
+
+    if (existingIndex >= 0) {
+      rows[existingIndex] = {
+        ...item,
+        ...rows[existingIndex],
+        image: rows[existingIndex].image || item.image,
+        parts: rows[existingIndex].parts?.length ? rows[existingIndex].parts : item.parts,
+      };
+      return;
+    }
+
+    rows.push(item);
+  });
+
+  return toDlcArray(rows);
+}
+
 function mergeImportedPlatformReleases(currentItems, importedItems, platforms) {
   const rows = Array.isArray(currentItems) ? [...currentItems] : [];
   (Array.isArray(importedItems) ? importedItems : []).forEach((item) => {
@@ -559,7 +749,13 @@ function GameForm({ mode = "create" }) {
   const [trailerThumbnailPreview, setTrailerThumbnailPreview] = useState("");
   const [activePreviewTab, setActivePreviewTab] = useState("form");
   const [isSlugTouched, setIsSlugTouched] = useState(false);
-  const [scoreImportState, setScoreImportState] = useState({ message: "", status: "idle", title: "" });
+  const [scoreImportState, setScoreImportState] = useState({ message: "", source: "", status: "idle", title: "" });
+  const [psxHubImportState, setPsxHubImportState] = useState({
+    matches: [],
+    message: "",
+    status: "idle",
+    title: "",
+  });
   const [xboxAchievementsState, setXboxAchievementsState] = useState({
     achievements: [],
     message: "",
@@ -616,6 +812,7 @@ function GameForm({ mode = "create" }) {
   const [createGame, createState] = useCreateGameMutation();
   const [updateGame, updateState] = useUpdateGameMutation();
   const [importGameScores] = useImportGameScoresMutation();
+  const [importPsxHubDownloads] = useImportPsxHubDownloadsMutation();
   const [fetchXboxAchievements] = useFetchXboxAchievementsMutation();
   const [fetchPlayStationTrophies] = useFetchPlayStationTrophiesMutation();
   const [translateGameIntro] = useTranslateGameIntroMutation();
@@ -706,127 +903,125 @@ function GameForm({ mode = "create" }) {
     }
   };
 
-  useEffect(() => {
+  const loadGameScore = async (source) => {
     const title = String(form.title || "").trim();
     if (title.length < 3) {
-      setScoreImportState((prev) => (prev.status === "idle" ? prev : { message: "", status: "idle", title: "" }));
-      return undefined;
-    }
-    if (!platforms.length) return undefined;
-
-    if (scoreImportState.title === title && scoreImportState.status !== "idle") {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(async () => {
-      setScoreImportState({ message: "در حال دریافت خودکار امتیازها...", status: "loading", title });
-      try {
-        const response = await importGameScores({ source: "all", title }).unwrap();
-        const data = response?.data || {};
-        const labels = [];
-        setForm((prev) => {
-          const next = { ...prev };
-          if (data.metacriticScore !== null && data.metacriticScore !== undefined) {
-            next.metacriticScore = data.metacriticScore;
-            labels.push("متاکریتیک");
-          }
-          if (data.steamScore !== null && data.steamScore !== undefined) {
-            next.steamScore = data.steamScore;
-            labels.push("استیم");
-          }
-          if (data.steamRating) {
-            next.steamRating = data.steamRating;
-          }
-          if (data.xboxScore !== null && data.xboxScore !== undefined) {
-            next.xboxScore = data.xboxScore;
-            labels.push("Xbox");
-          }
-          if (data.xboxRating) {
-            next.xboxRating = data.xboxRating;
-          }
-          if (data.sonyScore !== null && data.sonyScore !== undefined) {
-            next.sonyScore = data.sonyScore;
-            labels.push("سونی");
-          }
-          if (data.starRating) {
-            next.starRating = data.starRating;
-          }
-          if (data.platformReleases?.length) {
-            next.platformReleases = mergeImportedPlatformReleases(prev.platformReleases, data.platformReleases, platforms);
-            labels.push("تاریخ انتشار");
-          }
-          return next;
-        });
-        setScoreImportState({
-          message: labels.length ? `${labels.join("، ")} خودکار دریافت شد` : "امتیازی برای این عنوان پیدا نشد",
-          status: labels.length ? "success" : "error",
-          title,
-        });
-      } catch (error) {
-        setScoreImportState({
-          message: error?.data?.description || "دریافت خودکار امتیازها انجام نشد",
-          status: "error",
-          title,
-        });
-      }
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [form.title, importGameScores, platforms, scoreImportState.status, scoreImportState.title]);
-
-  const loadGameScores = async () => {
-    const title = String(form.title || "").trim();
-    if (title.length < 3) {
-      setScoreImportState({ message: "برای دریافت امتیازها، عنوان بازی را وارد کنید", status: "error", title: "" });
+      setScoreImportState({ message: "برای دریافت امتیازها، عنوان بازی را وارد کنید", source: "", status: "error", title: "" });
       return;
     }
 
-    setScoreImportState({ message: "در حال دریافت امتیازها...", status: "loading", title });
+    const normalizedSource = String(source || "").toLowerCase();
+    const sourceLabels = {
+      metacritic: "متاکریتیک",
+      playstation: "سونی",
+      sony: "سونی",
+      steam: "استیم",
+      xbox: "Xbox",
+    };
+    const label = sourceLabels[normalizedSource] || "امتیاز";
+    setScoreImportState({ message: "", source: normalizedSource, status: "loading", title });
 
     try {
-      const response = await importGameScores({ source: "all", title }).unwrap();
+      const response = await importGameScores({ source: normalizedSource, title }).unwrap();
       const data = response?.data || {};
-      const labels = [];
+      let imported = false;
 
       setForm((prev) => {
         const next = { ...prev };
-        if (data.metacriticScore !== null && data.metacriticScore !== undefined) {
+        if ((normalizedSource === "metacritic" || data.metacriticScore !== undefined) && data.metacriticScore !== null && data.metacriticScore !== undefined) {
           next.metacriticScore = data.metacriticScore;
-          labels.push("متاکریتیک");
+          imported = true;
         }
-        if (data.steamScore !== null && data.steamScore !== undefined) {
+        if ((normalizedSource === "steam" || data.steamScore !== undefined) && data.steamScore !== null && data.steamScore !== undefined) {
           next.steamScore = data.steamScore;
-          labels.push("استیم");
+          imported = true;
         }
         if (data.steamRating) next.steamRating = data.steamRating;
-        if (data.xboxScore !== null && data.xboxScore !== undefined) {
+        if ((normalizedSource === "xbox" || data.xboxScore !== undefined) && data.xboxScore !== null && data.xboxScore !== undefined) {
           next.xboxScore = data.xboxScore;
-          labels.push("Xbox");
+          imported = true;
         }
         if (data.xboxRating) next.xboxRating = data.xboxRating;
-        if (data.sonyScore !== null && data.sonyScore !== undefined) {
+        if ((normalizedSource === "playstation" || normalizedSource === "sony" || data.sonyScore !== undefined) && data.sonyScore !== null && data.sonyScore !== undefined) {
           next.sonyScore = data.sonyScore;
-          labels.push("سونی");
+          imported = true;
         }
         if (data.starRating) next.starRating = data.starRating;
-        if (data.platformReleases?.length) {
-          next.platformReleases = mergeImportedPlatformReleases(prev.platformReleases, data.platformReleases, platforms);
-          labels.push("تاریخ انتشار");
-        }
         return next;
       });
 
       setScoreImportState({
-        message: labels.length ? `${labels.join("، ")} دریافت شد` : "امتیازی برای این عنوان پیدا نشد",
-        status: labels.length ? "success" : "error",
+        message: imported ? `امتیاز ${label} دریافت شد` : `امتیازی برای ${label} پیدا نشد`,
+        source: normalizedSource,
+        status: imported ? "success" : "error",
         title,
       });
     } catch (error) {
       setScoreImportState({
-        message: getRequestErrorMessage(error, "دریافت امتیازها انجام نشد"),
+        message: getRequestErrorMessage(error, `دریافت امتیاز ${label} انجام نشد`),
+        source: normalizedSource,
         status: "error",
         title,
       });
+    }
+  };
+
+  const applyPsxHubDownloads = (data) => {
+    const downloads = data?.downloads || [];
+    setForm((prev) => ({
+      ...prev,
+      platformDownloadLinks: mergeImportedPlatformDownloadLinks(prev.platformDownloadLinks, downloads, platforms),
+    }));
+    setPsxHubImportState((prev) => ({
+      ...prev,
+      matches: [],
+      message: downloads.length
+        ? `${downloads.length} لینک اضافه شد`
+        : "موردی برای افزودن پیدا نشد",
+      status: downloads.length ? "success" : "error",
+    }));
+    toast.success(
+      downloads.length
+        ? `${downloads.length} لینک برای بازبینی اضافه شد`
+        : "موردی پیدا نشد",
+      { id: "psxhub-downloads" }
+    );
+  };
+
+  const loadPsxHubDownloads = async () => {
+    const title = String(form.psxHubApiTitle || form.title || "").trim();
+    if (title.length < 3) {
+      toast.error("برای دریافت لینک‌های دانلود، عنوان بازی را وارد کنید", { id: "psxhub-downloads" });
+      return;
+    }
+
+    try {
+      setPsxHubImportState({ matches: [], message: "", status: "loading", title });
+      toast.loading("در حال دریافت اطلاعات دانلود از PSXHub...", { id: "psxhub-downloads" });
+      const response = await importPsxHubDownloads({ title }).unwrap();
+      const data = response?.data || {};
+      const matches = Array.isArray(data.matches) && data.matches.length ? data.matches : [data].filter(Boolean);
+
+      if (matches.length > 1) {
+        setPsxHubImportState({
+          matches,
+          message: `${matches.length} نتیجه پیدا شد؛ یکی را انتخاب کنید`,
+          status: "selecting",
+          title,
+        });
+        toast.success(`${matches.length} نتیجه از PSXHub پیدا شد`, { id: "psxhub-downloads" });
+        return;
+      }
+
+      applyPsxHubDownloads(matches[0] || data);
+    } catch (error) {
+      setPsxHubImportState({
+        matches: [],
+        message: getRequestErrorMessage(error, "دریافت اطلاعات دانلود انجام نشد"),
+        status: "error",
+        title,
+      });
+      toast.error(getRequestErrorMessage(error, "دریافت اطلاعات دانلود انجام نشد"), { id: "psxhub-downloads" });
     }
   };
 
@@ -1016,6 +1211,7 @@ function GameForm({ mode = "create" }) {
       platforms: toIdArray(game.platforms),
       platformReleases: toPlatformReleaseArray(game.platformReleases, game.platforms, game.releaseDate),
       platformSizes: toObjectArray(game.platformSizes),
+      platformDownloadLinks: toPlatformDownloadLinkArray(game.platformDownloadLinks),
       gameModes: game.gameModes || [],
       offlinePlayers: normalizeOfflinePlayers(game.offlinePlayers),
       onlinePlayers: game.onlinePlayers || [],
@@ -1024,14 +1220,7 @@ function GameForm({ mode = "create" }) {
       relatedGames: toIdArray(game.relatedGames),
       launcher: normalizeOptionValue(game.launcher, launcherOptions, []),
       edition: normalizeOptionValue(game.edition, editionOptions, "استاندارد"),
-      dlcs: Array.isArray(game.dlcs)
-        ? game.dlcs.map((item) => ({
-            title: String(item?.title || "").trim(),
-            type: String(item?.type || "").trim(),
-            versionSize: String(item?.versionSize || "").trim(),
-            image: item?.image?.url ? item.image : item?.image || "",
-          }))
-        : [],
+      dlcs: toDlcArray(game.dlcs),
       extraEditions: Array.isArray(game.extraEditions)
         ? game.extraEditions.map((item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
@@ -1165,8 +1354,13 @@ function GameForm({ mode = "create" }) {
     setForm((prev) => {
       if (field === "category") return { ...prev, category: createdId };
 
-      if (field === "platformReleases" || field === "platformSizes") {
-        const fallbackRow = field === "platformReleases" ? { platform: "", releaseDate: "" } : { platform: "", variant: "", size: "" };
+      if (field === "platformReleases" || field === "platformSizes" || field === "platformDownloadLinks") {
+        const fallbackRow =
+          field === "platformReleases"
+            ? { platform: "", releaseDate: "" }
+            : field === "platformDownloadLinks"
+              ? { platform: "", platformTitle: "", platformDescription: "", titleId: "", region: "", regionDescription: "", version: "", size: "", downloadUrl: "", sourceUrl: "", notes: "", parts: [] }
+              : { platform: "", variant: "", size: "" };
         const rows = Array.isArray(prev[field]) && prev[field].length ? [...prev[field]] : [fallbackRow];
         const rowIndex = Number.isInteger(index) ? index : 0;
         while (rows.length <= rowIndex) rows.push({ ...fallbackRow });
@@ -1523,6 +1717,7 @@ function GameForm({ mode = "create" }) {
       "platforms",
       "platformReleases",
       "platformSizes",
+      "platformDownloadLinks",
       "gameModes",
       "offlinePlayers",
       "onlinePlayers",
@@ -1539,6 +1734,7 @@ function GameForm({ mode = "create" }) {
           ...(form.platforms || []),
           ...(form.platformReleases || []).map((item) => item.platform),
           ...(form.platformSizes || []).map((item) => item.platform),
+          ...(form.platformDownloadLinks || []).map((item) => item.platform),
         ].filter(Boolean)
       ),
     ];
@@ -1548,6 +1744,7 @@ function GameForm({ mode = "create" }) {
     };
 
     Object.entries(normalizedForm).forEach(([key, value]) => {
+      if (key === "psxHubApiTitle") return;
       if (key === "cover" || key === "desktopCover" || key === "mobileCover" || key === "patchImage") {
         if (value instanceof File) formData.append(key, value);
         else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
@@ -1689,10 +1886,10 @@ function GameForm({ mode = "create" }) {
     switch (sectionKey) {
       case "basic":
         return (
-          <BasicStep
+            <BasicStep
             form={form}
             onFetchPlayStationTrophies={loadPlayStationTrophies}
-            onFetchScores={loadGameScores}
+              onFetchScore={loadGameScore}
             onFetchXboxAchievements={loadXboxAchievements}
             onChange={handleChange}
             setArrayField={setArrayField}
@@ -1704,7 +1901,6 @@ function GameForm({ mode = "create" }) {
             gameTitle={form.title}
             playstationTitleId={form.playstationTitleId}
             imageUploadState={imageUploadState}
-            mergePlatformReleases={(current, imported) => mergeImportedPlatformReleases(current, imported, platforms)}
             onDeleteUploadedImage={deleteUploadedImage}
             onImageUpload={handleImageUpload}
             onRemoteImageUpload={uploadRemoteImage}
@@ -1777,6 +1973,16 @@ function GameForm({ mode = "create" }) {
           <div className="space-y-4">
             <PlatformReleasesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
             <PlatformSizesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
+            <PlatformDownloadLinksStep
+              form={form}
+              onApplyPsxHubMatch={applyPsxHubDownloads}
+              onImportDownloads={loadPsxHubDownloads}
+              onQuickCreate={openQuickCreate}
+              platformOptions={platformOptions}
+              psxHubImportState={psxHubImportState}
+              setArrayField={setArrayField}
+              setForm={setForm}
+            />
           </div>
         );
       case "dlc":
@@ -1802,6 +2008,7 @@ function GameForm({ mode = "create" }) {
         ...(form.platforms || []),
         ...(form.platformReleases || []).map((item) => item.platform),
         ...(form.platformSizes || []).map((item) => item.platform),
+        ...(form.platformDownloadLinks || []).map((item) => item.platform),
       ].filter(Boolean)
     ),
   ];

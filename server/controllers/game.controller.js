@@ -32,6 +32,14 @@ exports.importScores = async (req, res, next) => {
   }
 };
 
+exports.importPsxHubDownloads = async (req, res, next) => {
+  try {
+    await gameService.importPsxHubDownloads(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.fetchXboxAchievements = async (req, res, next) => {
   try {
     await gameService.fetchXboxAchievements(req, res);

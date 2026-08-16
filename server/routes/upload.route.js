@@ -6,8 +6,8 @@ const authorize = require("../middleware/authorize.middleware");
 const upload = require("../middleware/upload.middleware");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
 const {
-  generateBlurHash,
   getResourceType,
+  makeBlurPreview,
   makeObjectName,
   prepareFile,
 } = require("../utils/uploadFile.util");
@@ -145,8 +145,8 @@ const createRemoteArvanHandler = async (req, res, next) => {
 
     const { extension, fileBuffer, contentType: preparedContentType } = await prepareFile(file, req.body || {});
     const { filename, key } = makeObjectName("page-builder", extension, req.body);
-    const blurHash = await generateBlurHash(file, extension);
-    const blurKey = blurHash ? makeBlurPublicUrl(key) : "";
+    const blurFile = await makeBlurPreview(file, extension);
+    const blurKey = blurFile ? makeBlurPublicUrl(key) : "";
 
     await arvanS3Client.send(
       new PutObjectCommand({
@@ -158,14 +158,28 @@ const createRemoteArvanHandler = async (req, res, next) => {
       })
     );
 
+    if (blurFile) {
+      await arvanS3Client.send(
+        new PutObjectCommand({
+          ACL: getObjectAcl(),
+          Body: blurFile.fileBuffer,
+          Bucket: process.env.ARVAN_S3_BUCKET,
+          ContentType: blurFile.contentType,
+          Key: blurKey,
+        })
+      );
+    }
+
     const uploadedFile = {
-      blur: blurHash
+      blur: blurFile
         ? {
-            hash: blurHash.hash,
-            height: blurHash.height,
+            hash: "",
+            height: blurFile.height,
+            quality: blurFile.quality,
+            blurAmount: blurFile.blurAmount,
             public_id: blurKey,
-            url: "",
-            width: blurHash.width,
+            url: getPublicUrl(blurKey),
+            width: blurFile.width,
           }
         : undefined,
       filename,
