@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
-const { nextPublicId } = require("../utils/publicId.util");
+const { nextDashedPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
@@ -213,7 +213,7 @@ const gameSchema = new mongoose.Schema(
     shortDescription: {
       type: String,
       trim: true,
-      default: "",
+      default: undefined,
       maxLength: [5000, "Short description must be at most 5000 characters"],
     },
     description: {
@@ -271,7 +271,6 @@ const gameSchema = new mongoose.Schema(
       },
     ],
     gameKeywords: [{ type: ObjectId, ref: "GameKeyword" }],
-    filterDefinitions: [{ type: ObjectId, ref: "FilterDefinition" }],
     searchTitles: [searchTitleSchema],
     filterValues: gameFilterValueSchema,
     collections: [{ type: ObjectId, ref: "GameCollection" }],
@@ -450,8 +449,7 @@ const gameSchema = new mongoose.Schema(
 gameSchema.pre("save", async function (next) {
   try {
     if (!this.gameId) {
-      const playStationProductId = String(this.playstationTitleId || "").trim().toUpperCase();
-      this.gameId = playStationProductId || (await nextPublicId("gameId", "GM"));
+      this.gameId = await nextDashedPublicId("gameIdBb", "bb", 1026);
     }
 
     next();

@@ -786,6 +786,8 @@ function GameForm({ mode = "create" }) {
   const tempUploadedImagesRef = useRef(new Map());
   const didSaveRef = useRef(false);
   const didUnmountRef = useRef(false);
+  const psxHubSuggestRequestRef = useRef(0);
+  const psxHubSelectedTitleRef = useRef("");
 
   const { data: gameData, isLoading: isLoadingGame } = useGetGameQuery(id, {
     skip: !isEdit || !id,
@@ -968,6 +970,7 @@ function GameForm({ mode = "create" }) {
 
   const applyPsxHubDownloads = (data) => {
     const downloads = data?.downloads || [];
+    psxHubSelectedTitleRef.current = String(data?.fixedTitle || data?.title || form.psxHubApiTitle || "").trim();
     setForm((prev) => ({
       ...prev,
       platformDownloadLinks: mergeImportedPlatformDownloadLinks(prev.platformDownloadLinks, downloads, platforms),
@@ -986,6 +989,11 @@ function GameForm({ mode = "create" }) {
         : "موردی پیدا نشد",
       { id: "psxhub-downloads" }
     );
+  };
+
+  const handlePsxHubApiTitleChange = (value) => {
+    psxHubSelectedTitleRef.current = "";
+    setForm((prev) => ({ ...prev, psxHubApiTitle: value }));
   };
 
   const loadPsxHubDownloads = async () => {
@@ -1024,6 +1032,49 @@ function GameForm({ mode = "create" }) {
       toast.error(getRequestErrorMessage(error, "دریافت اطلاعات دانلود انجام نشد"), { id: "psxhub-downloads" });
     }
   };
+
+  useEffect(() => {
+    const title = String(form.psxHubApiTitle || "").trim();
+    const requestId = psxHubSuggestRequestRef.current + 1;
+    psxHubSuggestRequestRef.current = requestId;
+
+    if (title.length < 3 || title === psxHubSelectedTitleRef.current) {
+      setPsxHubImportState((prev) =>
+        prev.status === "suggesting" || prev.status === "selecting"
+          ? { matches: [], message: "", status: "idle", title: "" }
+          : prev
+      );
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setPsxHubImportState({ matches: [], message: "در حال جستجوی PSXHub...", status: "suggesting", title });
+
+      try {
+        const response = await importPsxHubDownloads({ title }).unwrap();
+        if (psxHubSuggestRequestRef.current !== requestId) return;
+
+        const data = response?.data || {};
+        const matches = Array.isArray(data.matches) && data.matches.length ? data.matches : [data].filter(Boolean);
+        setPsxHubImportState({
+          matches,
+          message: matches.length ? "" : "موردی در PSXHub پیدا نشد",
+          status: matches.length ? "selecting" : "error",
+          title,
+        });
+      } catch (error) {
+        if (psxHubSuggestRequestRef.current !== requestId) return;
+        setPsxHubImportState({
+          matches: [],
+          message: getRequestErrorMessage(error, "جستجوی PSXHub انجام نشد"),
+          status: "error",
+          title,
+        });
+      }
+    }, 550);
+
+    return () => window.clearTimeout(timer);
+  }, [form.psxHubApiTitle, importPsxHubDownloads]);
 
   const loadXboxAchievements = async () => {
     const title = String(form.title || "").trim();
@@ -1193,8 +1244,8 @@ function GameForm({ mode = "create" }) {
       title: game.title || "",
       summary: game.summary || "",
       slug: game.slug || "",
-      shortDescription: game.shortDescription || "",
-      description: game.description || "",
+      shortDescription: "",
+      description: game.description || game.shortDescription || "",
       reviewSiteTitle: game.reviewSiteTitle || "",
       reviewSource: game.reviewSource || "",
       reviewLink: game.reviewLink || "",
@@ -1744,7 +1795,7 @@ function GameForm({ mode = "create" }) {
     };
 
     Object.entries(normalizedForm).forEach(([key, value]) => {
-      if (key === "psxHubApiTitle") return;
+      if (key === "psxHubApiTitle" || key === "shortDescription") return;
       if (key === "cover" || key === "desktopCover" || key === "mobileCover" || key === "patchImage") {
         if (value instanceof File) formData.append(key, value);
         else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
@@ -1977,6 +2028,7 @@ function GameForm({ mode = "create" }) {
               form={form}
               onApplyPsxHubMatch={applyPsxHubDownloads}
               onImportDownloads={loadPsxHubDownloads}
+              onPsxHubApiTitleChange={handlePsxHubApiTitleChange}
               onQuickCreate={openQuickCreate}
               platformOptions={platformOptions}
               psxHubImportState={psxHubImportState}

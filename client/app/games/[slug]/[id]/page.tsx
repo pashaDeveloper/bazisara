@@ -622,7 +622,9 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: game ? `${game.title} | بازی سرا` : "بازی | بازی سرا",
-    description: game?.shortDescription,
+    ...(game?.seoTitle ? { title: game.seoTitle } : {}),
+    description: game?.seoDescription || stripHtml(game?.description) || game?.shortDescription,
+    keywords: game?.seoKeywords,
   };
 }
 

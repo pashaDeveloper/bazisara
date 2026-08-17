@@ -5,7 +5,6 @@ require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
 const Article = require("../models/article.model");
 const Counter = require("../models/counter");
-const Game = require("../models/game.model");
 const Product = require("../models/product.model");
 const { formatPublicId, publicIdPattern } = require("../utils/publicId.util");
 
@@ -111,7 +110,6 @@ async function main() {
   await mongoose.connect(mongoUri, process.env.DB_NAME ? { dbName: process.env.DB_NAME } : {});
 
   await backfillModel({ Model: Product, field: "productId", counterName: "productId", prefix: "PR" });
-  await backfillModel({ Model: Game, field: "gameId", counterName: "gameId", prefix: "GM" });
   await backfillModel({ Model: Article, field: "magazineId", counterName: "magazineId", prefix: "MG" });
 
   await mongoose.disconnect();

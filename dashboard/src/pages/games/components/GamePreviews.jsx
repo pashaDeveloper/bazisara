@@ -67,6 +67,7 @@ export function GameDetailPreview({
     "";
   const title = form.title.trim();
   const description = form.summary?.trim() || stripHtml(form.description) || form.shortDescription.trim();
+  const introText = form.summary || stripHtml(form.description) || form.shortDescription;
   const tabButtonRefs = useRef([]);
   const tabRowRef = useRef(null);
   const [localActiveTab, setLocalActiveTab] = useState("specs");
@@ -132,7 +133,7 @@ export function GameDetailPreview({
       case "intro":
         return (
           <div className="space-y-3">
-            {form.summary || form.shortDescription ? <p className="text-sm leading-7 text-zinc-300">{form.summary || form.shortDescription}</p> : null}
+            {introText ? <p className="text-sm leading-7 text-zinc-300">{introText}</p> : null}
             {description ? (
               <p className="line-clamp-3 text-sm leading-7 text-zinc-300">{description}</p>
             ) : (

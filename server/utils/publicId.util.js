@@ -36,8 +36,19 @@ async function nextPublicId(counterName, prefix) {
   return formatPublicId(prefix, counter.seq);
 }
 
+async function nextDashedPublicId(counterName, prefix, startAt = 1) {
+  const counter = await Counter.findOneAndUpdate(
+    { name: counterName },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+
+  return `${String(prefix || "").trim().toLowerCase()}-${Number(startAt) + Number(counter.seq || 0) - 1}`;
+}
+
 module.exports = {
   formatPublicId,
+  nextDashedPublicId,
   nextPublicId,
   publicIdOrLegacyFilters,
   publicIdPattern,

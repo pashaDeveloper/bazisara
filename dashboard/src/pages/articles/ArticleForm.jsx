@@ -512,6 +512,8 @@ function ArticleForm({ mode = "create" }) {
     return magazineId;
   };
 
+  const getArticleUploadFolderName = async () => makeSlug(form.slug || form.title);
+
   useEffect(() => {
     const article = articleData?.data;
     if (!article) return;
@@ -751,11 +753,11 @@ function ArticleForm({ mode = "create" }) {
     setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   };
 
-  const buildFormData = () => {
+  const buildFormData = (magazineId) => {
     const formData = new FormData();
     const activeAuthor = activeAdmin.name || activeAdmin.email || form.author || "";
 
-    Object.entries({ ...form, magazineId: articleUploadCode || form.magazineId, author: activeAuthor }).forEach(([key, value]) => {
+    Object.entries({ ...form, magazineId: magazineId || articleUploadCode || form.magazineId, author: activeAuthor }).forEach(([key, value]) => {
       if (key === "cover" || key === "cardCover" || key === "contentCover") {
         if (value instanceof File) formData.append(key, value);
         else if (isMediaObject(value)) formData.append(key, JSON.stringify(value));
@@ -788,7 +790,8 @@ function ArticleForm({ mode = "create" }) {
 
     try {
       toast.loading(isEdit ? "در حال به‌روزرسانی مجله..." : "در حال ثبت مجله...", { id: "save-article" });
-      const formData = buildFormData();
+      const magazineId = await ensureArticleUploadCode();
+      const formData = buildFormData(magazineId);
       const response = isEdit ? await updateArticle({ id, formData }).unwrap() : await createArticle(formData).unwrap();
 
       toast.success(response.description || "مجله ذخیره شد", { id: "save-article" });
@@ -828,7 +831,7 @@ function ArticleForm({ mode = "create" }) {
             <div className="grid gap-4 lg:grid-cols-2">
               <ArticleImagePicker
                 blurValue={form.cardCover?.blur}
-                getEntityName={ensureArticleUploadCode}
+                getEntityName={getArticleUploadFolderName}
                 field="cardCover"
                 label="تصویر کارت"
                 onChange={(media) => setForm((prev) => ({ ...prev, cardCover: media }))}
@@ -840,7 +843,7 @@ function ArticleForm({ mode = "create" }) {
               />
               <ArticleImagePicker
                 blurValue={form.contentCover?.blur}
-                getEntityName={ensureArticleUploadCode}
+                getEntityName={getArticleUploadFolderName}
                 field="contentCover"
                 label="تصویر جزئیات مجله"
                 onChange={(media) => setForm((prev) => ({ ...prev, contentCover: media }))}
@@ -864,7 +867,7 @@ function ArticleForm({ mode = "create" }) {
           </div>
         );
       case "faqs":
-        return <FaqRowsEditor getEntityName={ensureArticleUploadCode} items={form.faqs} onChange={(value) => setArrayField("faqs", value)} />;
+        return <FaqRowsEditor getEntityName={getArticleUploadFolderName} items={form.faqs} onChange={(value) => setArrayField("faqs", value)} />;
       case "relations": {
         return (
           <div className="space-y-4">

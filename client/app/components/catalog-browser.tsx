@@ -52,7 +52,7 @@ function cardSearchText(item: CatalogItem, kind: CatalogKind) {
   }
 
   const game = item as Game;
-  return [game.title, game.shortDescription, game.description, game.category?.name].filter(Boolean).join(" ");
+  return [game.title, game.description, game.shortDescription, game.category?.name].filter(Boolean).join(" ");
 }
 
 export function CatalogBrowser({

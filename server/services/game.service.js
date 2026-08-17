@@ -16,13 +16,13 @@ const Company = require("../models/company.model");
 const Tag = require("../models/tag.model");
 const GameCollection = require("../models/gameCollection.model");
 const GameKeyword = require("../models/gameKeyword.model");
-const FilterDefinition = require("../models/filterDefinition.model");
 const {
   buildSearchQuery,
   buildPaginationMeta,
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
+const { buildGameDynamicTagNames, buildGameSeoPayload } = require("../utils/gameSeo.util");
 const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
 
 let playStation3TitleDbPromise = null;
@@ -111,7 +111,6 @@ const populateGame = (query) =>
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image")
     .populate("gameKeywords", "name title_en slug image")
-    .populate("filterDefinitions", "key label type options min max unit")
     .populate("filterValues.genres", "name icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
     .populate("relatedGames", "gameId playstationTitleId title slug cover")
@@ -122,6 +121,7 @@ function gameIdentityFilter(id) {
   const filters = [];
   filters.push(...publicIdOrLegacyFilters("gameId", value, "GM"));
   if (value) {
+    if (/^bb-\d+$/i.test(value)) filters.push({ gameId: value.toLowerCase() });
     filters.push({ gameId: value.toUpperCase() });
     filters.push({ playstationTitleId: value.toUpperCase() });
   }
@@ -187,6 +187,59 @@ function makeSlug(value) {
     .replace(/[^a-z0-9\u0600-\u06ff-]+/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function uniqueObjectIds(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map((value) => String(value?._id || value || "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      if (seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+}
+
+async function ensureDynamicGameTags(title, creator = null) {
+  const names = buildGameDynamicTagNames(title);
+  const tagIds = [];
+
+  for (const name of names) {
+    const slug = makeSlug(name);
+    if (!slug) continue;
+
+    const tag = await Tag.findOneAndUpdate(
+      { slug },
+      {
+        $setOnInsert: {
+          creator,
+          description: name,
+          name,
+          seoDescription: name,
+          seoKeywords: [name],
+          seoTitle: name,
+          slug,
+        },
+      },
+      { new: true, upsert: true }
+    ).select("_id");
+
+    tagIds.push(String(tag._id));
+  }
+
+  return tagIds;
+}
+
+async function applyDynamicGameTags(payload, currentGame = null, creator = null) {
+  const title = String(payload.title !== undefined ? payload.title : currentGame?.title || "").trim();
+  if (!title) return;
+
+  const dynamicTagIds = await ensureDynamicGameTags(title, creator);
+  payload.tags = uniqueObjectIds([
+    ...(payload.tags !== undefined ? payload.tags : currentGame?.tags || []),
+    ...dynamicTagIds,
+  ]);
 }
 
 function makeEnglishSlug(value) {
@@ -394,6 +447,40 @@ function getPsxHubGameList(data) {
       : [];
 }
 
+function getPsxHubRowTitle(row, fallbackTitle = "") {
+  return String(row?.fixedTitle || row?.title || row?.name || fallbackTitle || "").trim();
+}
+
+function getPsxHubRowIdentity(row, fallbackTitle = "") {
+  const title = getPsxHubRowTitle(row, fallbackTitle).toLowerCase();
+  return title || String(row?.gameTitle || row?.id || "").trim().toLowerCase();
+}
+
+function groupPsxHubGameRows(rows, fallbackTitle = "") {
+  const groups = [];
+  const groupIndexes = new Map();
+
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const key = getPsxHubRowIdentity(row, fallbackTitle);
+    if (!key) return;
+
+    let groupIndex = groupIndexes.get(key);
+    if (groupIndex === undefined) {
+      groupIndex = groups.length;
+      groupIndexes.set(key, groupIndex);
+      groups.push({
+        fixedTitle: getPsxHubRowTitle(row, fallbackTitle),
+        games: [],
+        title: getPsxHubRowTitle(row, fallbackTitle),
+      });
+    }
+
+    groups[groupIndex].games.push(row);
+  });
+
+  return groups;
+}
+
 function getPsxHubCandidateGroups(data) {
   const root = data?.data || data;
   if (Array.isArray(root)) return root;
@@ -409,6 +496,7 @@ function getPsxHubCandidateGroups(data) {
     Array.isArray(item?.results)
   );
   if (gamesLookLikeGroups) return rootGames;
+  if (rootGames.length) return groupPsxHubGameRows(rootGames, root?.fixedTitle || root?.title);
 
   return [root];
 }
@@ -1994,6 +2082,11 @@ function parseObjectArray(value, shape) {
     .filter((item) => Object.values(item).some((part) => String(part || "").trim()));
 }
 
+function normalizeSubmittedObjectId(value) {
+  const raw = value && typeof value === "object" ? value._id || value.id || value.value : value;
+  return String(raw || "").trim() || null;
+}
+
 function parseSearchTitles(value) {
   return parseObjectArray(value, (item) => {
     const title = String(item?.title || item?.name || "").trim();
@@ -2182,21 +2275,17 @@ function limitText(value, maxLength) {
 function applySeoFromContent(payload, currentGame = null) {
   const title =
     payload.title !== undefined ? payload.title : currentGame?.title || "";
-  const shortDescription =
-    payload.shortDescription !== undefined
-      ? payload.shortDescription
-      : currentGame?.shortDescription || "";
+  const description =
+    payload.description !== undefined
+      ? payload.description
+      : currentGame?.description || currentGame?.shortDescription || "";
   const summary =
     payload.summary !== undefined
       ? payload.summary
       : currentGame?.summary || "";
 
-  if (payload.title !== undefined || payload.summary !== undefined || payload.shortDescription !== undefined || !currentGame) {
-    payload.seoTitle = limitText(title, 160);
-    payload.seoDescription = limitText(summary || shortDescription || title, 320);
-    payload.seoKeywords = [title, summary || shortDescription]
-      .filter(Boolean)
-      .map((item) => limitText(item, 80));
+  if (payload.title !== undefined || payload.summary !== undefined || payload.description !== undefined || payload.shortDescription !== undefined || !currentGame) {
+    Object.assign(payload, buildGameSeoPayload({ description, seoKeywords: currentGame?.seoKeywords, summary, title }));
   }
 }
 
@@ -2232,12 +2321,12 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         ? limitText(body.summary, 160)
         : undefined,
     slug: slug !== undefined ? slug : title !== undefined ? "" : undefined,
-    shortDescription:
-      body.shortDescription !== undefined
-        ? String(body.shortDescription).trim()
-        : undefined,
     description:
-      body.description !== undefined ? String(body.description).trim() : undefined,
+      body.description !== undefined
+        ? String(body.description).trim()
+        : body.shortDescription !== undefined
+          ? String(body.shortDescription).trim()
+          : undefined,
     reviewSiteTitle:
       body.reviewSiteTitle !== undefined ? String(body.reviewSiteTitle).trim() : undefined,
     reviewSource:
@@ -2262,8 +2351,6 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     tags: body.tags !== undefined ? parseArray(body.tags) : undefined,
     gameKeywords:
       body.gameKeywords !== undefined ? parseArray(body.gameKeywords) : undefined,
-    filterDefinitions:
-      body.filterDefinitions !== undefined ? parseArray(body.filterDefinitions) : undefined,
     searchTitles:
       body.searchTitles !== undefined ? parseSearchTitles(body.searchTitles) : undefined,
     filterValues:
@@ -2323,7 +2410,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     platformDownloadLinks:
       body.platformDownloadLinks !== undefined
         ? parseObjectArray(body.platformDownloadLinks, (item) => ({
-            platform: String(item?.platform || "").trim() || null,
+            platform: normalizeSubmittedObjectId(item?.platform),
             platformTitle: String(item?.platformTitle || "").trim(),
             platformDescription: String(item?.platformDescription || "").trim(),
             titleId: String(item?.titleId || item?.gameTitle || "").trim().toUpperCase(),
@@ -2387,10 +2474,6 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     isFeatured:
       body.isFeatured !== undefined ? parseBoolean(body.isFeatured) : undefined,
   };
-
-  if (payload.playstationTitleId) {
-    payload.gameId = payload.playstationTitleId;
-  }
 
   const cover = buildMedia(uploadedFiles?.cover?.[0]);
   if (cover) payload.cover = cover;
@@ -2473,7 +2556,6 @@ async function validatePayload(payload) {
   }
   if (payload.tags !== undefined) await ensureExists(Tag, payload.tags, "Tag");
   if (payload.gameKeywords !== undefined) await ensureExists(GameKeyword, payload.gameKeywords, "GameKeyword");
-  if (payload.filterDefinitions !== undefined) await ensureExists(FilterDefinition, payload.filterDefinitions, "FilterDefinition");
   if (payload.filterValues?.genres !== undefined) await ensureExists(Genre, payload.filterValues.genres, "Filter value genre");
   if (payload.collections !== undefined) await ensureExists(GameCollection, payload.collections, "GameCollection");
   if (payload.relatedGames !== undefined) await ensureExists(Game, payload.relatedGames, "Related game");
@@ -2816,6 +2898,7 @@ exports.createGame = async (req, res) => {
   }
 
   payload.slug = await makeUniqueSlug(payload.slug || payload.title);
+  await applyDynamicGameTags(payload, null, req.admin?._id || null);
 
   await validatePayload(payload);
 
@@ -2939,8 +3022,12 @@ exports.updateGame = async (req, res) => {
   if (payload.title !== undefined || payload.slug !== undefined) {
     payload.slug = await makeUniqueSlug(payload.slug || payload.title || game.title, game._id);
   }
+  await applyDynamicGameTags(payload, game, req.admin?._id || null);
   await validatePayload(payload);
   Object.assign(game, payload);
+  if (payload.description !== undefined) {
+    game.shortDescription = undefined;
+  }
   await game.save();
   if (payload.collections !== undefined) {
     await syncGameCollections(game._id, previousCollections, payload.collections);

@@ -1177,13 +1177,24 @@ function PlatformDownloadLinksEditor({
   const rows = (Array.isArray(items) ? items : []).filter(hasLinkData);
   const [openPlatforms, setOpenPlatforms] = React.useState({});
   const [openRegions, setOpenRegions] = React.useState({});
+  const [isPsxHubDropdownOpen, setIsPsxHubDropdownOpen] = React.useState(false);
   const savedRowsCount = rows.length;
   const totalPartsCount = rows.reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
+  const psxHubMatches = Array.isArray(importState?.matches) ? importState.matches : [];
+  const showPsxHubDropdown = isPsxHubDropdownOpen && psxHubMatches.length > 0;
 
   const getPlatformLabel = (item) =>
     item.platformTitle ||
     platformOptions.find((option) => option.value === item.platform)?.label ||
     "بدون پلتفرم";
+
+  const getMatchLabel = (match, index) => {
+    const title = match?.fixedTitle || match?.title || `نتیجه ${index + 1}`;
+    const sourceTitle = match?.title && match.title !== match.fixedTitle ? ` - ${match.title}` : "";
+    const downloadsCount = Array.isArray(match?.downloads) ? match.downloads.length : 0;
+    const partsCount = (match?.downloads || []).reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
+    return `${title}${sourceTitle} (${downloadsCount} لینک / ${partsCount} پارت)`;
+  };
 
   const groupedPlatforms = rows.reduce((groups, item) => {
     const platformLabel = getPlatformLabel(item);
@@ -1198,6 +1209,12 @@ function PlatformDownloadLinksEditor({
   const updateGroupedRows = (predicate, patch) => {
     onChange?.((Array.isArray(items) ? items : []).map((item) => (predicate(item) ? { ...item, ...patch } : item)));
   };
+  const selectPsxHubMatch = (match) => {
+    if (!match) return;
+    onApiTitleChange?.(match?.fixedTitle || match?.title || apiTitle);
+    onApplyPsxHubMatch?.(match);
+    setIsPsxHubDropdownOpen(false);
+  };
 
   return (
     <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
@@ -1209,23 +1226,50 @@ function PlatformDownloadLinksEditor({
           </span>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="space-y-1">
+          <label className="relative space-y-1">
             <span className="block text-xs font-bold text-zinc-600 dark:text-zinc-400">نام API PSXHub</span>
             <input
               className="h-10 w-56 rounded-xl border border-zinc-200 bg-white px-3 text-left text-xs text-zinc-950 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-black dark:text-white dark:focus:border-blue-500"
               dir="ltr"
-              onChange={(event) => onApiTitleChange?.(event.target.value)}
+              onBlur={() => window.setTimeout(() => setIsPsxHubDropdownOpen(false), 150)}
+              onChange={(event) => {
+                onApiTitleChange?.(event.target.value);
+                setIsPsxHubDropdownOpen(true);
+              }}
+              onFocus={() => setIsPsxHubDropdownOpen(true)}
               placeholder="Elden Ring"
               value={apiTitle}
             />
+            {showPsxHubDropdown ? (
+              <div className="absolute left-0 top-full z-30 mt-2 max-h-72 w-80 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+                {psxHubMatches.map((match, index) => (
+                  <button
+                    className="block w-full rounded-lg px-3 py-2 text-right transition hover:bg-emerald-50 dark:hover:bg-blue-950/50"
+                    key={`${match?.externalId || match?.title || index}:${index}`}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      selectPsxHubMatch(match);
+                    }}
+                    type="button"
+                  >
+                    <span className="block truncate text-xs font-black text-zinc-900 dark:text-zinc-100" dir="ltr">
+                      {match?.fixedTitle || match?.title || `نتیجه ${index + 1}`}
+                    </span>
+                    <span className="mt-1 block truncate text-[11px] font-bold text-zinc-500 dark:text-zinc-400" dir="ltr">
+                      {getMatchLabel(match, index)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </label>
           <button
             className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-100 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-300"
-            disabled={importState?.status === "loading"}
+            disabled={importState?.status === "loading" || importState?.status === "suggesting"}
             onClick={onImportDownloads}
             type="button"
           >
-            {importState?.status === "loading" ? "در حال دریافت..." : "دریافت از PSXHub"}
+            {importState?.status === "loading" || importState?.status === "suggesting" ? "در حال دریافت..." : "دریافت از PSXHub"}
           </button>
         </div>
       </div>
@@ -1237,38 +1281,6 @@ function PlatformDownloadLinksEditor({
             : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-300"
         }`}>
           {importState.message}
-        </div>
-      ) : null}
-
-      {Array.isArray(importState?.matches) && importState.matches.length ? (
-        <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
-          {importState.matches.map((match, index) => {
-            const downloadsCount = Array.isArray(match?.downloads) ? match.downloads.length : 0;
-            const partsCount = (match?.downloads || []).reduce((total, item) => total + (Array.isArray(item.parts) ? item.parts.length : 0), 0);
-            return (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-black" key={`${match?.externalId || match?.title || index}:${index}`}>
-                <div className="min-w-0">
-                  <div className="break-words text-sm font-black text-zinc-800 dark:text-zinc-100">
-                    {match?.fixedTitle || match?.title || "بدون عنوان"}
-                  </div>
-                  {match?.title && match.title !== match.fixedTitle ? (
-                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{match.title}</div>
-                  ) : null}
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
-                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-800 ring-1 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:ring-sky-900">{downloadsCount} لینک</span>
-                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">{partsCount} پارت</span>
-                  </div>
-                </div>
-                <button
-                  className="inline-flex h-9 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-100 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-300"
-                  onClick={() => onApplyPsxHubMatch?.(match)}
-                  type="button"
-                >
-                  انتخاب و افزودن
-                </button>
-              </div>
-            );
-          })}
         </div>
       ) : null}
 
@@ -1385,6 +1397,9 @@ function PlatformDownloadLinksEditor({
                                       </span>
                                       <span className="break-all rounded-md bg-white px-2.5 py-1 text-left text-xs text-zinc-700 ring-1 ring-zinc-200 dark:bg-black dark:text-zinc-300 dark:ring-zinc-800" dir="ltr">
                                         {item.downloadUrl}
+                                      </span>
+                                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-black text-blue-800 ring-1 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900" dir="ltr">
+                                        {getPlatformLabel(item)}
                                       </span>
                                     </div>
                                   ) : null}
@@ -2188,7 +2203,7 @@ export function BasicStep({
         ...(source === "playstation" && response?.data?.score ? { sonyScore: response.data.score } : {}),
         ...(source === "playstation" && response?.data?.starRating ? { starRating: response.data.starRating } : {}),
         ...(target === "description"
-          ? { shortDescription: translatedText.slice(0, 5000) }
+          ? { description: translatedText.slice(0, 5000) }
           : { summary: translatedText.slice(0, 160) }),
       }));
       setStatus({
@@ -2311,8 +2326,8 @@ export function BasicStep({
         </div>
         <div className="game-summary-editor min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-gray-600 dark:bg-[#0a2d4d]">
           <MyEditor
-            value={form.shortDescription}
-            onChange={(value) => setForm((prev) => ({ ...prev, shortDescription: value }))}
+            value={form.description}
+            onChange={(value) => setForm((prev) => ({ ...prev, description: value }))}
           />
         </div>
         {descriptionImportState.message ? (
@@ -2734,13 +2749,13 @@ export function PlatformSizesStep({ form, onQuickCreate, platformOptions, setArr
   );
 }
 
-export function PlatformDownloadLinksStep({ form, onApplyPsxHubMatch, onImportDownloads, onQuickCreate, platformOptions, psxHubImportState, setArrayField, setForm }) {
+export function PlatformDownloadLinksStep({ form, onApplyPsxHubMatch, onImportDownloads, onPsxHubApiTitleChange, onQuickCreate, platformOptions, psxHubImportState, setArrayField, setForm }) {
   return (
     <PlatformDownloadLinksEditor
       apiTitle={form.psxHubApiTitle}
       importState={psxHubImportState}
       items={form.platformDownloadLinks}
-      onApiTitleChange={(value) => setForm?.((prev) => ({ ...prev, psxHubApiTitle: value }))}
+      onApiTitleChange={onPsxHubApiTitleChange || ((value) => setForm?.((prev) => ({ ...prev, psxHubApiTitle: value })))}
       onApplyPsxHubMatch={onApplyPsxHubMatch}
       onChange={(value) => setArrayField("platformDownloadLinks", value)}
       onCreatePlatform={(target) => onQuickCreate?.("platform", target)}
@@ -2928,7 +2943,7 @@ export function ReviewStep({ form, setArrayField }) {
 export function SummaryStep({ form, onChange }) {
   return (
     <div className="grid gap-4">
-      <TextareaField label="خلاصه" name="shortDescription" onChange={onChange} rows={4} value={form.shortDescription} />
+      <TextareaField label="خلاصه" name="summary" onChange={onChange} rows={4} value={form.summary} />
     </div>
   );
 }
