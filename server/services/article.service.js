@@ -264,6 +264,10 @@ function normalizeBoolean(value) {
   return value === true || value === "true" || value === "1" || value === 1;
 }
 
+function isPrivilegedAdmin(admin = {}) {
+  return ["owner", "superAdmin"].includes(admin.role);
+}
+
 function buildMedia(file) {
   if (!file) return undefined;
   return {
@@ -426,6 +430,7 @@ exports.generateArticleSlug = async (req, res) => {
 exports.createArticle = async (req, res) => {
   const payload = normalizeArticlePayload(req.body, req.uploadedFiles);
   payload.creator = req.admin?._id || null;
+  if (isPrivilegedAdmin(req.admin)) payload.status = "active";
 
   if (!payload.title) {
     return res.status(400).json({

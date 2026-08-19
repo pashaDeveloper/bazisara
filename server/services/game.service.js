@@ -2128,8 +2128,16 @@ function parseFilterValues(value) {
 
 function parseDateValue(value) {
   if (!value) return null;
-  const date = new Date(value);
+  const text = String(value).trim();
+  const dateParts = text.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  const date = dateParts
+    ? new Date(Number(dateParts[3]), Number(dateParts[1]) - 1, Number(dateParts[2]))
+    : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isPrivilegedAdmin(admin = {}) {
+  return ["owner", "superAdmin"].includes(admin.role);
 }
 
 function normalizeStructuredImages(items, uploadedFiles, fieldName) {
@@ -2433,9 +2441,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         : undefined,
     releaseDate:
       body.releaseDate !== undefined
-        ? body.releaseDate
-          ? new Date(body.releaseDate)
-          : null
+        ? parseDateValue(body.releaseDate)
         : undefined,
     officialWebsite:
       body.officialWebsite !== undefined
@@ -2884,6 +2890,7 @@ exports.suggestPlayStationGallery = async (req, res) => {
 exports.createGame = async (req, res) => {
   const payload = normalizePayload(req.body, req.uploadedFiles);
   payload.creator = req.admin?._id || null;
+  payload.status = isPrivilegedAdmin(req.admin) ? "active" : "pending";
   console.log("[games:create] body:", req.body);
   console.log("[games:create] files:", Object.keys(req.uploadedFiles || {}));
   console.log("[games:create] payload:", payload);

@@ -29,6 +29,10 @@ function requireAdminProfileLevel(minLevel = 1) {
         ...profile,
       };
 
+      if (["owner", "superAdmin"].includes(plainAdmin.role)) {
+        return next();
+      }
+
       if (profile.level < minLevel) {
         return res.status(403).json({
           acknowledgement: false,
