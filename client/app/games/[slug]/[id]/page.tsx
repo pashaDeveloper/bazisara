@@ -24,6 +24,8 @@ import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
+import { GameDetailTabs } from "./game-detail-tabs";
+import { GameMediaSwiper, type GameMediaSlide } from "./media-swiper";
 import { TrailerPlayOverlay } from "./trailer-play-overlay";
 
 export const dynamic = "force-dynamic";
@@ -135,6 +137,39 @@ function gameMedia(game: Game, preferred: "desktop" | "mobile" | "card" = "card"
   return [game.cardDesktopCover, game.cover, game.desktopCover, game.gallery?.[0]].find((item) => mediaUrl(item));
 }
 
+function buildMediaSlides(game: Game): GameMediaSlide[] {
+  const gallerySlides =
+    game.gallery
+      ?.map((item, index): GameMediaSlide | null => {
+        const imageSrc = mediaUrl(item);
+        if (!imageSrc) return null;
+
+        return {
+          alt: item.alt || `${game.title} screenshot ${index + 1}`,
+          blurSrc: mediaBlurUrl(item),
+          imageSrc,
+          kind: "image" as const,
+        };
+      })
+      .filter((item): item is GameMediaSlide => Boolean(item)) || [];
+
+  const trailerVideo = mediaUrl(game.trailerVideo);
+  const trailerPosterMedia = game.trailerThumbnail || gameMedia(game, "desktop") || gameMedia(game, "card");
+  const trailerPoster = mediaUrl(trailerPosterMedia);
+
+  if (trailerVideo && trailerPoster) {
+    gallerySlides.push({
+      alt: `${game.title} trailer`,
+      blurSrc: mediaBlurUrl(trailerPosterMedia),
+      imageSrc: trailerPoster,
+      kind: "trailer",
+      videoSrc: trailerVideo,
+    });
+  }
+
+  return gallerySlides;
+}
+
 function objectPosition(media?: Media) {
   const x = Number(media?.position?.x);
   const y = Number(media?.position?.y);
@@ -162,7 +197,7 @@ function HeroCornerBadges({
 }) {
   return (
     <div
-      className={`absolute z-10 flex items-end gap-1.5 ${
+      className={`absolute z-10 flex items-end gap-1.5 p-2 ${
         flush ? "bottom-0 right-0" : "bottom-5 right-5 lg:bottom-8 lg:right-8"
       }`}
       dir="ltr"
@@ -304,7 +339,7 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
       <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
       <TrailerPlayOverlay title={game.title} trailerUrl={trailerUrl} />
 
-      <div className="absolute left-6 top-1/2 w-[392px] -translate-y-1/2 rounded-xl border border-white/75 bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)]" dir="rtl" style={{ zIndex: 30 }}>
+      <div className="absolute left-6 top-1/2 w-[392px] -translate-y-1/2 rounded-xl border border-white/75 bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)]" dir="rtl" style={{ zIndex: 0 }}>
         <h1 className="line-clamp-2 text-left text-[21px] font-black leading-8 text-[#29467c]" dir="ltr">
           {game.title}
         </h1>
@@ -337,7 +372,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         </div>
       </div>
 
-      <div className="relative overflow-hidden bg-[#f2f5f8] pb-5">
+      <div className="relative overflow-hidden bg-[#f2f5f8] ">
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
@@ -347,7 +382,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
           )}
           <HeroCornerBadges metacriticScore={game.metacriticScore} flush />
         </div>
-        <div className="absolute bottom-5 left-5 flex flex-col items-center">
+        <div className="absolute bottom-5 left-5 flex flex-col items-center p-2">
           <a
             href={trailerUrl || "#"}
             aria-disabled={!trailerUrl}
@@ -653,6 +688,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     game.relatedGames?.length
       ? game.relatedGames
       : allGames.filter((item) => item._id !== game._id).slice(0, 8);
+  const mediaSlides = buildMediaSlides(game);
 
   const specs: SpecRow[] = [
     { label: "پلتفرم", value: platforms.join("، ") },
@@ -680,35 +716,16 @@ export default async function GameDetailPage({ params }: PageProps) {
       <MobileHero game={game} platforms={platforms} keywords={keywords} />
 
       <main dir="rtl">
-        <TabsBar />
-
-        <section id="intro" className="bg-white px-4 py-5 lg:mx-auto lg:mt-4 lg:max-w-[1440px] lg:rounded-xl lg:border lg:border-[#e8ecf3] lg:p-6">
-          {description ? (
-            <>
-            <h2 className="mb-3 text-[15px] font-black text-[#29467c]">معرفی</h2>
-            <p className="line-clamp-5 text-[13px] leading-8 text-[#475166]">{description}</p>
-            </>
-          ) : (
-            <div className="min-h-28 rounded-lg bg-white" />
-          )}
-        </section>
-
-        {(game.reviewSiteTitle || game.reviewSource || game.reviewLink || game.reviewItems?.length) ? (
-          <section id="review" className="bg-white px-4 py-5 lg:mx-auto lg:mt-4 lg:max-w-[1440px] lg:rounded-xl lg:border lg:border-[#e8ecf3] lg:p-6">
-            <h2 className="mb-4 text-[15px] font-black text-[#29467c]">نقد و بررسی</h2>
-            <div className="grid gap-3 text-[13px] leading-7 text-[#475166]">
-              {game.reviewSiteTitle ? <p>{game.reviewSiteTitle}</p> : null}
-              {game.reviewSource ? <p>منبع: {game.reviewSource}</p> : null}
-              {game.reviewLink ? <p className="break-all">لینک: {game.reviewLink}</p> : null}
-              {game.reviewItems?.map((item, index) => (
-                <p key={`${item.title}-${index}`}>{item.title || item.link}</p>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <SpecsTable specs={specs} />
-        <FeatureStrip specs={specs} />
+        <GameMediaSwiper title={game.title} slides={mediaSlides} />
+        <GameDetailTabs
+          description={description}
+          downloads={game.platformDownloadLinks}
+          reviewItems={game.reviewItems}
+          reviewLink={game.reviewLink}
+          reviewSiteTitle={game.reviewSiteTitle}
+          reviewSource={game.reviewSource}
+          specs={specs}
+        />
         <ReactionBox />
 
         <ProductRail />

@@ -571,6 +571,8 @@ function toPlatformReleaseArray(value, fallbackPlatforms = [], fallbackReleaseDa
 const platformReleaseAliases = {
   PS4: ["ps4", "playstation4", "playstation 4", "پلی استیشن ۴", "پلی استیشن 4"],
   PS5: ["ps5", "playstation5", "playstation 5", "پلی استیشن ۵", "پلی استیشن 5"],
+  PlayStation4: ["ps4", "playstation4", "playstation 4", "پلی استیشن ۴", "پلی استیشن 4"],
+  PlayStation5: ["ps5", "playstation5", "playstation 5", "پلی استیشن ۵", "پلی استیشن 5"],
   xbox: ["xbox", "ایکس باکس", "اکس باکس"],
   xbox_one: ["xboxone", "xbox one", "ایکس باکس وان", "اکس باکس وان"],
   xbox_series: ["xboxseries", "xbox series", "xbox series x|s", "xbox series x/s", "ایکس باکس سری ایکس/اس"],
@@ -586,7 +588,12 @@ function normalizePlatformSearchText(value) {
 
 function findPlatformIdByReleaseKey(platforms, release) {
   const key = String(release?.platformKey || release?.platform || release?.platformName || "").trim();
-  const aliases = platformReleaseAliases[key] || [key, release?.platformName].filter(Boolean);
+  const normalizedKey = normalizePlatformSearchText(key).replace(/\s+/g, "");
+  const aliasEntry = Object.entries(platformReleaseAliases).find(([aliasKey, aliases]) => {
+    const normalizedAliasKey = normalizePlatformSearchText(aliasKey).replace(/\s+/g, "");
+    return normalizedAliasKey === normalizedKey || aliases.some((alias) => normalizePlatformSearchText(alias).replace(/\s+/g, "") === normalizedKey);
+  });
+  const aliases = aliasEntry?.[1] || [key, release?.platformName].filter(Boolean);
   const normalizedAliases = aliases.map(normalizePlatformSearchText).filter(Boolean);
   if (!normalizedAliases.length) return "";
 
@@ -655,6 +662,62 @@ function mergeImportedPlatformDownloadLinks(currentItems, importedItems, platfor
   });
 
   return toPlatformDownloadLinkArray(rows);
+}
+
+function getImportedDownloadSize(item) {
+  const directSize = String(item?.size || "").trim();
+  if (directSize) return directSize;
+
+  const total = (Array.isArray(item?.parts) ? item.parts : []).reduce((sum, part) => {
+    const value = Number(part?.size);
+    return Number.isFinite(value) ? sum + value : sum;
+  }, 0);
+
+  return total ? String(total) : "";
+}
+
+function mergeImportedPlatformSizes(currentItems, importedItems, platforms) {
+  const rows = toObjectArray(currentItems);
+
+  (Array.isArray(importedItems) ? importedItems : []).forEach((item) => {
+    const size = getImportedDownloadSize(item);
+    if (!size) return;
+
+    const platformTitle = String(item?.platformTitle || item?.platformKey || "").trim();
+    const platform = item?.platform || findPlatformIdByDownloadKey(platforms, item);
+    const version = String(item?.version || "").trim();
+    const region = String(item?.region || "").trim();
+    const variant = [platformTitle, version ? `v${version}` : "", region].filter(Boolean).join(" - ");
+
+    const key = [platform || platformTitle, variant]
+      .map((part) => String(part || "").toLowerCase())
+      .join(":");
+    const existingIndex = rows.findIndex((row) =>
+      [row.platform || platformTitle, row.variant]
+        .map((part) => String(part || "").toLowerCase())
+        .join(":") === key
+    );
+
+    const nextItem = {
+      platform,
+      variant,
+      size: /mb|gb|گیگ|مگ/i.test(size) ? size : `${size} MB`,
+    };
+
+    if (existingIndex >= 0) {
+      rows[existingIndex] = {
+        ...nextItem,
+        ...rows[existingIndex],
+        platform: rows[existingIndex].platform || nextItem.platform,
+        size: nextItem.size || rows[existingIndex].size,
+      };
+      return;
+    }
+
+    rows.push(nextItem);
+  });
+
+  return toObjectArray(rows);
 }
 
 function mergeImportedDlcs(currentItems, importedItems) {
@@ -970,9 +1033,11 @@ function GameForm({ mode = "create" }) {
 
   const applyPsxHubDownloads = (data) => {
     const downloads = data?.downloads || [];
+    const platformSizes = data?.platformSizes?.length ? data.platformSizes : downloads;
     psxHubSelectedTitleRef.current = String(data?.fixedTitle || data?.title || form.psxHubApiTitle || "").trim();
     setForm((prev) => ({
       ...prev,
+      platformSizes: mergeImportedPlatformSizes(prev.platformSizes, platformSizes, platforms),
       platformDownloadLinks: mergeImportedPlatformDownloadLinks(prev.platformDownloadLinks, downloads, platforms),
     }));
     setPsxHubImportState((prev) => ({

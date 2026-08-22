@@ -79,6 +79,28 @@ export type Game = {
     variant?: string;
     size?: string;
   }>;
+  platformDownloadLinks?: Array<{
+    platform?: string | NamedEntity;
+    platformTitle?: string;
+    platformDescription?: string;
+    titleId?: string;
+    region?: string;
+    regionDescription?: string;
+    version?: string;
+    size?: string;
+    downloadUrl?: string;
+    sourceUrl?: string;
+    notes?: string;
+    parts?: Array<{
+      externalId?: string;
+      partNumber?: number | null;
+      fileName?: string;
+      contentType?: string;
+      size?: string;
+      hash?: string;
+      url?: string;
+    }>;
+  }>;
   dlcs?: Array<{
     title?: string;
     type?: string;

@@ -532,6 +532,21 @@ function normalizePsxHubGroup(data, safeTitle, sourceUrl, index = 0) {
       };
     })
     .filter((item) => item.platformTitle || item.titleId || item.version || item.downloadUrl || item.parts.length);
+  const platformSizes = rows
+    .map((item) => {
+      const size = String(item.size || "").trim();
+      if (!size) return null;
+
+      return {
+        platformTitle: item.platformTitle,
+        platformKey: item.platformKey,
+        region: item.region,
+        variant: [item.platformTitle, item.version ? `v${item.version}` : "", item.region].filter(Boolean).join(" - "),
+        version: item.version,
+        size: /mb|gb|گیگ|مگ/i.test(size) ? size : `${size} MB`,
+      };
+    })
+    .filter(Boolean);
 
   return {
     externalId: data?.id ?? data?.gameId ?? null,
@@ -542,6 +557,7 @@ function normalizePsxHubGroup(data, safeTitle, sourceUrl, index = 0) {
     title: String(data?.title || safeTitle).trim(),
     dlcs: normalizePsxHubDlcs(gameList),
     downloads: rows,
+    platformSizes,
   };
 }
 
