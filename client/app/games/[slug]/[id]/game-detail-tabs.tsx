@@ -39,6 +39,18 @@ function compactValue(value?: string | number | null) {
   return latinToPersian(value);
 }
 
+function formatSizeMb(value?: string | number | null) {
+  if (value === null || value === undefined || value === "") return "";
+  const size = Number(value);
+  if (!Number.isFinite(size)) return String(value);
+  if (size >= 1024) {
+    const gb = size / 1024;
+    const formatted = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/\.?0+$/, "");
+    return `${formatted} GB`;
+  }
+  return `${size} MB`;
+}
+
 function entityLabel(value?: string | NamedEntity | null) {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -138,7 +150,7 @@ function DownloadsTab({ downloads = [] }: { downloads?: DownloadLink[] }) {
                 <div>
                   <h3 className="text-[13px] font-black text-[#2d3d66]">{downloadTitle(item, index)}</h3>
                   <p className="mt-1 text-[12px] leading-6 text-[#7c8598]">
-                    {[item.version, item.regionDescription || item.region, item.size].filter(Boolean).join(" | ") || "نسخه دانلود"}
+                    {[item.version, item.regionDescription || item.region, formatSizeMb(item.size)].filter(Boolean).join(" | ") || "نسخه دانلود"}
                   </p>
                 </div>
                 {item.downloadUrl ? (
@@ -160,7 +172,7 @@ function DownloadsTab({ downloads = [] }: { downloads?: DownloadLink[] }) {
                       target="_blank"
                     >
                       <span className="min-w-0 truncate">{part.fileName || `پارت ${latinToPersian(part.partNumber || partIndex + 1)}`}</span>
-                      <span className="shrink-0 text-[#8a92a3]">{part.size}</span>
+                      <span className="shrink-0 text-[#8a92a3]">{formatSizeMb(part.size)}</span>
                     </a>
                   ))}
                 </div>

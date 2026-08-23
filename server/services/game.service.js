@@ -363,6 +363,26 @@ function normalizePsxHubVersion(value) {
   return raw;
 }
 
+function normalizePersianDigits(value) {
+  return String(value ?? "")
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+}
+
+function parseSizeMb(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  const raw = normalizePersianDigits(value).trim();
+  const matches = raw.match(/[\d,.]+/g);
+  if (!matches?.length) return null;
+
+  const numeric = Number(matches[matches.length - 1].replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) return null;
+
+  return /gb|gib|گیگ|گيگ/i.test(raw) ? numeric * 1024 : numeric;
+}
+
 function normalizeDownloadParts(value) {
   return (Array.isArray(value) ? value : [])
     .map((part) => {
@@ -372,21 +392,21 @@ function normalizeDownloadParts(value) {
         partNumber: Number.isFinite(partNumber) ? partNumber : null,
         fileName: String(part?.fileName || "").trim(),
         contentType: String(part?.contentType || part?.type || "").trim(),
-        size: String(part?.size ?? part?.fileSize ?? "").trim(),
+        size: parseSizeMb(part?.size ?? part?.fileSize),
         hash: String(part?.hash || "").trim(),
         url: String(part?.url || part?.downloadUrl || part?.link || "").trim(),
       };
     })
-    .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size);
+    .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size !== null);
 }
 
 function getDownloadPartsTotalSize(parts, fallbackSize = "") {
   const total = (Array.isArray(parts) ? parts : []).reduce((sum, part) => {
-    const value = Number(part?.size);
+    const value = parseSizeMb(part?.size);
     return Number.isFinite(value) ? sum + value : sum;
   }, 0);
 
-  return total ? String(total) : String(fallbackSize || "").trim();
+  return total || parseSizeMb(fallbackSize);
 }
 
 function makeMediaFromUrl(url, alt = "") {
@@ -433,7 +453,7 @@ function normalizePsxHubDlcs(games) {
         titleId: String(dlc?.parentTitleId || "").trim().toUpperCase(),
         type,
         version,
-        versionSize: [version ? `v${version}` : "", size ? `${size} MB` : ""].filter(Boolean).join(" - "),
+        versionSize: size,
       };
     })
     .filter(Boolean);
@@ -505,6 +525,16 @@ function makePsxHubSourceUrl(title) {
   return `https://psxhub.ir/api/GetGame/GetGameGroupWithPieces/${encodeURIComponent(title)}`;
 }
 
+function isUsRegion(value) {
+  return String(value || "").trim().toUpperCase() === "US";
+}
+
+function formatPsxHubVersionLabel(value) {
+  const version = String(value || "").trim();
+  if (!version) return "";
+  return version.toLowerCase().startsWith("v") ? version : `v${version}`;
+}
+
 function normalizePsxHubGroup(data, safeTitle, sourceUrl, index = 0) {
   const gameList = getPsxHubGameList(data);
   const rows = gameList
@@ -533,17 +563,18 @@ function normalizePsxHubGroup(data, safeTitle, sourceUrl, index = 0) {
     })
     .filter((item) => item.platformTitle || item.titleId || item.version || item.downloadUrl || item.parts.length);
   const platformSizes = rows
+    .filter((item) => isUsRegion(item.region))
     .map((item) => {
-      const size = String(item.size || "").trim();
-      if (!size) return null;
+      const size = parseSizeMb(item.size);
+      if (size === null) return null;
 
       return {
         platformTitle: item.platformTitle,
         platformKey: item.platformKey,
         region: item.region,
-        variant: [item.platformTitle, item.version ? `v${item.version}` : "", item.region].filter(Boolean).join(" - "),
+        variant: formatPsxHubVersionLabel(item.version),
         version: item.version,
-        size: /mb|gb|گیگ|مگ/i.test(size) ? size : `${size} MB`,
+        size,
       };
     })
     .filter(Boolean);
@@ -2409,7 +2440,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         ? parseObjectArray(body.dlcs, (item) => ({
             title: typeof item === "string" ? String(item).trim() : String(item?.title || "").trim(),
             type: typeof item === "string" ? "" : String(item?.type || "").trim(),
-            versionSize: typeof item === "string" ? "" : String(item?.versionSize || "").trim(),
+            versionSize: typeof item === "string" ? null : parseSizeMb(item?.versionSize),
             image: typeof item === "string" ? "" : item?.image || "",
           }))
         : undefined,
@@ -2428,7 +2459,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
         ? parseObjectArray(body.platformSizes, (item) => ({
             platform: String(item?.platform || "").trim() || null,
             variant: String(item?.variant || "").trim(),
-            size: String(item?.size || "").trim(),
+            size: parseSizeMb(item?.size),
           }))
         : undefined,
     platformDownloadLinks:
@@ -2441,7 +2472,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
             region: String(item?.region || "").trim().toUpperCase(),
             regionDescription: String(item?.regionDescription || "").trim(),
             version: String(item?.version || "").trim(),
-            size: String(item?.size || "").trim(),
+            size: parseSizeMb(item?.size),
             downloadUrl: String(item?.downloadUrl || item?.url || item?.link || "").trim(),
             sourceUrl: String(item?.sourceUrl || "").trim(),
             notes: String(item?.notes || "").trim(),

@@ -77,7 +77,7 @@ export type Game = {
   platformSizes?: Array<{
     platform?: string | NamedEntity;
     variant?: string;
-    size?: string;
+    size?: number | string | null;
   }>;
   platformDownloadLinks?: Array<{
     platform?: string | NamedEntity;
@@ -87,7 +87,7 @@ export type Game = {
     region?: string;
     regionDescription?: string;
     version?: string;
-    size?: string;
+    size?: number | string | null;
     downloadUrl?: string;
     sourceUrl?: string;
     notes?: string;
@@ -96,7 +96,7 @@ export type Game = {
       partNumber?: number | null;
       fileName?: string;
       contentType?: string;
-      size?: string;
+      size?: number | string | null;
       hash?: string;
       url?: string;
     }>;
@@ -104,7 +104,7 @@ export type Game = {
   dlcs?: Array<{
     title?: string;
     type?: string;
-    versionSize?: string;
+    versionSize?: number | string | null;
     image?: Media;
   }>;
   extraEditions?: Array<{

@@ -433,9 +433,9 @@ function toObjectArray(value, fallback = []) {
       .map((item) => ({
         platform: item?.platform?._id || item?.platform || "",
         variant: item?.variant || "",
-        size: item?.size || "",
+        size: parseSizeMb(item?.size),
       }))
-      .filter((item) => item.platform || item.variant || item.size);
+      .filter((item) => item.platform || item.variant || item.size !== null);
   }
 
   try {
@@ -444,6 +444,37 @@ function toObjectArray(value, fallback = []) {
   } catch (_) {}
 
   return fallback;
+}
+
+function normalizePersianDigits(value) {
+  return String(value ?? "")
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+}
+
+function parseSizeMb(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  const raw = normalizePersianDigits(value).trim();
+  const matches = raw.match(/[\d,.]+/g);
+  if (!matches?.length) return null;
+
+  const numeric = Number(matches[matches.length - 1].replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) return null;
+
+  return /gb|gib|گیگ|گيگ/i.test(raw) ? numeric * 1024 : numeric;
+}
+
+function formatSizeMb(value) {
+  const size = parseSizeMb(value);
+  if (size === null) return "";
+  if (size >= 1024) {
+    const gb = size / 1024;
+    const formatted = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/\.?0+$/, "");
+    return `${formatted} GB`;
+  }
+  return `${size} MB`;
 }
 
 function toPlatformDownloadLinkArray(value) {
@@ -458,7 +489,7 @@ function toPlatformDownloadLinkArray(value) {
         region: String(item?.region || "").trim(),
         regionDescription: String(item?.regionDescription || "").trim(),
         version: String(item?.version || "").trim(),
-        size: String(item?.size || "").trim(),
+        size: parseSizeMb(item?.size),
         downloadUrl: String(item?.downloadUrl || item?.url || item?.link || "").trim(),
         sourceUrl: String(item?.sourceUrl || "").trim(),
         notes: String(item?.notes || "").trim(),
@@ -470,12 +501,12 @@ function toPlatformDownloadLinkArray(value) {
               partNumber: Number.isFinite(partNumber) ? partNumber : null,
               fileName: String(part?.fileName || "").trim(),
               contentType: String(part?.contentType || part?.type || "").trim(),
-              size: String(part?.size ?? part?.fileSize ?? "").trim(),
+              size: parseSizeMb(part?.size ?? part?.fileSize),
               hash: String(part?.hash || "").trim(),
               url: String(part?.url || part?.downloadUrl || part?.link || "").trim(),
             };
           })
-          .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size),
+          .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size !== null),
       }))
       .filter((item) =>
         item.platform ||
@@ -485,7 +516,7 @@ function toPlatformDownloadLinkArray(value) {
         item.region ||
         item.regionDescription ||
         item.version ||
-        item.size ||
+        item.size !== null ||
         item.downloadUrl ||
         item.sourceUrl ||
         item.notes ||
@@ -510,7 +541,7 @@ function toDlcArray(value) {
       title: String(item?.title || "").trim(),
       type: String(item?.type || "").trim().toLowerCase() === "dlc" ? "dlc" : String(item?.type || "").trim(),
       version: String(item?.version || "").trim(),
-      versionSize: String(item?.versionSize || item?.size || "").trim(),
+      versionSize: parseSizeMb(item?.versionSize ?? item?.size),
       titleId: String(item?.titleId || "").trim(),
       region: String(item?.region || "").trim(),
       platformKey: String(item?.platformKey || "").trim(),
@@ -523,18 +554,18 @@ function toDlcArray(value) {
             partNumber: Number.isFinite(partNumber) ? partNumber : null,
             fileName: String(part?.fileName || "").trim(),
             contentType: String(part?.contentType || part?.type || "").trim(),
-            size: String(part?.size ?? part?.fileSize ?? "").trim(),
+            size: parseSizeMb(part?.size ?? part?.fileSize),
             hash: String(part?.hash || "").trim(),
             url: String(part?.url || part?.downloadUrl || part?.link || "").trim(),
           };
         })
-        .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size),
+        .filter((part) => part.url || part.fileName || part.hash || part.contentType || part.size !== null),
     }))
     .filter(
       (item) =>
         item.title ||
         item.type ||
-        item.versionSize ||
+        item.versionSize !== null ||
         item.image ||
         item.parts.length
     );
@@ -630,7 +661,7 @@ function mergeImportedPlatformDownloadLinks(currentItems, importedItems, platfor
       region: String(item?.region || "").trim(),
       regionDescription: String(item?.regionDescription || "").trim(),
       version: String(item?.version || "").trim(),
-      size: String(item?.size || "").trim(),
+      size: parseSizeMb(item?.size),
       downloadUrl: String(item?.downloadUrl || "").trim(),
       sourceUrl: String(item?.sourceUrl || "").trim(),
       notes: String(item?.notes || "").trim(),
@@ -665,35 +696,52 @@ function mergeImportedPlatformDownloadLinks(currentItems, importedItems, platfor
 }
 
 function getImportedDownloadSize(item) {
-  const directSize = String(item?.size || "").trim();
-  if (directSize) return directSize;
+  const directSize = parseSizeMb(item?.size);
+  if (directSize !== null) return directSize;
 
   const total = (Array.isArray(item?.parts) ? item.parts : []).reduce((sum, part) => {
-    const value = Number(part?.size);
+    const value = parseSizeMb(part?.size);
     return Number.isFinite(value) ? sum + value : sum;
   }, 0);
 
-  return total ? String(total) : "";
+  return total || null;
+}
+
+function isUsRegion(value) {
+  return String(value || "").trim().toUpperCase() === "US";
+}
+
+function formatImportedVersion(value) {
+  const version = String(value || "").trim();
+  if (!version) return "";
+  return version.toLowerCase().startsWith("v") ? version : `v${version}`;
+}
+
+function normalizePlatformSizeVariant(value) {
+  const variant = String(value || "").trim();
+  const version = variant.match(/v?\d+(?:[._]\d+)*/i)?.[0] || variant;
+  return formatImportedVersion(version);
 }
 
 function mergeImportedPlatformSizes(currentItems, importedItems, platforms) {
   const rows = toObjectArray(currentItems);
 
   (Array.isArray(importedItems) ? importedItems : []).forEach((item) => {
+    if (!isUsRegion(item?.region)) return;
+
     const size = getImportedDownloadSize(item);
-    if (!size) return;
+    if (size === null) return;
 
     const platformTitle = String(item?.platformTitle || item?.platformKey || "").trim();
     const platform = item?.platform || findPlatformIdByDownloadKey(platforms, item);
     const version = String(item?.version || "").trim();
-    const region = String(item?.region || "").trim();
-    const variant = [platformTitle, version ? `v${version}` : "", region].filter(Boolean).join(" - ");
+    const variant = formatImportedVersion(version);
 
     const key = [platform || platformTitle, variant]
       .map((part) => String(part || "").toLowerCase())
       .join(":");
     const existingIndex = rows.findIndex((row) =>
-      [row.platform || platformTitle, row.variant]
+      [row.platform || platformTitle, normalizePlatformSizeVariant(row.variant)]
         .map((part) => String(part || "").toLowerCase())
         .join(":") === key
     );
@@ -701,13 +749,13 @@ function mergeImportedPlatformSizes(currentItems, importedItems, platforms) {
     const nextItem = {
       platform,
       variant,
-      size: /mb|gb|گیگ|مگ/i.test(size) ? size : `${size} MB`,
+      size,
     };
 
     if (existingIndex >= 0) {
       rows[existingIndex] = {
-        ...nextItem,
         ...rows[existingIndex],
+        ...nextItem,
         platform: rows[existingIndex].platform || nextItem.platform,
         size: nextItem.size || rows[existingIndex].size,
       };
@@ -1914,7 +1962,7 @@ function GameForm({ mode = "create" }) {
         const dlcPayload = (value || []).map((item) => ({
           title: String(item?.title || "").trim(),
           type: String(item?.type || "").trim(),
-          versionSize: String(item?.versionSize || "").trim(),
+          versionSize: parseSizeMb(item?.versionSize),
           image: isMediaObject(item?.image) ? item.image : typeof item?.image === "string" ? item.image : item?.image?.url || "",
         }));
         formData.append("dlcs", JSON.stringify(dlcPayload));
@@ -1948,6 +1996,36 @@ function GameForm({ mode = "create" }) {
         return;
       }
       if (arrayFields.includes(key)) {
+        if (key === "platformSizes") {
+          formData.append(
+            key,
+            JSON.stringify(
+              (value || []).map((item) => ({
+                ...item,
+                size: parseSizeMb(item?.size),
+              }))
+            )
+          );
+          return;
+        }
+
+        if (key === "platformDownloadLinks") {
+          formData.append(
+            key,
+            JSON.stringify(
+              (value || []).map((item) => ({
+                ...item,
+                size: parseSizeMb(item?.size),
+                parts: (Array.isArray(item?.parts) ? item.parts : []).map((part) => ({
+                  ...part,
+                  size: parseSizeMb(part?.size),
+                })),
+              }))
+            )
+          );
+          return;
+        }
+
         formData.append(key, JSON.stringify(value || []));
         return;
       }
@@ -2088,7 +2166,6 @@ function GameForm({ mode = "create" }) {
         return (
           <div className="space-y-4">
             <PlatformReleasesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
-            <PlatformSizesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
             <PlatformDownloadLinksStep
               form={form}
               onApplyPsxHubMatch={applyPsxHubDownloads}
@@ -2100,6 +2177,7 @@ function GameForm({ mode = "create" }) {
               setArrayField={setArrayField}
               setForm={setForm}
             />
+            <PlatformSizesStep form={form} onQuickCreate={openQuickCreate} platformOptions={platformOptions} setArrayField={setArrayField} />
           </div>
         );
       case "dlc":

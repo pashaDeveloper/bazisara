@@ -6,6 +6,17 @@ export function SkeletonBlock({ className = "" }) {
   return <div className={`animate-pulse rounded-lg bg-zinc-800/20 ${className}`} />;
 }
 
+function formatSizeMb(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size)) return "";
+  if (size >= 1024) {
+    const gb = size / 1024;
+    const formatted = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/\.?0+$/, "");
+    return `${formatted} GB`;
+  }
+  return `${size} MB`;
+}
+
 export function GameCardPreview({ coverPreview, form }) {
   const title = form.title.trim();
 
@@ -216,7 +227,7 @@ export function GameDetailPreview({
                     <div className="grid gap-2 text-xs text-zinc-200 md:grid-cols-[120px_1fr_120px]" key={`${item.platform}-${index}`}>
                       <span className="rounded-lg bg-zinc-900 px-3 py-2">{item.platform || "-"}</span>
                       <span className="rounded-lg bg-zinc-900 px-3 py-2">{item.variant || "-"}</span>
-                      <span className="rounded-lg bg-zinc-900 px-3 py-2">{item.size || "-"}</span>
+                      <span className="rounded-lg bg-zinc-900 px-3 py-2">{formatSizeMb(item.size) || "-"}</span>
                     </div>
                   ))}
                 </div>

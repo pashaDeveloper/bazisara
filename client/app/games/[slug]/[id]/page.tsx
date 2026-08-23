@@ -121,6 +121,40 @@ function formatGameEditions(game: Game) {
   return editions?.join("، ") || "";
 }
 
+function isUsRegion(value?: string | null) {
+  return String(value || "").trim().toUpperCase() === "US";
+}
+
+function formatVersion(value?: string | null) {
+  const version = String(value || "").trim();
+  if (!version) return "";
+  return version.toLowerCase().startsWith("v") ? version : `v${version}`;
+}
+
+function formatSizeMb(value?: string | number | null) {
+  if (value === null || value === undefined || value === "") return "";
+  const size = Number(value);
+  if (!Number.isFinite(size)) return String(value);
+  if (size >= 1024) {
+    const gb = size / 1024;
+    const formatted = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/\.?0+$/, "");
+    return `${formatted} GB`;
+  }
+  return `${size} MB`;
+}
+
+function formatPsxHubPlatformSizes(game: Game) {
+  const sizes = game.platformDownloadLinks
+    ?.filter((item) => isUsRegion(item.region))
+    ?.map((item) => {
+      const platform = item.platformTitle || entityLabel(item.platform);
+      return [platform, formatVersion(item.version), formatSizeMb(item.size)].filter(Boolean).join(" - ");
+    })
+    .filter(Boolean);
+
+  return sizes?.join("، ") || "";
+}
+
 function latinToPersian(value: string | number) {
   return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 }
@@ -679,10 +713,12 @@ export default async function GameDetailPage({ params }: PageProps) {
   const platformSizes = game.platformSizes
     ?.map((item) => {
       const platform = entityLabel(item.platform);
-      return [platform, item.variant, item.size].filter(Boolean).join(" - ");
+      return [platform, item.variant, formatSizeMb(item.size)].filter(Boolean).join(" - ");
     })
     .filter(Boolean)
     .join("، ");
+  const psxHubPlatformSizes = formatPsxHubPlatformSizes(game);
+  const platformSizeValue = game.platformDownloadLinks?.length ? psxHubPlatformSizes : platformSizes;
   const extraEditions = formatGameEditions(game);
   const relatedGames =
     game.relatedGames?.length
@@ -694,6 +730,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     { label: "پلتفرم", value: platforms.join("، ") },
     { label: "نسخه", value: game.edition },
     { label: "لانچر", value: joinText(game.launcher) },
+    { label: "حجم نسخه‌ها", value: platformSizeValue },
     { label: "تاریخ انتشار", value: formatPersianDate(game.releaseDate) },
     { label: "مدت گیم‌پلی", value: game.gameplayTime ? `${game.gameplayTime} ساعت` : "" },
     { label: "امتیاز متاکریتیک", value: game.metacriticScore },
@@ -706,7 +743,6 @@ export default async function GameDetailPage({ params }: PageProps) {
     { label: "چندنفره", value: game.hasMultiplayerMode ? game.multiplayerPlayerCount || "دارد" : "" },
     { label: "زبان‌ها", value: joinText(game.languages) },
     { label: "ریجن", value: joinText(game.regions) },
-    { label: "حجم نسخه‌ها", value: platformSizes },
     { label: "نسخه‌های بازی", value: extraEditions },
   ].filter((item) => item.value !== "");
 

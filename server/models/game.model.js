@@ -66,11 +66,31 @@ const starRatingSchema = new mongoose.Schema(
   { _id: false }
 );
 
+function normalizePersianDigits(value) {
+  return String(value ?? "")
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+}
+
+function parseSizeMb(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  const raw = normalizePersianDigits(value).trim();
+  const matches = raw.match(/[\d,.]+/g);
+  if (!matches?.length) return null;
+
+  const numeric = Number(matches[matches.length - 1].replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) return null;
+
+  return /gb|gib|گیگ|گيگ/i.test(raw) ? numeric * 1024 : numeric;
+}
+
 const platformSizeSchema = new mongoose.Schema(
   {
     platform: { type: ObjectId, ref: "Platform", default: null },
     variant: { type: String, trim: true, default: "" },
-    size: { type: String, trim: true, default: "" },
+    size: { type: Number, default: null, set: parseSizeMb },
   },
   { _id: false }
 );
@@ -81,7 +101,7 @@ const downloadPartSchema = new mongoose.Schema(
     partNumber: { type: Number, default: null },
     fileName: { type: String, trim: true, default: "" },
     contentType: { type: String, trim: true, default: "" },
-    size: { type: String, trim: true, default: "" },
+    size: { type: Number, default: null, set: parseSizeMb },
     hash: { type: String, trim: true, default: "" },
     url: { type: String, trim: true, default: "" },
   },
@@ -97,7 +117,7 @@ const platformDownloadLinkSchema = new mongoose.Schema(
     region: { type: String, trim: true, default: "" },
     regionDescription: { type: String, trim: true, default: "" },
     version: { type: String, trim: true, default: "" },
-    size: { type: String, trim: true, default: "" },
+    size: { type: Number, default: null, set: parseSizeMb },
     downloadUrl: { type: String, trim: true, default: "" },
     sourceUrl: { type: String, trim: true, default: "" },
     notes: { type: String, trim: true, default: "" },
@@ -161,7 +181,7 @@ const dlcSchema = new mongoose.Schema(
     title: { type: String, trim: true, default: "" },
     type: { type: String, trim: true, default: "" },
     image: mediaSchema,
-    versionSize: { type: String, trim: true, default: "" },
+    versionSize: { type: Number, default: null, set: parseSizeMb },
   },
   { _id: false }
 );
@@ -446,8 +466,42 @@ const gameSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+function coerceLegacyGameSizeFields(data) {
+  if (!data || typeof data !== "object") return;
+
+  if (Array.isArray(data.platformSizes)) {
+    data.platformSizes.forEach((item) => {
+      if (item && Object.prototype.hasOwnProperty.call(item, "size")) item.size = parseSizeMb(item.size);
+    });
+  }
+
+  if (Array.isArray(data.platformDownloadLinks)) {
+    data.platformDownloadLinks.forEach((item) => {
+      if (!item) return;
+      if (Object.prototype.hasOwnProperty.call(item, "size")) item.size = parseSizeMb(item.size);
+      if (Array.isArray(item.parts)) {
+        item.parts.forEach((part) => {
+          if (part && Object.prototype.hasOwnProperty.call(part, "size")) part.size = parseSizeMb(part.size);
+        });
+      }
+    });
+  }
+
+  if (Array.isArray(data.dlcs)) {
+    data.dlcs.forEach((item) => {
+      if (item && Object.prototype.hasOwnProperty.call(item, "versionSize")) item.versionSize = parseSizeMb(item.versionSize);
+    });
+  }
+}
+
+gameSchema.pre("init", function (data) {
+  coerceLegacyGameSizeFields(data);
+});
+
 gameSchema.pre("save", async function (next) {
   try {
+    coerceLegacyGameSizeFields(this);
+
     if (!this.gameId) {
       this.gameId = await nextDashedPublicId("gameIdBb", "bb", 1026);
     }
