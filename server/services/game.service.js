@@ -1934,6 +1934,29 @@ function parseArray(value) {
     .filter(Boolean);
 }
 
+function normalizeSubmittedObjectId(value) {
+  const raw = value && typeof value === "object" ? value._id || value.id || value.value : value;
+  const id = String(raw || "").trim();
+  return mongoose.Types.ObjectId.isValid(id) ? id : null;
+}
+
+function parseObjectIdArray(value) {
+  if (value === undefined || value === null || value === "") return [];
+  const rawItems = Array.isArray(value)
+    ? value
+    : (() => {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : null;
+        } catch (_) {
+          return null;
+        }
+      })();
+
+  const items = rawItems || String(value).split(",");
+  return items.map(normalizeSubmittedObjectId).filter(Boolean);
+}
+
 const offlinePlayerCatalog = [
   {
     key: "none",
@@ -2127,11 +2150,6 @@ function parseObjectArray(value, shape) {
   return rawItems
     .map((item) => shape(item))
     .filter((item) => Object.values(item).some((part) => String(part || "").trim()));
-}
-
-function normalizeSubmittedObjectId(value) {
-  const raw = value && typeof value === "object" ? value._id || value.id || value.value : value;
-  return String(raw || "").trim() || null;
 }
 
 function parseSearchTitles(value) {
@@ -2412,7 +2430,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
       body.filterValues !== undefined ? parseFilterValues(body.filterValues) : undefined,
     collections: body.collections !== undefined ? parseArray(body.collections) : undefined,
     platforms:
-      body.platforms !== undefined ? parseArray(body.platforms) : undefined,
+      body.platforms !== undefined ? parseObjectIdArray(body.platforms) : undefined,
     gameModes:
       body.gameModes !== undefined ? parseArray(body.gameModes) : undefined,
     offlinePlayers:
@@ -2457,7 +2475,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     platformSizes:
       body.platformSizes !== undefined
         ? parseObjectArray(body.platformSizes, (item) => ({
-            platform: String(item?.platform || "").trim() || null,
+            platform: normalizeSubmittedObjectId(item?.platform),
             variant: String(item?.variant || "").trim(),
             size: parseSizeMb(item?.size),
           }))
@@ -2482,7 +2500,7 @@ function normalizePayload(body, uploadedFiles, currentGame) {
     platformReleases:
       body.platformReleases !== undefined
         ? parseObjectArray(body.platformReleases, (item) => ({
-            platform: String(item?.platform || "").trim() || null,
+            platform: normalizeSubmittedObjectId(item?.platform),
             releaseDate: parseDateValue(item?.releaseDate),
           }))
         : undefined,
