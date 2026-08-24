@@ -2249,7 +2249,7 @@ function parseExtraEditionItems(value) {
     const price = toNumber(item?.price);
     const discountPercent = normalizeDiscountPercent(item?.discountPercent);
     return {
-      platform: String(item?.platform || "").trim() || null,
+      platform: normalizeSubmittedObjectId(item?.platform),
       capacityType: String(item?.capacityType || "").trim(),
       price,
       discountPercent,
@@ -2381,6 +2381,58 @@ async function ensureExists(Model, ids, label) {
 
   if (count !== filtered.length) {
     throw new Error(`${label} not found`);
+  }
+}
+
+async function sanitizePayloadPlatformRefs(payload) {
+  const ids = [
+    ...(payload.platforms || []),
+    ...(payload.platformReleases || []).map((item) => item.platform),
+    ...(payload.platformSizes || []).map((item) => item.platform),
+    ...(payload.platformDownloadLinks || []).map((item) => item.platform),
+    ...(payload.extraEditions || []).flatMap((edition) =>
+      (edition.items || []).map((item) => item.platform)
+    ),
+  ].filter(Boolean);
+
+  if (!ids.length) return;
+
+  const existingPlatforms = await Platform.find({
+    _id: { $in: [...new Set(ids)] },
+    isDeleted: false,
+  }).select("_id");
+  const existingIds = new Set(existingPlatforms.map((item) => String(item._id)));
+  const keepExistingId = (id) => (existingIds.has(String(id || "")) ? id : null);
+
+  if (payload.platforms !== undefined) {
+    payload.platforms = payload.platforms.filter((id) => keepExistingId(id));
+  }
+  if (payload.platformReleases !== undefined) {
+    payload.platformReleases = payload.platformReleases.map((item) => ({
+      ...item,
+      platform: keepExistingId(item.platform),
+    }));
+  }
+  if (payload.platformSizes !== undefined) {
+    payload.platformSizes = payload.platformSizes.map((item) => ({
+      ...item,
+      platform: keepExistingId(item.platform),
+    }));
+  }
+  if (payload.platformDownloadLinks !== undefined) {
+    payload.platformDownloadLinks = payload.platformDownloadLinks.map((item) => ({
+      ...item,
+      platform: keepExistingId(item.platform),
+    }));
+  }
+  if (payload.extraEditions !== undefined) {
+    payload.extraEditions = payload.extraEditions.map((edition) => ({
+      ...edition,
+      items: (edition.items || []).map((item) => ({
+        ...item,
+        platform: keepExistingId(item.platform),
+      })),
+    }));
   }
 }
 
@@ -2592,33 +2644,13 @@ function normalizePayload(body, uploadedFiles, currentGame) {
 }
 
 async function validatePayload(payload) {
+  await sanitizePayloadPlatformRefs(payload);
+
   if (payload.category !== undefined) {
     if (!payload.category) throw new Error("Game category is required");
     await ensureExists(Category, payload.category, "Category");
   }
   if (payload.genres !== undefined) await ensureExists(Genre, payload.genres, "Genre");
-  if (payload.platforms !== undefined) await ensureExists(Platform, payload.platforms, "Platform");
-  if (payload.platformReleases !== undefined) {
-    await ensureExists(
-      Platform,
-      payload.platformReleases.map((item) => item.platform).filter(Boolean),
-      "Platform"
-    );
-  }
-  if (payload.platformSizes !== undefined) {
-    await ensureExists(
-      Platform,
-      payload.platformSizes.map((item) => item.platform).filter(Boolean),
-      "Platform"
-    );
-  }
-  if (payload.platformDownloadLinks !== undefined) {
-    await ensureExists(
-      Platform,
-      payload.platformDownloadLinks.map((item) => item.platform).filter(Boolean),
-      "Platform"
-    );
-  }
   if (payload.developers !== undefined) {
     await ensureExists(Company, payload.developers, "Developer");
   }

@@ -73,7 +73,7 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
                   <Play className="h-6 w-6 fill-current" />
                 </span>
               </span>
-            ) : null}
+            ) : null} b
           </button>
         ))}
       </div>

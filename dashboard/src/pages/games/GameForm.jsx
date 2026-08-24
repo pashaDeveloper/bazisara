@@ -1870,6 +1870,11 @@ function GameForm({ mode = "create" }) {
 
   const buildFormData = () => {
     const formData = new FormData();
+    const knownPlatformIds = new Set(platformOptions.map((option) => String(option.value || "")));
+    const normalizePlatformId = (value) => {
+      const id = String(value?._id || value?.id || value?.value || value || "").trim();
+      return knownPlatformIds.has(id) ? id : "";
+    };
     const arrayFields = [
       "genres",
       "developers",
@@ -1899,7 +1904,9 @@ function GameForm({ mode = "create" }) {
           ...(form.platformReleases || []).map((item) => item.platform),
           ...(form.platformSizes || []).map((item) => item.platform),
           ...(form.platformDownloadLinks || []).map((item) => item.platform),
-        ].filter(Boolean)
+        ]
+          .map(normalizePlatformId)
+          .filter(Boolean)
       ),
     ];
     const normalizedForm = {
@@ -1979,7 +1986,7 @@ function GameForm({ mode = "create" }) {
           versionTitles: String(item?.versionTitles || "").trim(),
           items: Array.isArray(item?.items)
             ? item.items.map((entry) => ({
-                platform: entry?.platform || "",
+                platform: normalizePlatformId(entry?.platform),
                 capacityType: String(entry?.capacityType || "").trim(),
                 price: entry?.price ?? "",
                 discountPercent: entry?.discountPercent ?? "",
@@ -1996,12 +2003,26 @@ function GameForm({ mode = "create" }) {
         return;
       }
       if (arrayFields.includes(key)) {
+        if (key === "platformReleases") {
+          formData.append(
+            key,
+            JSON.stringify(
+              (value || []).map((item) => ({
+                ...item,
+                platform: normalizePlatformId(item?.platform),
+              }))
+            )
+          );
+          return;
+        }
+
         if (key === "platformSizes") {
           formData.append(
             key,
             JSON.stringify(
               (value || []).map((item) => ({
                 ...item,
+                platform: normalizePlatformId(item?.platform),
                 size: parseSizeMb(item?.size),
               }))
             )
@@ -2015,6 +2036,7 @@ function GameForm({ mode = "create" }) {
             JSON.stringify(
               (value || []).map((item) => ({
                 ...item,
+                platform: normalizePlatformId(item?.platform),
                 size: parseSizeMb(item?.size),
                 parts: (Array.isArray(item?.parts) ? item.parts : []).map((part) => ({
                   ...part,
