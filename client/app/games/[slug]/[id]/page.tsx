@@ -24,6 +24,7 @@ import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
+import { GameDetailTabs } from "./game-detail-tabs";
 import { GameMediaSwiper, type GameMediaSlide } from "./media-swiper";
 import { TrailerPlayOverlay } from "./trailer-play-overlay";
 
@@ -120,6 +121,40 @@ function formatGameEditions(game: Game) {
   return editions?.join("، ") || "";
 }
 
+function isUsRegion(value?: string | null) {
+  return String(value || "").trim().toUpperCase() === "US";
+}
+
+function formatVersion(value?: string | null) {
+  const version = String(value || "").trim();
+  if (!version) return "";
+  return version.toLowerCase().startsWith("v") ? version : `v${version}`;
+}
+
+function formatSizeMb(value?: string | number | null) {
+  if (value === null || value === undefined || value === "") return "";
+  const size = Number(value);
+  if (!Number.isFinite(size)) return String(value);
+  if (size >= 1024) {
+    const gb = size / 1024;
+    const formatted = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/\.?0+$/, "");
+    return `${formatted} GB`;
+  }
+  return `${size} MB`;
+}
+
+function formatPsxHubPlatformSizes(game: Game) {
+  const sizes = game.platformDownloadLinks
+    ?.filter((item) => isUsRegion(item.region))
+    ?.map((item) => {
+      const platform = item.platformTitle || entityLabel(item.platform);
+      return [platform, formatVersion(item.version), formatSizeMb(item.size)].filter(Boolean).join(" - ");
+    })
+    .filter(Boolean);
+
+  return sizes?.join("، ") || "";
+}
+
 function latinToPersian(value: string | number) {
   return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 }
@@ -196,7 +231,7 @@ function HeroCornerBadges({
 }) {
   return (
     <div
-      className={`absolute z-10 flex items-end gap-1.5 ${
+      className={`absolute z-10 flex items-end gap-1.5 p-2 ${
         flush ? "bottom-0 right-0" : "bottom-5 right-5 lg:bottom-8 lg:right-8"
       }`}
       dir="ltr"
@@ -338,7 +373,7 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
       <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
       <TrailerPlayOverlay title={game.title} trailerUrl={trailerUrl} />
 
-      <div className="absolute left-6 top-1/2 w-[392px] -translate-y-1/2 rounded-xl border border-white/75 bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)]" dir="rtl" style={{ zIndex: 30 }}>
+      <div className="absolute left-6 top-1/2 w-[392px] -translate-y-1/2 rounded-xl border border-white/75 bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,.55)]" dir="rtl" style={{ zIndex: 0 }}>
         <h1 className="line-clamp-2 text-left text-[21px] font-black leading-8 text-[#29467c]" dir="ltr">
           {game.title}
         </h1>
@@ -371,7 +406,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         </div>
       </div>
 
-      <div className="relative overflow-hidden bg-[#f2f5f8] pb-5">
+      <div className="relative overflow-hidden bg-[#f2f5f8] ">
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
@@ -381,7 +416,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
           )}
           <HeroCornerBadges metacriticScore={game.metacriticScore} flush />
         </div>
-        <div className="absolute bottom-5 left-5 flex flex-col items-center">
+        <div className="absolute bottom-5 left-5 flex flex-col items-center p-2">
           <a
             href={trailerUrl || "#"}
             aria-disabled={!trailerUrl}
@@ -678,10 +713,12 @@ export default async function GameDetailPage({ params }: PageProps) {
   const platformSizes = game.platformSizes
     ?.map((item) => {
       const platform = entityLabel(item.platform);
-      return [platform, item.variant, item.size].filter(Boolean).join(" - ");
+      return [platform, item.variant, formatSizeMb(item.size)].filter(Boolean).join(" - ");
     })
     .filter(Boolean)
     .join("، ");
+  const psxHubPlatformSizes = formatPsxHubPlatformSizes(game);
+  const platformSizeValue = game.platformDownloadLinks?.length ? psxHubPlatformSizes : platformSizes;
   const extraEditions = formatGameEditions(game);
   const relatedGames =
     game.relatedGames?.length
@@ -693,6 +730,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     { label: "پلتفرم", value: platforms.join("، ") },
     { label: "نسخه", value: game.edition },
     { label: "لانچر", value: joinText(game.launcher) },
+    { label: "حجم نسخه‌ها", value: platformSizeValue },
     { label: "تاریخ انتشار", value: formatPersianDate(game.releaseDate) },
     { label: "مدت گیم‌پلی", value: game.gameplayTime ? `${game.gameplayTime} ساعت` : "" },
     { label: "امتیاز متاکریتیک", value: game.metacriticScore },
@@ -705,7 +743,6 @@ export default async function GameDetailPage({ params }: PageProps) {
     { label: "چندنفره", value: game.hasMultiplayerMode ? game.multiplayerPlayerCount || "دارد" : "" },
     { label: "زبان‌ها", value: joinText(game.languages) },
     { label: "ریجن", value: joinText(game.regions) },
-    { label: "حجم نسخه‌ها", value: platformSizes },
     { label: "نسخه‌های بازی", value: extraEditions },
   ].filter((item) => item.value !== "");
 
@@ -716,35 +753,15 @@ export default async function GameDetailPage({ params }: PageProps) {
 
       <main dir="rtl">
         <GameMediaSwiper title={game.title} slides={mediaSlides} />
-        <TabsBar />
-
-        <section id="intro" className="bg-white px-4 py-5 lg:mx-auto lg:mt-4 lg:max-w-[1440px] lg:rounded-xl lg:border lg:border-[#e8ecf3] lg:p-6">
-          {description ? (
-            <>
-            <h2 className="mb-3 text-[15px] font-black text-[#29467c]">معرفی</h2>
-            <p className="line-clamp-5 text-[13px] leading-8 text-[#475166]">{description}</p>
-            </>
-          ) : (
-            <div className="min-h-28 rounded-lg bg-white" />
-          )}
-        </section>
-
-        {(game.reviewSiteTitle || game.reviewSource || game.reviewLink || game.reviewItems?.length) ? (
-          <section id="review" className="bg-white px-4 py-5 lg:mx-auto lg:mt-4 lg:max-w-[1440px] lg:rounded-xl lg:border lg:border-[#e8ecf3] lg:p-6">
-            <h2 className="mb-4 text-[15px] font-black text-[#29467c]">نقد و بررسی</h2>
-            <div className="grid gap-3 text-[13px] leading-7 text-[#475166]">
-              {game.reviewSiteTitle ? <p>{game.reviewSiteTitle}</p> : null}
-              {game.reviewSource ? <p>منبع: {game.reviewSource}</p> : null}
-              {game.reviewLink ? <p className="break-all">لینک: {game.reviewLink}</p> : null}
-              {game.reviewItems?.map((item, index) => (
-                <p key={`${item.title}-${index}`}>{item.title || item.link}</p>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <SpecsTable specs={specs} />
-        <FeatureStrip specs={specs} />
+        <GameDetailTabs
+          description={description}
+          downloads={game.platformDownloadLinks}
+          reviewItems={game.reviewItems}
+          reviewLink={game.reviewLink}
+          reviewSiteTitle={game.reviewSiteTitle}
+          reviewSource={game.reviewSource}
+          specs={specs}
+        />
         <ReactionBox />
 
         <ProductRail />

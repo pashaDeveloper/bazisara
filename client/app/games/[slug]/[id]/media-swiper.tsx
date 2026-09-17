@@ -1,7 +1,7 @@
 "use client";
 
-import { Play } from "lucide-react";
-import { useState } from "react";
+import { Play, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { BlurImage } from "../../../components/blur-image";
 
 export type GameMediaSlide = {
@@ -19,18 +19,45 @@ type GameMediaSwiperProps = {
 
 export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isTrailerOpen, setIsTrailerOpen] = useState(false);
+  const visibleSlides = useMemo(() => slides.filter((slide) => slide.imageSrc), [slides]);
+  const activeSlide = visibleSlides[activeIndex];
 
-  if (!slides.length) return null;
+  useEffect(() => {
+    if (activeIndex >= visibleSlides.length) {
+      setActiveIndex(0);
+    }
+  }, [activeIndex, visibleSlides.length]);
+
+  useEffect(() => {
+    if (!isTrailerOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsTrailerOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isTrailerOpen]);
+
+  if (!visibleSlides.length || !activeSlide) return null;
+
+  const openTrailer = (slide: GameMediaSlide, index: number) => {
+    setActiveIndex(index);
+    if (slide.kind === "trailer" && slide.videoSrc) {
+      setIsTrailerOpen(true);
+    }
+  };
 
   return (
     <section className="bg-white px-4 py-8 lg:mx-auto lg:mt-8 lg:max-w-[1440px] lg:px-0" dir="ltr" aria-label={`${title} media`}>
       <div className="flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:gap-4 lg:gap-5 [&::-webkit-scrollbar]:hidden">
-        {slides.map((slide, index) => (
+        {visibleSlides.map((slide, index) => (
           <button
             key={`${slide.kind}-${slide.imageSrc}-${index}`}
             type="button"
             aria-label={slide.kind === "trailer" ? "نمایش تریلر" : `نمایش تصویر ${index + 1}`}
-            onClick={() => setActiveIndex(index)}
+            onClick={() => openTrailer(slide, index)}
             className={`relative aspect-video w-[220px] shrink-0 overflow-hidden rounded-xl bg-[#edf1f6] transition sm:w-[252px] lg:w-[260px] ${
               index === activeIndex ? "border-[3px] border-[#1687ff] p-1" : "border border-transparent"
             }`}
@@ -48,6 +75,20 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
           </button>
         ))}
       </div>
+
+      {isTrailerOpen && activeSlide.videoSrc ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black" dir="rtl">
+          <button
+            aria-label="Close trailer"
+            className="absolute left-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25"
+            onClick={() => setIsTrailerOpen(false)}
+            type="button"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <video autoPlay className="h-full w-full object-contain" controls playsInline src={activeSlide.videoSrc} title={title} />
+        </div>
+      ) : null}
     </section>
   );
 }

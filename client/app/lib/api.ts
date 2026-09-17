@@ -77,12 +77,34 @@ export type Game = {
   platformSizes?: Array<{
     platform?: string | NamedEntity;
     variant?: string;
-    size?: string;
+    size?: number | string | null;
+  }>;
+  platformDownloadLinks?: Array<{
+    platform?: string | NamedEntity;
+    platformTitle?: string;
+    platformDescription?: string;
+    titleId?: string;
+    region?: string;
+    regionDescription?: string;
+    version?: string;
+    size?: number | string | null;
+    downloadUrl?: string;
+    sourceUrl?: string;
+    notes?: string;
+    parts?: Array<{
+      externalId?: string;
+      partNumber?: number | null;
+      fileName?: string;
+      contentType?: string;
+      size?: number | string | null;
+      hash?: string;
+      url?: string;
+    }>;
   }>;
   dlcs?: Array<{
     title?: string;
     type?: string;
-    versionSize?: string;
+    versionSize?: number | string | null;
     image?: Media;
   }>;
   extraEditions?: Array<{

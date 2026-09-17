@@ -21,6 +21,17 @@ const borderlessIconClass = "";
 const borderlessSwitchClass = "border-0 shadow-none";
 const playStationGalleryDragType = "application/x-playstation-gallery-image";
 
+function formatSizeMb(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size)) return "";
+  if (size >= 1024) {
+    const gb = size / 1024;
+    const formatted = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/\.?0+$/, "");
+    return `${formatted} GB`;
+  }
+  return `${size} MB`;
+}
+
 function ImageSizeBadge({ src }) {
   const [size, setSize] = React.useState(null);
 
@@ -1066,6 +1077,7 @@ function ObjectRowsEditor({ columns, items = [], onChange, onCreatePlatform, tit
               name={`${title}-size-${index}`}
               onChange={(event) => updateItem(index, { size: event.target.value })}
               placeholder={columns[2].placeholder}
+              type="number"
               value={item.size}
             />
             <button
@@ -1381,7 +1393,7 @@ function PlatformDownloadLinksEditor({
                                   <div className="flex flex-wrap gap-2">
                                     {item.titleId ? <span className="rounded-md bg-zinc-100 px-2.5 py-1 text-[11px] font-bold !text-black ring-1 ring-zinc-200 dark:bg-white dark:!text-black dark:ring-zinc-700">{item.titleId}</span> : null}
                                     {item.version ? <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-800 ring-1 ring-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-200 dark:ring-indigo-900">v{item.version}</span> : null}
-                                    {item.size ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">حجم: {item.size}</span> : null}
+                                    {item.size ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">حجم: {formatSizeMb(item.size)}</span> : null}
                                   </div>
 
                                   {item.notes ? (
@@ -1413,7 +1425,7 @@ function PlatformDownloadLinksEditor({
                                               Part {part.partNumber ?? partIndex}
                                             </span>
                                             {part.contentType ? <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-black text-cyan-800 ring-1 ring-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-200 dark:ring-cyan-900">{part.contentType}</span> : null}
-                                            {part.size ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-black text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">{part.size} MB</span> : null}
+                                            {part.size ? <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-black text-orange-800 ring-1 ring-orange-200 dark:bg-orange-950/60 dark:text-orange-200 dark:ring-orange-900">{formatSizeMb(part.size)}</span> : null}
                                             {part.fileName ? <span className="break-all rounded-md bg-slate-100 px-2.5 py-1 text-left text-[11px] font-bold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800" dir="ltr">{part.fileName}</span> : null}
                                           </div>
                                           {part.hash ? (
@@ -1584,10 +1596,11 @@ function DlcRowsEditor({ imageUploadState = {}, items = [], onChange, onDeleteUp
                 value={item.type}
               />
               <TextField
-                label="حجم"
+                label="حجم (MB)"
                 name={`${title}-versionSize-${index}`}
                 onChange={(event) => updateItem(index, { versionSize: event.target.value })}
-                placeholder="مثلا ۸۵ گیگابایت"
+                placeholder="مثلا 5120"
+                type="number"
                 value={item.versionSize}
               />
               <InlineImageUploadButton
@@ -2738,7 +2751,7 @@ export function PlatformSizesStep({ form, onQuickCreate, platformOptions, setArr
         columns={[
           { label: "پلتفرم", options: platformOptions },
           { label: "نسخه", placeholder: "مثلا Standard / PS5" },
-          { label: "حجم", placeholder: "مثلا ۸۵ گیگابایت" },
+          { label: "حجم (MB)", placeholder: "مثلا 87040" },
         ]}
         items={form.platformSizes}
         onChange={(value) => setArrayField("platformSizes", value)}
