@@ -24,6 +24,7 @@ import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
 import { slugify } from "../../../lib/slug";
+import { GameMediaSwiper, type GameMediaSlide } from "./media-swiper";
 import { TrailerPlayOverlay } from "./trailer-play-overlay";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +134,39 @@ function gameMedia(game: Game, preferred: "desktop" | "mobile" | "card" = "card"
   }
 
   return [game.cardDesktopCover, game.cover, game.desktopCover, game.gallery?.[0]].find((item) => mediaUrl(item));
+}
+
+function buildMediaSlides(game: Game): GameMediaSlide[] {
+  const gallerySlides: GameMediaSlide[] =
+    game.gallery?.reduce<GameMediaSlide[]>((slides, item, index) => {
+      const imageSrc = mediaUrl(item);
+      if (!imageSrc) return slides;
+
+      slides.push({
+        alt: item.alt || `${game.title} screenshot ${index + 1}`,
+        blurSrc: mediaBlurUrl(item),
+        imageSrc,
+        kind: "image",
+      });
+
+      return slides;
+    }, []) || [];
+
+  const trailerVideo = mediaUrl(game.trailerVideo);
+  const trailerPosterMedia = [game.trailerThumbnail, gameMedia(game, "desktop"), gameMedia(game, "card")].find((item) => mediaUrl(item));
+  const trailerPoster = mediaUrl(trailerPosterMedia);
+
+  if (trailerVideo && trailerPoster) {
+    gallerySlides.push({
+      alt: `${game.title} trailer`,
+      blurSrc: mediaBlurUrl(trailerPosterMedia),
+      imageSrc: trailerPoster,
+      kind: "trailer",
+      videoSrc: trailerVideo,
+    });
+  }
+
+  return gallerySlides;
 }
 
 function objectPosition(media?: Media) {
@@ -653,6 +687,7 @@ export default async function GameDetailPage({ params }: PageProps) {
     game.relatedGames?.length
       ? game.relatedGames
       : allGames.filter((item) => item._id !== game._id).slice(0, 8);
+  const mediaSlides = buildMediaSlides(game);
 
   const specs: SpecRow[] = [
     { label: "پلتفرم", value: platforms.join("، ") },
@@ -680,6 +715,7 @@ export default async function GameDetailPage({ params }: PageProps) {
       <MobileHero game={game} platforms={platforms} keywords={keywords} />
 
       <main dir="rtl">
+        <GameMediaSwiper title={game.title} slides={mediaSlides} />
         <TabsBar />
 
         <section id="intro" className="bg-white px-4 py-5 lg:mx-auto lg:mt-4 lg:max-w-[1440px] lg:rounded-xl lg:border lg:border-[#e8ecf3] lg:p-6">
