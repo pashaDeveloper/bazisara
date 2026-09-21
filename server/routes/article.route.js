@@ -5,10 +5,6 @@ const optionalVerifyAdmin = require("../middleware/optionalVerifyAdmin.middlewar
 const requireAdminProfileLevel = require("../middleware/adminProfileLevel.middleware");
 const articleController = require("../controllers/article.controller");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
-const {
-  registerStoragePatch,
-  registerStoragePost,
-} = require("../utils/storageRoutes.util");
 
 const router = express.Router();
 const articleAccess = [verify, authorize("owner", "superAdmin", "admin", "operator"), requireAdminProfileLevel(3)];
@@ -23,24 +19,6 @@ router.get("/:id", optionalVerifyAdmin, articleController.getArticle);
 
 router.post("/slug", ...articleAccess, articleController.generateArticleSlug);
 router.post("/reserve-upload-id", ...articleAccess, articleController.reserveArticleUploadId);
-
-registerStoragePost(
-  router,
-  "/create",
-  articleAccess,
-  "magazines",
-  articleUploadFields,
-  articleController.createArticle
-);
-
-registerStoragePatch(
-  router,
-  "/:id",
-  articleAccess,
-  "magazines",
-  articleUploadFields,
-  articleController.updateArticle
-);
 
 router.post(
   "/create",
