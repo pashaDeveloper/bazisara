@@ -1,5 +1,6 @@
 const express = require("express");
 const axios = require("axios");
+const sharp = require("sharp");
 const { S3Client, DeleteObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const verify = require("../middleware/verifyAdmin.middleware");
 const authorize = require("../middleware/authorize.middleware");
@@ -7,8 +8,11 @@ const upload = require("../middleware/upload.middleware");
 const uploadArvan = require("../middleware/arvanUpload.middleware");
 const {
   getResourceType,
+  getGameImagePrepareOptions,
   makeBlurPreview,
   makeObjectName,
+  makePoorImageKey,
+  makeMobileImageKey,
   prepareFile,
 } = require("../utils/uploadFile.util");
 
@@ -25,9 +29,9 @@ const arvanS3Client = new S3Client({
   },
 });
 
-const makeBlurPublicId = (publicId) => publicId.replace(/\.[^.]+$/, "-blur.webp");
-const makeMobilePublicId = (publicId) => publicId.replace(/\.[^.]+$/, "-mobile.webp");
-const makeBlurPublicUrl = (key) => key.replace(/\.[^.]+$/, "-blur.webp");
+const makeBlurPublicId = makePoorImageKey;
+const makeMobilePublicId = makeMobileImageKey;
+const makeBlurPublicUrl = makePoorImageKey;
 
 const getObjectAcl = () => process.env.ARVAN_S3_ACL || "public-read";
 
@@ -143,9 +147,12 @@ const createRemoteArvanHandler = async (req, res, next) => {
       size: Number(response.headers?.["content-length"]) || Buffer.byteLength(response.data),
     };
 
-    const { extension, fileBuffer, contentType: preparedContentType } = await prepareFile(file, req.body || {});
-    const { filename, key } = makeObjectName("page-builder", extension, req.body);
-    const blurFile = await makeBlurPreview(file, extension);
+    const { extension, fileBuffer, contentType: preparedContentType } = await prepareFile(file, {
+      ...req.body, ...getGameImagePrepareOptions(req.body),
+    });
+    const dimensions = await sharp(fileBuffer).metadata();
+    const { filename, key } = makeObjectName("page-builder", extension, req.body, dimensions);
+    const blurFile = await makeBlurPreview({ ...file, buffer: fileBuffer }, extension);
     const blurKey = blurFile ? makeBlurPublicUrl(key) : "";
 
     await arvanS3Client.send(
@@ -173,7 +180,7 @@ const createRemoteArvanHandler = async (req, res, next) => {
     const uploadedFile = {
       blur: blurFile
         ? {
-            hash: "",
+            hash: blurFile.hash,
             height: blurFile.height,
             quality: blurFile.quality,
             blurAmount: blurFile.blurAmount,

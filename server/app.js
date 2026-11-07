@@ -89,6 +89,7 @@ app.use("/api/articles", require("./routes/article.route"));
 app.use("/api/analytics", require("./routes/analytics.route"));
 app.use("/api/sliders", require("./routes/slider.route"));
 app.use("/api/uploads", require("./routes/upload.route"));
+app.use("/api/media-settings", require("./routes/mediaSettings.route"));
 
 
 

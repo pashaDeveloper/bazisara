@@ -1,23 +1,22 @@
 import { redirect } from "next/navigation";
 import type { Game } from "../../lib/api";
-import { gameRouteId, getApiItem } from "../../lib/api";
-import { slugify } from "../../lib/slug";
+import { getApiItem } from "../../lib/api";
+import { gameHref } from "../../lib/content-routes";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type PageProps = {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 };
 
 export default async function GameLegacyRedirectPage({ params }: PageProps) {
-  const { slug: id } = await params;
+  const { id } = await params;
   const game = await getApiItem<Game>("/games", id);
 
   if (!game) {
     redirect("/games");
   }
 
-  const routeId = gameRouteId(game);
-  redirect(`/games/${slugify(game.slug || game.title) || routeId}/${routeId}`);
+  redirect(gameHref(game));
 }

@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
 import AddButton from "@/components/shared/button/AddButton";
 import DeleteModal from "@/components/shared/DeleteModal";
+import IconPreview from "@/components/shared/IconPreview";
 import Edit from "@/components/icons/Edit";
 import SearchBox, { useDebouncedValue } from "@/components/shared/SearchBox";
 import Pagination, { usePaginationState } from "@/components/shared/Pagination";
@@ -70,7 +71,7 @@ function GameKeywords() {
             <table className="w-full table-fixed text-right text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500">
-                  <th className="w-24 pb-3 font-medium">تصویر</th>
+                  <th className="w-24 pb-3 font-medium">آیکون</th>
                   <th className="w-44 pb-3 font-medium">عنوان</th>
                   <th className="hidden pb-3 font-medium md:table-cell">توضیحات</th>
                   <th className="w-24 pb-3 text-center font-medium">عملیات</th>
@@ -85,15 +86,7 @@ function GameKeywords() {
                   keywords.map((item) => (
                     <tr className="border-b border-zinc-900 text-zinc-200" key={item._id}>
                       <td className="py-4 pl-3">
-                        {item.image?.url ? (
-                          <div className="h-14 w-14 overflow-hidden rounded-xl border border-zinc-800 bg-black">
-                            <img alt={item.name || ""} className="h-full w-full object-cover" src={item.image.url} />
-                          </div>
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-zinc-800 bg-black text-[10px] text-zinc-500">
-                            ندارد
-                          </div>
-                        )}
+                        <IconPreview icon={item.icon} label={item.name} />
                       </td>
                       <td className="py-4 pl-3">
                         <span className="block truncate">{item.name}</span>

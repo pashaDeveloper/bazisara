@@ -1,4 +1,4 @@
-import ArticleLegacyRedirectPage from "../../articles/[slug]/page";
+import ArticleLegacyRedirectPage from "../../articles/[id]/page";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

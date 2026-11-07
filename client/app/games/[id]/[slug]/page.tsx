@@ -17,13 +17,13 @@ import {
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { BlurImage } from "../../../components/blur-image";
 import { SkeletonBlock } from "../../../components/cards";
 import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
-import { formatPersianDate, gameRouteId, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
-import { slugify } from "../../../lib/slug";
+import { formatPersianDate, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
+import { gameHref } from "../../../lib/content-routes";
 import { GameDetailTabs } from "./game-detail-tabs";
 import { GameMediaSwiper, type GameMediaSlide } from "./media-swiper";
 import { TrailerPlayOverlay } from "./trailer-play-overlay";
@@ -181,6 +181,7 @@ function buildMediaSlides(game: Game): GameMediaSlide[] {
         return {
           alt: item.alt || `${game.title} screenshot ${index + 1}`,
           blurSrc: mediaBlurUrl(item),
+          blurAmount: item?.blur?.blurAmount,
           imageSrc,
           kind: "image" as const,
         };
@@ -195,6 +196,7 @@ function buildMediaSlides(game: Game): GameMediaSlide[] {
     gallerySlides.push({
       alt: `${game.title} trailer`,
       blurSrc: mediaBlurUrl(trailerPosterMedia),
+          blurAmount: trailerPosterMedia?.blur?.blurAmount,
       imageSrc: trailerPoster,
       kind: "trailer",
       videoSrc: trailerVideo,
@@ -361,7 +363,7 @@ function DesktopHero({ game, platforms, keywords }: { game: Game; platforms: str
       {heroImage ? (
         <BlurImage
           alt={heroMedia?.alt || game.title}
-          blurSrc={mediaBlurUrl(heroMedia)}
+          blurSrc={mediaBlurUrl(heroMedia)} blurAmount={heroMedia?.blur?.blurAmount}
           className="absolute inset-0 h-full w-full"
           imageStyle={{ objectPosition: objectPosition(heroMedia) }}
           src={heroImage}
@@ -410,7 +412,7 @@ function MobileHero({ game, platforms, keywords }: { game: Game; platforms: stri
         <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,#cfd7e4_1px,transparent_1px)] [background-size:28px_28px]" />
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-white shadow-[0_22px_48px_-36px_rgba(15,23,42,.55)]">
           {heroImage ? (
-            <BlurImage alt={heroMedia?.alt || game.title} blurSrc={mediaBlurUrl(heroMedia)} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
+            <BlurImage alt={heroMedia?.alt || game.title} blurSrc={mediaBlurUrl(heroMedia)} blurAmount={heroMedia?.blur?.blurAmount} className="h-full w-full" imageClassName="object-cover" src={heroImage} />
           ) : (
             <SkeletonBlock className="h-full w-full rounded-none" />
           )}
@@ -568,18 +570,17 @@ function GameRail({ title, games }: { title: string; games: Game[] }) {
       <h2 className="mb-4 text-[15px] font-black text-[#29467c]">{title}</h2>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {games.slice(0, 8).map((item) => {
-          const routeId = gameRouteId(item);
           const media = gameMedia(item, "card");
           const image = mediaUrl(media);
           return (
             <Link
               key={item._id}
-              href={`/games/${slugify(item.slug || item.title) || routeId}/${routeId}`}
+              href={gameHref(item)}
               className="w-[150px] shrink-0 rounded-lg border border-[#e4e9f1] bg-white p-3 shadow-[0_14px_30px_-28px_rgba(15,23,42,.45)] lg:w-[180px]"
               dir="ltr"
             >
               <div className="aspect-square overflow-hidden rounded-md bg-[#edf1f6]">
-                {image ? <BlurImage alt={item.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} /> : <SkeletonBlock className="h-full w-full" />}
+                {image ? <BlurImage alt={item.title} blurSrc={mediaBlurUrl(media)} blurAmount={media?.blur?.blurAmount} className="h-full w-full" src={image} /> : <SkeletonBlock className="h-full w-full" />}
               </div>
               <h3 className="mt-3 line-clamp-2 min-h-10 text-left text-[13px] font-bold leading-5 text-[#2e394f]">{item.title}</h3>
             </Link>
@@ -686,25 +687,27 @@ function MobileBottomNav() {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { id } = await params;
-  const game = await getApiItem<Game>("/games", id);
+  const { id, slug } = await params;
+  const game = await getApiItem<Game>("/games", id) || await getApiItem<Game>("/games", slug);
 
   return {
     title: game ? `${game.title} | بازی سرا` : "بازی | بازی سرا",
     ...(game?.seoTitle ? { title: game.seoTitle } : {}),
     description: game?.seoDescription || stripHtml(game?.description) || game?.shortDescription,
     keywords: game?.seoKeywords,
+    ...(game ? { alternates: { canonical: gameHref(game) } } : {}),
   };
 }
 
 export default async function GameDetailPage({ params }: PageProps) {
-  const { id } = await params;
+  const { id, slug } = await params;
   const [game, allGames] = await Promise.all([
-    getApiItem<Game>("/games", id),
+    getApiItem<Game>("/games", id).then(async (game) => game || await getApiItem<Game>("/games", slug)),
     getApiList<Game>("/games/all", 24),
   ]);
 
   if (!game) notFound();
+  if (`/games/${id}/${slug}` !== gameHref(game)) permanentRedirect(gameHref(game));
 
   const description = stripHtml(game.description) || game.shortDescription || "";
   const platforms = game.platforms?.map(entityLabel).filter(Boolean) || [];

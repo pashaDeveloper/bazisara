@@ -59,7 +59,7 @@ function BlurPreviewControl({ blurValue, onChange }) {
   const update = (field, nextValue) => {
     const next = { ...value, [field]: nextValue };
     onChange?.({
-      hash: "",
+      hash: value.hash,
       blurAmount: next.blurAmount === "" ? null : Number(next.blurAmount),
       height: next.height === "" ? null : Number(next.height),
       public_id: String(next.public_id || "").trim(),
@@ -91,6 +91,7 @@ function BlurPreviewControl({ blurValue, onChange }) {
               </button>
             </div>
             <div className="space-y-3">
+              {value.hash ? <label className="block space-y-1"><span className="text-xs text-zinc-500">هش تصویر (BlurHash)</span><input readOnly dir="ltr" className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-900 dark:border-zinc-800 dark:bg-black dark:text-white" value={value.hash} /></label> : null}
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Blur URL</span>
                 <input className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-green-500 dark:border-zinc-800 dark:bg-black dark:text-white" dir="ltr" onChange={(event) => update("url", event.target.value)} value={value.url} />
@@ -118,7 +119,7 @@ function BlurPreviewControl({ blurValue, onChange }) {
               {value.url ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">
-                    <div className="border-b border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">فایل 64px</div>
+                    <div className="border-b border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">فایل کم‌کیفیت ({value.width || "-"} × {value.height || "-"})</div>
                     <img alt="نسخه کم‌کیفیت" className="h-28 w-full object-cover" src={value.url} />
                   </div>
                   <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-black">

@@ -137,6 +137,7 @@ export function SingleSelectDropdown({
 }
 
 export function MultiSelectDropdown({
+  emptyText = "موردی یافت نشد",
   controlClassName,
   disabled,
   iconClassName,
@@ -207,6 +208,7 @@ export function MultiSelectDropdown({
 }
 
 export function IconSelectDropdown({
+  emptyText = "آیکونی یافت نشد",
   disabled,
   label,
   name,

@@ -232,7 +232,7 @@ export function mediaMobileUrl(media?: Media | string | null) {
 
 export async function getApiList<T>(path: string, limit = 24) {
   try {
-    const response = await fetch(`${API_BASE}${path}?limit=${limit}`, {
+    const response = await fetch(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}limit=${limit}`, {
       cache: "no-store",
       headers: {
         "Cache-Control": "no-cache",

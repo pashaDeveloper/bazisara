@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Article, Game } from "../lib/api";
-import { articleRouteId, gameRouteId, mediaBlurUrl, mediaUrl } from "../lib/api";
-import { slugify } from "../lib/slug";
+import { mediaBlurUrl, mediaUrl } from "../lib/api";
+import { articleHref, gameHref } from "../lib/content-routes";
 import { BlurImage } from "./blur-image";
 
 export function SkeletonBlock({ className = "" }: { className?: string }) {
@@ -20,19 +20,18 @@ export function DashboardCardSkeleton() {
 }
 
 export function GameCard({ game }: { game: Game }) {
-  const routeId = gameRouteId(game);
   const media = [game.cardDesktopCover, game.cover, game.desktopCover, game.gallery?.[0]].find((item) => mediaUrl(item));
   const image = mediaUrl(media);
 
   return (
     <Link
-      href={`/games/${slugify(game.slug || game.title) || routeId}/${routeId}`}
+      href={gameHref(game)}
       className="group block w-full space-y-2 transition hover:-translate-y-1"
       dir="ltr"
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-900">
         {image ? (
-          <BlurImage alt={media?.alt || game.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={media?.alt || game.title} blurSrc={mediaBlurUrl(media)} blurAmount={media?.blur?.blurAmount} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}
@@ -49,19 +48,18 @@ export function GameCard({ game }: { game: Game }) {
 }
 
 export function ArticleCard({ article }: { article: Article }) {
-  const routeId = articleRouteId(article);
   const media = [article.cardCover, article.cover].find((item) => mediaUrl(item));
   const image = mediaUrl(media);
 
   return (
     <Link
-      href={`/magazines/${slugify(article.slug || article.title) || routeId}/${routeId}`}
+      href={articleHref(article)}
       className="group grid min-h-[116px] w-full grid-cols-[96px_minmax(0,1fr)] items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 transition hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_16px_32px_-28px_rgba(15,23,42,.45)]"
       dir="rtl"
     >
       <div className="h-20 w-20 overflow-hidden rounded-xl bg-zinc-900 sm:h-24 sm:w-24">
         {image ? (
-          <BlurImage alt={article.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={article.title} blurSrc={mediaBlurUrl(media)} blurAmount={media?.blur?.blurAmount} className="h-full w-full" src={image} />
         ) : (
           <SkeletonBlock className="h-full w-full rounded-xl" />
         )}

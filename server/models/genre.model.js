@@ -1,6 +1,8 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
+const { makeGenreSlug } = require("../utils/genreSlug.util");
 
 const genreSchema = new mongoose.Schema(
   {
@@ -9,6 +11,13 @@ const genreSchema = new mongoose.Schema(
       required: [true, "Genre name is required"],
       trim: true,
       maxLength: [100, "Genre name must be at most 100 characters"],
+    },
+    slug: {
+      type: String,
+      required: [true, "Genre slug is required"],
+      trim: true,
+      lowercase: true,
+      maxLength: [140, "Genre slug must be at most 140 characters"],
     },
     description: {
       type: String,
@@ -22,11 +31,7 @@ const genreSchema = new mongoose.Schema(
       default: null,
     },
     image: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       mobile: {
         url: { type: String, default: "" },
         public_id: { type: String, default: "" },
@@ -56,6 +61,15 @@ genreSchema.index(
   { name: 1, isDeleted: 1 },
   { unique: true, partialFilterExpression: { isDeleted: false } }
 );
+
+genreSchema.index(
+  { slug: 1, isDeleted: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: false, slug: { $type: "string" } } }
+);
+
+genreSchema.pre("validate", function () {
+  this.slug = makeGenreSlug(this.slug || this.name);
+});
 
 const Genre = mongoose.model("Genre", genreSchema);
 

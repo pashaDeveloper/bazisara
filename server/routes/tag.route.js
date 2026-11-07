@@ -14,6 +14,7 @@ const tagAccess = [verify, authorize("owner", "superAdmin", "admin", "operator")
 const tagUploadFields = [{ name: "image", maxCount: 1 }];
 
 router.get("/all", tagController.getTags);
+router.get("/options", tagController.getTagOptions);
 router.get("/:id", tagController.getTag);
 
 registerStoragePost(

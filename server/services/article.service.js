@@ -1,13 +1,15 @@
 const mongoose = require("mongoose");
 const translate = require("google-translate-api-x");
 const Article = require("../models/article.model");
+const Category = require("../models/category.model");
 const {
   buildPaginationMeta,
   buildSearchQuery,
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
-const { nextPublicId, publicIdOrLegacyFilters, publicIdPattern } = require("../utils/publicId.util");
+const { nextRandomPublicId, isRandomPublicId, publicIdOrLegacyFilters, publicIdPattern } = require("../utils/publicId.util");
+const { categoryPopulation } = require("../utils/categorySlug.util");
 
 function makeSlug(value, { allowPersian = true } = {}) {
   const invalidCharsPattern = allowPersian ? /[^a-z0-9\u0600-\u06ff-]+/g : /[^a-z0-9-]+/g;
@@ -297,8 +299,8 @@ function normalizeArticlePayload(body, uploadedFiles) {
   const payload = {
     title,
     magazineId:
-      body.magazineId !== undefined && publicIdPattern("MAG").test(String(body.magazineId).trim())
-        ? String(body.magazineId).trim().toUpperCase()
+      body.magazineId !== undefined && (isRandomPublicId(String(body.magazineId).trim().toLowerCase(), "mag") || publicIdPattern("MAG").test(String(body.magazineId).trim()))
+        ? (isRandomPublicId(String(body.magazineId).trim().toLowerCase(), "mag") ? String(body.magazineId).trim().toLowerCase() : String(body.magazineId).trim().toUpperCase())
         : undefined,
     slug: slugSource !== undefined ? makeSlug(slugSource) : undefined,
     excerpt: body.excerpt !== undefined ? String(body.excerpt).trim() : undefined,
@@ -358,18 +360,7 @@ async function articleSlugExists(slug, currentId = null) {
 
 function populateArticle(query) {
   return query
-    .populate({
-      path: "category",
-      select: "name slug parent",
-      populate: {
-        path: "parent",
-        select: "name slug parent",
-        populate: {
-          path: "parent",
-          select: "name slug parent",
-        },
-      },
-    })
+    .populate(categoryPopulation())
     .populate("creator", "name email avatar")
     .populate("tags", "name slug")
     .populate("platforms", "name name_fa name_en slug image")
@@ -381,6 +372,14 @@ function articleIdentityFilter(id) {
   const filters = [];
   filters.push(...publicIdOrLegacyFilters("magazineId", value, "MAG"));
   filters.push(...publicIdOrLegacyFilters("magazineId", value, "MG"));
+  filters.push(...publicIdOrLegacyFilters("legacyPublicIds", value, "MAG"));
+  filters.push(...publicIdOrLegacyFilters("legacyPublicIds", value, "MG"));
+  if (value) {
+    if (isRandomPublicId(value.toLowerCase(), "mag")) filters.push({ magazineId: value.toLowerCase() });
+    filters.push({ legacyPublicIds: value });
+    filters.push({ legacyPublicIds: value.toUpperCase() });
+    filters.push({ legacyPublicIds: value.toLowerCase() });
+  }
   if (mongoose.Types.ObjectId.isValid(value)) filters.push({ _id: value });
   if (filters.length > 1) return { $or: filters };
   if (filters.length === 1) return filters[0];
@@ -388,7 +387,7 @@ function articleIdentityFilter(id) {
 }
 
 exports.reserveArticleUploadId = async (req, res) => {
-  const magazineId = await nextPublicId("magazineId", "MAG");
+  const magazineId = await nextRandomPublicId("mag", Article, "magazineId");
 
   res.status(200).json({
     acknowledgement: true,
@@ -485,10 +484,24 @@ exports.getArticles = async (req, res) => {
       description: "شناسه دسته‌بندی مجله معتبر نیست",
     });
   }
+  const categoryIds = [category];
+  if (category && String(req.query.includeDescendants) === "true") {
+    const categories = await Category.find({ isDeleted: false }).select("_id parent").lean();
+    const ids = new Set(categoryIds);
+    for (let index = 0; index < categoryIds.length; index += 1) {
+      for (const child of categories) {
+        const id = String(child._id);
+        if (String(child.parent || "") === categoryIds[index] && !ids.has(id)) {
+          ids.add(id);
+          categoryIds.push(id);
+        }
+      }
+    }
+  }
   const query = {
     isDeleted: false,
     ...(req.adminRecord ? {} : { status: { $in: ["active", "pending"] } }),
-    ...(category ? { category } : {}),
+    ...(category ? { category: { $in: categoryIds } } : {}),
     ...buildSearchQuery(search, [
       "title",
       "slug",
@@ -527,7 +540,7 @@ exports.getArticle = async (req, res) => {
     });
   }
 
-  const article = await populateArticle(
+  let article = await populateArticle(
     Article.findOne({
       ...identityFilter,
       isDeleted: false,
@@ -535,6 +548,13 @@ exports.getArticle = async (req, res) => {
     })
   );
 
+  if (!article) {
+    article = await populateArticle(Article.findOne({
+      slug: String(id).trim().toLowerCase(),
+      isDeleted: false,
+      ...(req.adminRecord ? {} : { status: { $in: ["active", "pending"] } }),
+    }));
+  }
   if (!article) {
     return res.status(404).json({
       acknowledgement: false,

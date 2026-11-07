@@ -2,6 +2,10 @@ import { bazisaraApi } from "./bazisara";
 
 export const tagApi = bazisaraApi.injectEndpoints({
   endpoints: (builder) => ({
+    getTagOptions: builder.query({
+      query: () => ({ url: "/tags/options", method: "GET" }),
+      providesTags: ["Tag"],
+    }),
     createTag: builder.mutation({
       query: (formData) => ({
         url: "/tags/create",
@@ -44,6 +48,7 @@ export const tagApi = bazisaraApi.injectEndpoints({
 });
 
 export const {
+  useGetTagOptionsQuery,
   useCreateTagMutation,
   useGetTagsQuery,
   useGetTagQuery,

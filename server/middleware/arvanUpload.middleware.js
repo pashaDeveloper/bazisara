@@ -1,10 +1,15 @@
 const multer = require("multer");
+const sharp = require("sharp");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const {
   getResourceType,
+  getGameImageRole,
+  getGameImagePrepareOptions,
   makeBlurPreview,
   makeImageVariant,
   makeObjectName,
+  makePoorImageKey,
+  makeMobileImageKey,
   prepareFile,
 } = require("../utils/uploadFile.util");
 
@@ -35,8 +40,8 @@ const getPublicUrl = (key) => {
   return `${baseUrl.replace(/\/$/, "")}/${key.split("/").map(encodeURIComponent).join("/")}`;
 };
 
-const makeMobileKey = (key) => key.replace(/\.[^.]+$/, "-mobile.webp");
-const makeBlurKey = (key) => key.replace(/\.[^.]+$/, "-blur.webp");
+const makeMobileKey = makeMobileImageKey;
+const makeBlurKey = makePoorImageKey;
 const squareCardSize = 768;
 
 const isSquareCardImage = (customFolder, field) => {
@@ -104,10 +109,17 @@ const uploadArvan = (customFolder = null) => {
               customFolder,
             });
 
-            const prepareOptions = getPrepareOptions(req, customFolder, field);
+            const mediaRole = getGameImageRole(req.body, field);
+            const prepareOptions = {
+              ...getPrepareOptions(req, customFolder, field),
+              ...(mediaRole ? getGameImagePrepareOptions(req.body, field) : {}),
+            };
             const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
-            const { filename, key } = makeObjectName(customFolder, extension, req.body);
-            const blurFile = await makeBlurPreview(file, extension);
+            const dimensions = contentType.startsWith("image/") ? await sharp(fileBuffer).metadata() : {};
+            const { filename, key } = makeObjectName(customFolder, extension, req.body, {
+              field, width: dimensions.width, height: dimensions.height, index: req.uploadedFiles[field].length + 1,
+            });
+            const blurFile = await makeBlurPreview(mediaRole ? { ...file, buffer: fileBuffer } : file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)
               ? await makeImageVariant(file, extension, {
                   fit: "cover",
@@ -174,7 +186,7 @@ const uploadArvan = (customFolder = null) => {
               key,
               blur: blurFile
                 ? {
-                    hash: "",
+                    hash: blurFile.hash,
                     width: blurFile.width,
                     height: blurFile.height,
                     quality: blurFile.quality,

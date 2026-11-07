@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 const path = require("path");
 const sharp = require("sharp");
+const { encode } = require("blurhash");
+const { getMediaSettings } = require("./mediaSettings.util");
 
 const imageContentTypes = {
   avif: "image/avif",
@@ -13,8 +15,6 @@ const imageContentTypes = {
 
 const compressibleImageExtensions = new Set(["avif", "jpg", "jpeg", "jfif", "png", "webp"]);
 const resizeWebpQuality = 88;
-const blurPreviewQuality = 35;
-const blurPreviewDisplayAmount = 12;
 const compressionTargetRatio = 0.6;
 const compressionQualities = [92, 90, 88, 86, 84, 82, 80, 78];
 const defaultMaxImageDimension = 2560;
@@ -131,7 +131,7 @@ const shouldAutoResize = (metadata) => {
 
 const isAnimatedImage = (metadata) => metadata.pages && metadata.pages > 1;
 
-const makeBlurPreview = async (file, extension) => {
+const makeBlurPreview = async (file, extension, settingsOverride) => {
   if (!compressibleImageExtensions.has(extension)) {
     return null;
   }
@@ -141,7 +141,8 @@ const makeBlurPreview = async (file, extension) => {
     return null;
   }
 
-  const maxDimension = 64;
+  const settings = settingsOverride || await getMediaSettings();
+  const maxDimension = settings.maxDimension;
   const ratio = Math.min(1, maxDimension / Math.max(metadata.width || maxDimension, metadata.height || maxDimension));
   const width = Math.max(1, Math.round((metadata.width || maxDimension) * ratio));
   const height = Math.max(1, Math.round((metadata.height || maxDimension) * ratio));
@@ -157,18 +158,25 @@ const makeBlurPreview = async (file, extension) => {
     .webp({
       alphaQuality: 55,
       effort: 5,
-      quality: blurPreviewQuality,
+      quality: settings.quality,
       smartSubsample: true,
     })
     .toBuffer();
+
+  let hash = "";
+  if (settings.hashEnabled) {
+    const { data, info } = await sharp(fileBuffer).resize({ width: 32, height: 32, fit: "inside" }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    hash = encode(new Uint8ClampedArray(data), info.width, info.height, settings.hashComponentsX, settings.hashComponentsY);
+  }
 
   return {
     contentType: "image/webp",
     extension: "webp",
     fileBuffer,
     height,
-    quality: blurPreviewQuality,
-    blurAmount: blurPreviewDisplayAmount,
+    quality: settings.quality,
+    blurAmount: settings.blurAmount,
+    hash,
     width,
   };
 };
@@ -326,10 +334,72 @@ const prepareFile = async (file, options = {}) => {
     contentType = "image/webp";
   }
 
+  if (options.forceWebp && compressibleImageExtensions.has(originalExtension) && extension !== "webp") {
+    const metadata = await sharp(file.buffer, { animated: true }).metadata();
+    if (!isAnimatedImage(metadata)) {
+      fileBuffer = await sharp(file.buffer).rotate().webp({ quality: resizeWebpQuality }).toBuffer();
+      extension = "webp";
+      contentType = "image/webp";
+    }
+  }
+
   return { extension, fileBuffer, contentType };
 };
 
-const makeObjectName = (customFolder, extension, body = {}) => {
+const gameImageRoles = {
+  cover: "cover",
+  desktopCover: "coverdesk",
+  mobileCover: "covermob",
+  dlcImages: "coverdlc",
+  extraEditionImages: "coveredition",
+  gallery: "gameplayscreenshot",
+};
+
+const getGameImageRole = (body = {}, field = "") => {
+  const role = toFirstString(body.mediaRole || field);
+  return gameImageRoles[role] || (Object.values(gameImageRoles).includes(role) ? role : "");
+};
+
+const getGameImagePrepareOptions = (body = {}, field = "") => {
+  const role = getGameImageRole(body, field);
+  const sizes = {
+    cover: [768, 768], coverdlc: [768, 768], coveredition: [768, 768],
+    coverdesk: [1920, 1080], covermob: [1080, 810], gameplayscreenshot: [1920, 1080],
+  };
+  if (!sizes[role]) return {};
+  const [width, height] = sizes[role];
+  return {
+    forceWebp: true, allowEnlargement: true, fit: body.resizeFit || "cover",
+    resizeWidth: body.resizeWidth || width, resizeHeight: body.resizeHeight || height,
+  };
+};
+
+const makePoorImageKey = (key) => {
+  if (/-(?:cover(?:dlc|desk|mob|edition)?|gameplayscreenshot\d+)\.[^.]+$/.test(key)) {
+    return key.replace(/-(cover(?:dlc|desk|mob|edition)?|gameplayscreenshot\d+)\.[^.]+$/, (_, role) =>
+      `-poor${role.startsWith("gameplay") ? "-" : ""}${role}.webp`
+    );
+  }
+  return key.replace(/\.[^.]+$/, "-blur.webp");
+};
+
+const makeMobileImageKey = (key) => /-\d+x\d+-cover[^.]*\.[^.]+$/.test(key)
+  ? key.replace(/-\d+x\d+-(cover[^.]*)\.[^.]+$/, "-640x640-$1.webp")
+  : key.replace(/\.[^.]+$/, "-mobile.webp");
+
+const makeObjectName = (customFolder, extension, body = {}, image = {}) => {
+  const role = getGameImageRole(body, image.field);
+  if (getEntityTypeFolder(customFolder, body) === "game" && role && image.width && image.height) {
+    const name = slugifyFolderSegment(getEntityName(body));
+    if (!name) throw makeBadRequest("Game name is required before uploading game images");
+    const index = Number(body.mediaIndex || image.index || 1);
+    if (!Number.isSafeInteger(index) || index < 1) throw makeBadRequest("Invalid image index");
+    const suffix = role === "gameplayscreenshot" ? `${role}${String(index).padStart(2, "0")}` : role;
+    const filename = `${name}-${suffix}.${extension}`;
+    // Isolate uploads so replacing or cancelling one cannot overwrite an existing image.
+    const key = `${getBaseFolder(customFolder, body)}/${crypto.randomBytes(12).toString("hex")}/${filename}`;
+    return { filename, key };
+  }
   const filename = `${crypto.randomBytes(16).toString("hex")}.${extension}`;
   const key = `${getBaseFolder(customFolder, body)}/${filename}`;
 
@@ -343,9 +413,13 @@ const getResourceType = (mimetype) => {
 };
 
 module.exports = {
+  getGameImageRole,
+  getGameImagePrepareOptions,
   getResourceType,
   makeBlurPreview,
   makeImageVariant,
   makeObjectName,
+  makePoorImageKey,
+  makeMobileImageKey,
   prepareFile,
 };

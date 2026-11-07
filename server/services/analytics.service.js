@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const AnalyticsSession = require("../models/analyticsSession.model");
 const Article = require("../models/article.model");
 const Game = require("../models/game.model");
+const { publicIdOrLegacyFilters } = require("../utils/publicId.util");
 
 const CONTENT_MODELS = {
   article: { model: Article, modelName: "Article" },
@@ -43,10 +44,21 @@ function parseClient(userAgent = "") {
   };
 }
 
-function getEntityInfo(entityType, entityId) {
+async function getEntityInfo(entityType, entityId) {
   const type = clean(entityType, 20);
-  if (!CONTENT_MODELS[type] || !mongoose.Types.ObjectId.isValid(entityId)) {
+  if (!CONTENT_MODELS[type]) {
     return { entityType: "", entityId: null, entityModel: null };
+  }
+  if (!mongoose.Types.ObjectId.isValid(entityId)) {
+    const value = clean(entityId, 100);
+    const field = type === "game" ? "gameId" : "magazineId";
+    const filters = [{ [field]: value.toLowerCase() }, { [field]: value.toUpperCase() }, { legacyPublicIds: value }];
+    for (const prefix of type === "game" ? ["GM"] : ["MAG", "MG"]) {
+      filters.push(...publicIdOrLegacyFilters(field, value, prefix), ...publicIdOrLegacyFilters("legacyPublicIds", value, prefix));
+    }
+    const content = value ? await CONTENT_MODELS[type].model.findOne({ $or: filters, isDeleted: false }).select("_id").lean() : null;
+    if (!content) return { entityType: "", entityId: null, entityModel: null };
+    entityId = content._id;
   }
 
   return {
@@ -109,7 +121,7 @@ exports.trackPageView = async (req, res) => {
   const payload = req.body || {};
   const now = new Date();
   const session = await upsertSession(req, payload);
-  const entity = getEntityInfo(payload.entityType, payload.entityId);
+  const entity = await getEntityInfo(payload.entityType, payload.entityId);
   const path = clean(payload.path, 500);
   const durationMs = Math.max(0, Number(payload.durationMs || 0));
 
@@ -206,7 +218,7 @@ exports.trackEvent = async (req, res) => {
   session.lastSeenAt = new Date();
   await session.save();
 
-  const entity = getEntityInfo(payload.entityType, payload.entityId);
+  const entity = await getEntityInfo(payload.entityType, payload.entityId);
   if (entity.entityType && entity.entityId) {
     const field = metric === "comments" ? "commentsCount" : metric;
     await incrementContentMetric(entity.entityType, entity.entityId, field);

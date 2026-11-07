@@ -74,6 +74,7 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
               <BlurImage
                 src={slide.mobileImageUrl}
                 blurSrc={slide.mobileImageBlurUrl}
+                blurAmount={(slide.mobileImage || slide.image)?.blur?.blurAmount}
                 alt={slide.title || ""}
                 className="h-full w-full"
                 imageClassName="object-cover object-center"
@@ -107,6 +108,7 @@ export function HomeHeroSlider({ sliders }: { sliders: Slider[] }) {
           <BlurImage
             src={activeSlide.imageUrl}
             blurSrc={activeSlide.imageBlurUrl}
+            blurAmount={(activeSlide.image || activeSlide.mobileImage)?.blur?.blurAmount}
             alt={activeSlide.title || ""}
             className="h-full w-full"
             imageClassName="object-cover object-center"

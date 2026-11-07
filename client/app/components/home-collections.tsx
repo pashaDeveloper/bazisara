@@ -4,8 +4,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Article, Game, Media } from "../lib/api";
-import { articleRouteId, gameRouteId, mediaBlurUrl, mediaUrl } from "../lib/api";
-import { slugify } from "../lib/slug";
+import { mediaBlurUrl, mediaUrl } from "../lib/api";
+import { articleHref, gameHref } from "../lib/content-routes";
 import { DashboardCardSkeleton } from "./cards";
 import { BlurImage } from "./blur-image";
 
@@ -18,10 +18,12 @@ function uniqueCategories(items: Array<Article | Game>) {
   const seen = new Map<string, CategoryChip>();
 
   items.forEach((item) => {
-    const category = item.category;
-    if (!category?._id || !category.name) return;
-    if (!seen.has(category._id)) {
-      seen.set(category._id, { id: category._id, name: category.name });
+    let category = item.category;
+    const visited = new Set<string>();
+    while (category?._id && category.name && !visited.has(category._id)) {
+      visited.add(category._id);
+      if (!seen.has(category._id)) seen.set(category._id, { id: category._id, name: category.name });
+      category = category.parent;
     }
 
     if (!("genres" in item) || !item.showGenresInCategories) return;
@@ -37,7 +39,13 @@ function uniqueCategories(items: Array<Article | Game>) {
 
 function itemMatchesCategory(item: Article | Game, selectedCategory: string) {
   if (selectedCategory === "all") return true;
-  if (item.category?._id === selectedCategory) return true;
+  let category = item.category;
+  const visited = new Set<string>();
+  while (category?._id && !visited.has(category._id)) {
+    if (category._id === selectedCategory) return true;
+    visited.add(category._id);
+    category = category.parent;
+  }
   if (!("genres" in item) || !item.showGenresInCategories || !selectedCategory.startsWith("genre:")) return false;
 
   const genreId = selectedCategory.replace(/^genre:/, "");
@@ -89,7 +97,7 @@ function ContentCard({
     >
       <div className="relative aspect-square overflow-hidden rounded-xl">
         {image ? (
-          <BlurImage alt={title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={title} blurSrc={mediaBlurUrl(media)} blurAmount={media?.blur?.blurAmount} className="h-full w-full" src={image} />
         ) : (
           <div className="h-full w-full animate-pulse rounded-xl bg-zinc-800/20" />
         )}
@@ -172,7 +180,7 @@ function FilteredSection<T extends Article | Game>({
             <ContentCard
               key={item._id}
               align={align}
-              href={`${href.replace(/\/$/, "")}/${slugify(item.slug || item.title) || item._id}/${"magazineId" in item ? articleRouteId(item) : gameRouteId(item)}`}
+              href={href.startsWith("/games") ? gameHref(item as Game) : articleHref(item as Article)}
               media={getMedia(item)}
               title={item.title}
             />
@@ -199,11 +207,6 @@ const articlePlatformTabs = [
   { title: "Xbox One", image: "/products/png/xbox-series-s.png" },
 ];
 
-function articleHref(article: Article) {
-  const routeId = articleRouteId(article);
-  return `/magazines/${slugify(article.slug || article.title) || routeId}/${routeId}`;
-}
-
 function formatArticleTime(article: Article) {
   return article.readingTime || "۳۰ دقیقه قبل";
 }
@@ -220,7 +223,7 @@ function ArticleListCard({ article }: { article: Article }) {
     >
       <div className="relative h-[96px] w-[96px] overflow-hidden rounded-[1.2rem] border border-[#e1e7f1] bg-white lg:h-[124px] lg:w-[124px] lg:rounded-[1.7rem]">
         {image ? (
-          <BlurImage alt={article.title} blurSrc={mediaBlurUrl(media)} className="h-full w-full" src={image} />
+          <BlurImage alt={article.title} blurSrc={mediaBlurUrl(media)} blurAmount={media?.blur?.blurAmount} className="h-full w-full" src={image} />
         ) : (
           <div className="h-full w-full animate-pulse rounded-[1.7rem] bg-zinc-100" />
         )}

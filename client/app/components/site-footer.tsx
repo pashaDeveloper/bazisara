@@ -4,7 +4,7 @@ import Link from "next/link";
 const footerLinks = [
   { href: "/products2", label: "فروشگاه" },
   { href: "/games", label: "بازی‌ها" },
-  { href: "/magazines", label: "مجله" },
+  { href: "/magazine", label: "مجله" },
   { href: "/contact", label: "تماس با ما" },
   { href: "/about", label: "ارتباط با ما" },
 ];

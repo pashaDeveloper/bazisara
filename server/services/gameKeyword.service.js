@@ -7,7 +7,7 @@ const {
   getPaginationOptions,
   getSearchTerm,
 } = require("../utils/pagination.util");
-const { mediaFromUploadOrBody } = require("../utils/media.util");
+const Icon = require("../models/icon.model");
 
 function makeSlug(value) {
   return String(value || "")
@@ -66,21 +66,28 @@ async function translateKeywordToEnglish(value) {
   return { title_en: titleCase(source), slug: directSlug || makeSlug(source) };
 }
 
-function normalizePayload(body, uploadedFiles) {
+function normalizePayload(body) {
   const name = body.name !== undefined ? String(body.name).trim() : undefined;
   const titleEn = body.title_en !== undefined ? String(body.title_en).trim() : undefined;
   const slugSource = body.slug !== undefined ? body.slug : titleEn || name;
   const payload = {
     name,
+    icon: body.icon !== undefined ? body.icon || null : undefined,
     title_en: titleEn,
     slug: slugSource !== undefined ? makeSlug(slugSource) : undefined,
     description: body.description !== undefined ? String(body.description).trim() : undefined,
   };
 
-  const image = mediaFromUploadOrBody(uploadedFiles, "image", body.image);
-  if (image) payload.image = image;
-
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+}
+
+async function validateIcon(icon, res) {
+  if (!icon) return true;
+  if (!mongoose.Types.ObjectId.isValid(icon) || !(await Icon.exists({ _id: icon, isDeleted: false }))) {
+    res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "آیکون انتخاب‌شده معتبر نیست" });
+    return false;
+  }
+  return true;
 }
 
 async function slugExists(slug, currentId = null) {
@@ -113,7 +120,7 @@ exports.generateKeywordSlug = async (req, res) => {
 };
 
 exports.createKeyword = async (req, res) => {
-  const payload = normalizePayload(req.body || {}, req.uploadedFiles);
+  const payload = normalizePayload(req.body || {});
   if (!payload.name) {
     return res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "عنوان کلمه کلیدی الزامی است" });
   }
@@ -124,9 +131,10 @@ exports.createKeyword = async (req, res) => {
     return res.status(409).json({ acknowledgement: false, message: "Conflict", description: "این اسلاگ قبلا ثبت شده است" });
   }
 
+  if (!(await validateIcon(payload.icon, res))) return;
   payload.creator = req.admin?._id || null;
   const keyword = await GameKeyword.create(payload);
-  res.status(201).json({ acknowledgement: true, message: "Created", description: "کلمه کلیدی بازی ذخیره شد", data: keyword });
+  res.status(201).json({ acknowledgement: true, message: "Created", description: "کلمه کلیدی بازی ذخیره شد", data: await keyword.populate("icon", "name svg color") });
 };
 
 exports.getKeywords = async (req, res) => {
@@ -137,7 +145,7 @@ exports.getKeywords = async (req, res) => {
   };
   const { limit, page, skip } = getPaginationOptions(req.query);
   const [items, totalItems] = await Promise.all([
-    GameKeyword.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    GameKeyword.find(query).populate("icon", "name svg color").sort({ createdAt: -1 }).skip(skip).limit(limit),
     GameKeyword.countDocuments(query),
   ]);
   res.status(200).json({
@@ -158,7 +166,7 @@ exports.getKeyword = async (req, res) => {
   if (!keyword) {
     return res.status(404).json({ acknowledgement: false, message: "Not Found", description: "کلمه کلیدی پیدا نشد" });
   }
-  res.status(200).json({ acknowledgement: true, message: "OK", data: keyword });
+  res.status(200).json({ acknowledgement: true, message: "OK", data: await keyword.populate("icon", "name svg color") });
 };
 
 exports.updateKeyword = async (req, res) => {
@@ -171,14 +179,15 @@ exports.updateKeyword = async (req, res) => {
     return res.status(404).json({ acknowledgement: false, message: "Not Found", description: "کلمه کلیدی پیدا نشد" });
   }
 
-  const payload = normalizePayload(req.body || {}, req.uploadedFiles);
+  const payload = normalizePayload(req.body || {});
   if (payload.slug && (await slugExists(payload.slug, id))) {
     return res.status(409).json({ acknowledgement: false, message: "Conflict", description: "این اسلاگ قبلا ثبت شده است" });
   }
 
+  if (!(await validateIcon(payload.icon, res))) return;
   Object.assign(keyword, payload);
   await keyword.save();
-  res.status(200).json({ acknowledgement: true, message: "OK", description: "کلمه کلیدی بازی به‌روزرسانی شد", data: keyword });
+  res.status(200).json({ acknowledgement: true, message: "OK", description: "کلمه کلیدی بازی به‌روزرسانی شد", data: await keyword.populate("icon", "name svg color") });
 };
 
 exports.deleteKeyword = async (req, res) => {

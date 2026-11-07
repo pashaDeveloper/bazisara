@@ -11,7 +11,7 @@ const {
 
 const router = express.Router();
 const access = [verify, authorize("owner", "superAdmin", "admin", "operator"), requireAdminProfileLevel(2)];
-const uploadFields = [{ name: "image", maxCount: 1 }];
+const uploadFields = [];
 
 router.get("/all", controller.getKeywords);
 router.post("/slug", ...access, controller.generateKeywordSlug);

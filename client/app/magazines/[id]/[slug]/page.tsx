@@ -1,4 +1,4 @@
-import ArticleDetailPage, { generateMetadata as generateArticleMetadata } from "../../../articles/[slug]/[id]/page";
+import ArticleDetailPage, { generateMetadata as generateArticleMetadata } from "../../../articles/[id]/[slug]/page";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

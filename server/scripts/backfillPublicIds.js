@@ -7,6 +7,7 @@ const Article = require("../models/article.model");
 const Counter = require("../models/counter");
 const Product = require("../models/product.model");
 const { formatPublicId, publicIdPattern } = require("../utils/publicId.util");
+const { migrateModel } = require("./migrateRandomPublicIds");
 
 const mongoUri =
   process.env.MONGODB_URI ||
@@ -110,7 +111,7 @@ async function main() {
   await mongoose.connect(mongoUri, process.env.DB_NAME ? { dbName: process.env.DB_NAME } : {});
 
   await backfillModel({ Model: Product, field: "productId", counterName: "productId", prefix: "PR" });
-  await backfillModel({ Model: Article, field: "magazineId", counterName: "magazineId", prefix: "MG" });
+  await migrateModel({ Model: Article, field: "magazineId", prefix: "mag", apply: true });
 
   await mongoose.disconnect();
 }

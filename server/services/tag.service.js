@@ -112,6 +112,11 @@ exports.createTag = async (req, res) => {
   });
 };
 
+exports.getTagOptions = async (req, res) => {
+  const tags = await Tag.find({ isDeleted: false }).select("name slug").sort({ name: 1 }).lean();
+  res.status(200).json({ acknowledgement: true, message: "OK", data: tags });
+};
+
 exports.getTags = async (req, res) => {
   const search = getSearchTerm(req.query);
   const query = {

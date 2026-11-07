@@ -1,3 +1,4 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
@@ -55,11 +56,7 @@ const companySchema = new mongoose.Schema(
       default: null,
     },
     logo: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       url: {
         type: String,
         default: "",

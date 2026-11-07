@@ -18,7 +18,8 @@ import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/D
 import { ArticleCardPreview, ArticleDetailPreview } from "./components/ArticlePreviews";
 import { DatePickerField } from "../games/components/GameFormFields";
 import { flattenPlatforms } from "../platforms/utils";
-import { useCreateCategoryMutation, useGetCategoriesQuery } from "@/services/category/categoryApi";
+import { useCreateCategoryMutation, useGetCategoryTreeQuery } from "@/services/category/categoryApi";
+import { flattenCategoryTree } from "@/utils/categoryTree";
 import { useGetGamesQuery } from "@/services/gameApi";
 import { useGetPlatformsQuery } from "@/services/platformApi";
 import { useGetIconsQuery } from "@/services/iconApi";
@@ -463,7 +464,7 @@ function ArticleForm({ mode = "create" }) {
   const slugManuallyEditedRef = useRef(isEdit);
 
   const { data: articleData, isLoading: isLoadingArticle } = useGetArticleQuery(id, { skip: !isEdit || !id });
-  const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery({ page: 1, limit: 200 });
+  const { data: categoriesData, refetch: refetchCategories } = useGetCategoryTreeQuery();
   const { data: tagsData, refetch: refetchTags } = useGetTagsQuery({ page: 1, limit: 200 });
   const { data: gamesData } = useGetGamesQuery({ page: 1, limit: 200 });
   const { data: platformsData } = useGetPlatformsQuery({ tree: true, limit: 500 });
@@ -475,7 +476,7 @@ function ArticleForm({ mode = "create" }) {
   const [reserveArticleUploadId] = useReserveArticleUploadIdMutation();
   const [updateArticle, updateState] = useUpdateArticleMutation();
 
-  const categories = categoriesData?.data || [];
+  const categories = useMemo(() => flattenCategoryTree(categoriesData?.data || []), [categoriesData]);
   const tags = tagsData?.data || [];
   const games = gamesData?.data || [];
   const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
@@ -488,7 +489,7 @@ function ArticleForm({ mode = "create" }) {
   const currentStepKey = steps[currentStep].key;
   const canGoNext = currentStepKey === "basic" ? titleIsValid : currentStepKey === "content" ? contentIsValid : true;
 
-  const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.name, value: item._id })), [categories]);
+  const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.label, value: item._id })), [categories]);
   const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id })), [tags]);
   const gameOptions = useMemo(() => games.map((item) => ({ label: item.title, value: item._id })), [games]);
   const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
@@ -873,6 +874,13 @@ function ArticleForm({ mode = "create" }) {
           <div className="space-y-4">
             <QuickCreateField label="دسته‌بندی" onCreate={() => openQuickCreate("category")}>
               <SingleSelectDropdown label="دسته‌بندی" name="category" onChange={handleChange} options={categoryOptions} value={form.category} />
+              <p className="mt-3 break-all text-left text-xs text-zinc-500" dir="ltr">
+                /magazine/{[
+                  ...(categories.find((item) => item._id === form.category)?.categoryPath || []).filter((slug, index) => index !== 0 || !["magazine", "magazines", "مجله"].includes(slug)),
+                  form.magazineId || "magxxxxx",
+                  form.slug || "article-title",
+                ].join("/")}
+              </p>
             </QuickCreateField>
             <QuickCreateField label="تگ" onCreate={() => openQuickCreate("tag")}>
               <MultiSelectDropdown label="تگ‌ها" onChange={(value) => setArrayField("tags", value)} options={tagOptions} value={form.tags} />

@@ -1,3 +1,4 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
@@ -18,11 +19,7 @@ const gameCollectionSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true, trim: true, lowercase: true, maxLength: 160 },
     description: { type: String, trim: true, default: "" },
     image: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       mobile: {
         url: { type: String, default: "" },
         public_id: { type: String, default: "" },

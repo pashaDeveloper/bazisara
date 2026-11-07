@@ -8,7 +8,8 @@ import SendButton from "@/components/shared/button/SendButton";
 import { useCreateCategoryMutation, useGetCategoriesQuery } from "../../services/category/categoryApi";
 import { useCreateCompanyMutation, useGetCompaniesQuery } from "../../services/companyApi";
 import { useCreateGenreMutation, useGetGenresQuery } from "../../services/genreApi";
-import { useCreateTagMutation, useGetTagsQuery } from "../../services/tagApi";
+import { useCreateTagMutation, useGetTagOptionsQuery } from "../../services/tagApi";
+import { makeSeoTagSlug } from "./gameSeoTags";
 import {
   useCreateGameMutation,
   useFetchPlayStationTrophiesMutation,
@@ -851,6 +852,7 @@ function GameForm({ mode = "create" }) {
   const { id } = useParams();
   const isEdit = mode === "edit";
   const [form, setForm] = useState(initialForm);
+  const [isSelectingSeoTag, setIsSelectingSeoTag] = useState(false);
   const [coverPreview, setCoverPreview] = useState("");
   const [desktopCoverPreview, setDesktopCoverPreview] = useState("");
   const [mobileCoverPreview, setMobileCoverPreview] = useState("");
@@ -895,6 +897,7 @@ function GameForm({ mode = "create" }) {
   const [imageUploadState, setImageUploadState] = useState({});
   const tempUploadedVideosRef = useRef(new Map());
   const tempUploadedImagesRef = useRef(new Map());
+  const screenshotNumbersRef = useRef(new Map());
   const didSaveRef = useRef(false);
   const didUnmountRef = useRef(false);
   const psxHubSuggestRequestRef = useRef(0);
@@ -906,7 +909,7 @@ function GameForm({ mode = "create" }) {
   const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery({ page: 1, limit: 200 });
   const { data: genresData, refetch: refetchGenres } = useGetGenresQuery({ page: 1, limit: 200 });
   const { data: companiesData, refetch: refetchCompanies } = useGetCompaniesQuery({ page: 1, limit: 200 });
-  const { data: tagsData, refetch: refetchTags } = useGetTagsQuery({ page: 1, limit: 200 });
+  const { data: tagsData, refetch: refetchTags } = useGetTagOptionsQuery();
   const { data: gameKeywordsData, refetch: refetchGameKeywords } = useGetGameKeywordsQuery({ page: 1, limit: 300 });
   const { data: platformsData, refetch: refetchPlatforms } = useGetPlatformsQuery({ tree: true, limit: 500 });
   const { data: collectionsData, refetch: refetchCollections } = useGetGameCollectionsQuery({ page: 1, limit: 300 });
@@ -933,6 +936,23 @@ function GameForm({ mode = "create" }) {
   const platforms = useMemo(() => flattenPlatforms(platformsData?.data || []), [platformsData]);
   const platformOptions = useMemo(() => platforms.map((item) => ({ label: item.label, value: item._id })), [platforms]);
 
+  const getImageNamingOptions = (uploadKey) => {
+    if (uploadKey.startsWith("gallery-")) {
+      if (!screenshotNumbersRef.current.has(uploadKey)) {
+        const savedNumbers = (form.gallery || []).map((item) => {
+          const key = item.public_id || item.media?.public_id || item.url || "";
+          return Number(key.match(/gameplayscreenshot(\d+)\./)?.[1] || 0);
+        });
+        const highest = Math.max(0, ...savedNumbers, ...screenshotNumbersRef.current.values());
+        screenshotNumbersRef.current.set(uploadKey, highest + 1);
+      }
+      return { mediaRole: "gallery", mediaIndex: screenshotNumbersRef.current.get(uploadKey) };
+    }
+    if (uploadKey.startsWith("dlcs-")) return { mediaRole: "dlcImages", mediaIndex: Number(uploadKey.split("-")[1]) + 1 };
+    if (uploadKey.startsWith("extraEditions-")) return { mediaRole: "extraEditionImages", mediaIndex: Number(uploadKey.split("-")[1]) + 1 };
+    return { mediaRole: uploadKey };
+  };
+
   const uploadRemoteImage = async (uploadKey, suggestion, options = {}) => {
     const url = String(suggestion?.url || "").trim();
     if (!url) return null;
@@ -958,6 +978,7 @@ function GameForm({ mode = "create" }) {
           sourceUrl: url,
           entityName: String(options.entityName || form.title || suggestion?.title || "").trim(),
           entityType: options.entityType || "game",
+          ...getImageNamingOptions(uploadKey),
           requireEntityName: options.requireEntityName !== false,
           resizeFit: options.resizeFit,
           resizeHeight: options.resizeHeight,
@@ -1298,6 +1319,41 @@ function GameForm({ mode = "create" }) {
   const genres = genresData?.data || [];
   const companies = companiesData?.data || [];
   const tags = tagsData?.data || [];
+  const toggleSuggestedSeoTag = async (name) => {
+    if (isSelectingSeoTag) return;
+    setIsSelectingSeoTag(true);
+    const slug = makeSeoTagSlug(name);
+    try {
+      let tag = tags.find((item) => item.slug === slug);
+      if (!tag) {
+        const data = new FormData();
+        data.append("name", name);
+        data.append("slug", slug);
+        data.append("seoTitle", name);
+        data.append("seoKeywords", JSON.stringify([name.slice(0, 80)]));
+        try {
+          const response = await createTag(data).unwrap();
+          tag = response.data;
+        } catch (error) {
+          if (error?.status !== 409) throw error;
+          const response = await refetchTags().unwrap();
+          tag = response.data?.find((item) => item.slug === slug);
+          if (!tag) throw error;
+        }
+        await refetchTags();
+      }
+      setForm((prev) => ({
+        ...prev,
+        tags: prev.tags.includes(tag._id)
+          ? prev.tags.filter((id) => id !== tag._id)
+          : [...prev.tags, tag._id],
+      }));
+    } catch (error) {
+      toast.error(error?.data?.description || "انتخاب تگ سئو انجام نشد");
+    } finally {
+      setIsSelectingSeoTag(false);
+    }
+  };
   const gameKeywords = gameKeywordsData?.data || [];
   const collections = collectionsData?.data || [];
   const brands = brandsData?.data || [];
@@ -1319,7 +1375,7 @@ function GameForm({ mode = "create" }) {
   const categoryOptions = useMemo(() => categories.map((item) => ({ label: item.name, value: item._id })), [categories]);
   const genreOptions = useMemo(() => genres.map((item) => ({ label: item.name, value: item._id })), [genres]);
   const companyOptions = useMemo(() => companies.map((item) => ({ label: item.name, value: item._id })), [companies]);
-  const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id })), [tags]);
+  const tagOptions = useMemo(() => tags.map((item) => ({ label: item.name, value: item._id, slug: item.slug })), [tags]);
   const gameKeywordOptions = useMemo(
     () => gameKeywords.map((item) => ({ label: item.title_en ? `${item.name} / ${item.title_en}` : item.name, value: item._id })),
     [gameKeywords]
@@ -1771,6 +1827,7 @@ function GameForm({ mode = "create" }) {
         {
           entityName: uploadEntityName,
           entityType,
+          ...getImageNamingOptions(uploadKey),
           requireEntityName,
           resizeFit,
           resizeHeight,
@@ -2063,6 +2120,7 @@ function GameForm({ mode = "create" }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (isSelectingSeoTag) return;
 
     if (isUploadingVideo) {
       toast.error("تا پایان آپلود ویدئوها صبر کنید", { id: "game-video-upload" });
@@ -2211,7 +2269,7 @@ function GameForm({ mode = "create" }) {
       case "review":
         return <ReviewStep form={form} onChange={handleChange} setArrayField={setArrayField} />;
       case "seo":
-        return <SeoTagsStep form={form} onQuickCreate={openQuickCreate} setArrayField={setArrayField} tagOptions={tagOptions} />;
+        return <SeoTagsStep form={form} isCreatingTag={isSelectingSeoTag} onToggleSuggestedTag={toggleSuggestedSeoTag} onQuickCreate={openQuickCreate} setArrayField={setArrayField} tagOptions={tagOptions} />;
       case "social":
         return <SocialStep form={form} setArrayField={setArrayField} />;
       default:
@@ -2330,7 +2388,7 @@ function GameForm({ mode = "create" }) {
                   ))}
                   <div className="sticky bottom-4 z-20 flex justify-end border-t border-zinc-200 bg-white/90 pt-4 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
                     <SendButton
-                      isLoading={isSaving || isUploadingVideo || isUploadingImage}
+                      isLoading={isSaving || isUploadingVideo || isUploadingImage || isSelectingSeoTag}
                       label={isEdit ? "ذخیره بازی" : "ثبت بازی"}
                       loadingLabel={isUploadingImage ? "در حال آپلود تصویر..." : isUploadingVideo ? "در حال آپلود ویدئو..." : "در حال ذخیره..."}
                     />

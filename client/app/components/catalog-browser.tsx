@@ -17,9 +17,13 @@ function uniqueCategories(items: CatalogItem[], kind: CatalogKind) {
   const seen = new Map<string, string>();
 
   items.forEach((item) => {
-    const category = item.category;
-    if (!category?._id || !category.name) return;
-    if (!seen.has(category._id)) seen.set(category._id, category.name);
+    let category = item.category;
+    const visited = new Set<string>();
+    while (category?._id && category.name && !visited.has(category._id)) {
+      visited.add(category._id);
+      if (!seen.has(category._id)) seen.set(category._id, category.name);
+      category = category.parent;
+    }
 
     if (kind !== "game") return;
     const game = item as Game;
@@ -36,7 +40,13 @@ function uniqueCategories(items: CatalogItem[], kind: CatalogKind) {
 
 function itemMatchesCategory(item: CatalogItem, kind: CatalogKind, selectedCategory: string) {
   if (selectedCategory === "all") return true;
-  if (item.category?._id === selectedCategory) return true;
+  let category = item.category;
+  const visited = new Set<string>();
+  while (category?._id && !visited.has(category._id)) {
+    if (category._id === selectedCategory) return true;
+    visited.add(category._id);
+    category = category.parent;
+  }
   if (kind !== "game" || !selectedCategory.startsWith("genre:")) return false;
 
   const game = item as Game;

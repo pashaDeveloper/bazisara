@@ -14,6 +14,7 @@ import { MultiSelectDropdown, SingleSelectDropdown } from "@/components/shared/D
 import { DatePickerField, TextField, TextareaField } from "./GameFormFields";
 import { dlcTypeOptions } from "../gameOptions";
 import { makeGameSlug } from "../gameFormUtils";
+import { buildSelectableSeoTags, makeSeoTagSlug } from "../gameSeoTags";
 import { useSuggestGamesQuery, useSuggestPlayStationGalleryQuery } from "@/services/gameApi";
 
 const borderlessControlClass = "";
@@ -2912,16 +2913,41 @@ export function EditionsStep({ form, imageUploadState, onDeleteUploadedImage, on
   );
 }
 
-export function SeoTagsStep({ form, onQuickCreate, setArrayField, tagOptions }) {
+export function SeoTagsStep({ form, isCreatingTag, onToggleSuggestedTag, onQuickCreate, setArrayField, tagOptions }) {
+  const [search, setSearch] = React.useState("");
+  const suggestions = buildSelectableSeoTags(form.title);
+  const filteredOptions = tagOptions.filter((option) =>
+    form.tags.includes(option.value) || option.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
+  );
   return (
-    <QuickCreateField label="تگ‌ها" onCreate={() => onQuickCreate?.("tag", { field: "tags" })}>
-      <MultiSelectDropdown
-        label="تگ‌های سئو"
-        onChange={(value) => setArrayField("tags", value)}
-        options={tagOptions}
-        value={form.tags}
-      />
-    </QuickCreateField>
+    <div className="space-y-5">
+      <QuickCreateField label="تگ‌ها" onCreate={() => onQuickCreate?.("tag", { field: "tags" })}>
+        <label className="mb-2 block text-xs text-zinc-500" htmlFor="seo-tag-search">جستجو در همه تگ‌های سئو</label>
+        <input id="seo-tag-search" className="mb-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-black dark:text-white" onChange={(event) => setSearch(event.target.value)} placeholder="نام تگ..." value={search} />
+        <MultiSelectDropdown
+          label="تگ‌های سئو"
+          onChange={(value) => setArrayField("tags", value)}
+          options={filteredOptions}
+          value={form.tags}
+        />
+      </QuickCreateField>
+      {suggestions.length ? (
+        <div className="space-y-3 rounded-xl border border-zinc-300 p-4 dark:border-zinc-700">
+          <p className="text-sm text-zinc-700 dark:text-zinc-300">تگ‌های پیشنهادی برای {form.title}</p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((name) => {
+              const option = tagOptions.find((item) => item.slug === makeSeoTagSlug(name));
+              const selected = option && form.tags.includes(option.value);
+              return (
+                <button key={name} type="button" aria-pressed={Boolean(selected)} disabled={isCreatingTag || name.length > 100} onClick={() => onToggleSuggestedTag(name)} className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-50 ${selected ? "border-green-500 bg-green-500/15 text-green-600 dark:text-green-400" : "border-zinc-300 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"}`}>
+                  {selected ? "✓ " : "+ "}{name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

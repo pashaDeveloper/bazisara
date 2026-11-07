@@ -1,18 +1,11 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const baseSchema = require("./baseSchema.model");
-const { nextPublicId } = require("../utils/publicId.util");
+const { nextRandomPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
-    blur: {
-      hash: { type: String, default: "" },
-      public_id: { type: String, default: "" },
-      url: { type: String, default: "" },
-      width: { type: Number, default: null },
-      height: { type: Number, default: null },
-      quality: { type: Number, default: null },
-      blurAmount: { type: Number, default: null },
-    },
+    blur: createBlurFields(),
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
     storage: {
@@ -37,6 +30,7 @@ const faqSchema = new mongoose.Schema(
 const magazineSchema = new mongoose.Schema(
   {
     magazineId: { type: String, unique: true, sparse: true },
+    legacyPublicIds: { type: [String], default: [], index: true },
     title: {
       type: String,
       required: [true, "Magazine title is required"],
@@ -135,7 +129,7 @@ const magazineSchema = new mongoose.Schema(
 magazineSchema.pre("save", async function (next) {
   try {
     if (!this.magazineId) {
-      this.magazineId = await nextPublicId("magazineId", "MAG");
+      this.magazineId = await nextRandomPublicId("mag", this.constructor, "magazineId");
     }
 
     next();

@@ -1,3 +1,4 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const Counter = require("./counter");
@@ -30,11 +31,7 @@ const brandSchema = new mongoose.Schema(
     foundedYear: { type: Number, default: null },
     rate: { type: Number, min: 0, max: 5, default: 0 },
     logo: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       url: { type: String, default: "https://placehold.co/296x200.png" },
       public_id: { type: String, default: "N/A" },
     },

@@ -27,6 +27,7 @@ function CategoryEdit() {
   const { id } = useParams();
   const [form, setForm] = useState({
     name: "",
+    slug: "",
     description: "",
     icon: "",
     parent: "",
@@ -60,6 +61,7 @@ function CategoryEdit() {
 
     setForm({
       name: category.name || "",
+      slug: category.slug || "",
       description: category.description || "",
       icon: category.icon?._id || "",
       parent: category.parent?._id || "",
@@ -112,6 +114,7 @@ function CategoryEdit() {
 
       const formData = new FormData();
       formData.append("name", form.name.trim());
+      formData.append("slug", form.slug.trim());
       formData.append("description", form.description.trim());
       formData.append("icon", form.icon || "");
       formData.append("parent", form.parent || "");

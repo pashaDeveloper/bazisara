@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import ControlPanel from "../ControlPanel";
-import ThumbnailUpload from "@/components/shared/ThumbnailUpload";
+import { IconSelectDropdown } from "@/components/shared/Dropdown";
+import { useGetIconsQuery } from "@/services/iconApi";
 import MyEditor from "@/components/shared/textEditor/TextEditor";
 import SendButton from "@/components/shared/button/SendButton";
-import { mediaToFormValue } from "@/utils/immediateUpload";
 import {
   useCreateGameKeywordMutation,
   useGenerateGameKeywordSlugMutation,
@@ -17,7 +17,7 @@ const initialForm = {
   name: "",
   slug: "",
   description: "",
-  image: null,
+  icon: "",
 };
 
 function GameKeywordForm({ mode = "create" }) {
@@ -25,7 +25,7 @@ function GameKeywordForm({ mode = "create" }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
-  const [imagePreview, setImagePreview] = useState("");
+  const { data: iconsData, isLoading: isLoadingIcons } = useGetIconsQuery({ page: 1, limit: 100 });
   const [slugTouched, setSlugTouched] = useState(false);
   const { data: itemData, isLoading: isLoadingItem } = useGetGameKeywordQuery(id, {
     skip: !isEdit || !id,
@@ -43,9 +43,8 @@ function GameKeywordForm({ mode = "create" }) {
       name: item.name || "",
       slug: item.slug || "",
       description: item.description || "",
-      image: null,
+      icon: item.icon?._id || item.icon || "",
     });
-    setImagePreview(item.image?.url || "");
     setSlugTouched(true);
   }, [itemData]);
 
@@ -79,8 +78,7 @@ function GameKeywordForm({ mode = "create" }) {
     formData.append("name", form.name.trim());
     formData.append("slug", form.slug.trim());
     formData.append("description", form.description || "");
-    const imageValue = mediaToFormValue(form.image);
-    if (imageValue) formData.append("image", imageValue);
+    formData.append("icon", form.icon);
     return formData;
   };
 
@@ -144,27 +142,14 @@ function GameKeywordForm({ mode = "create" }) {
           ) : (
             <>
               <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black">
-                <div className="mb-4">
-                  <span className="mb-3 block text-sm text-zinc-700 dark:text-zinc-300">تصویر کلمه کلیدی</span>
-                  <p className="mb-3 text-xs text-zinc-500">اندازه پیشنهادی: 768 × 768</p>
-                </div>
-                <ThumbnailUpload
-                  immediateUpload
-                  immediateUploadOptions={{
-                    entityName: form.name || form.slug,
-                    entityType: "game-keyword",
-                    requireEntityName: false,
-                  }}
-                  name="image"
-                  onRemove={() => {
-                    setForm((prev) => ({ ...prev, image: null }));
-                    setImagePreview("");
-                  }}
-                  preview={imagePreview}
-                  profilePreview
-                  setThumbnail={(file) => setForm((prev) => ({ ...prev, image: file }))}
-                  setThumbnailPreview={setImagePreview}
-                  title="انتخاب"
+                <IconSelectDropdown
+                  options={iconsData?.data || []}
+                  disabled={isLoadingIcons}
+                  placeholder={isLoadingIcons ? "در حال دریافت آیکون‌ها..." : "انتخاب از لیست آیکون‌ها"}
+                  label="آیکون کلمه کلیدی"
+                  name="icon"
+                  onChange={handleChange}
+                  value={form.icon}
                 />
               </section>
 

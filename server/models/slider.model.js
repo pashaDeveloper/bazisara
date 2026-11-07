@@ -1,13 +1,10 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const baseSchema = require("./baseSchema.model");
 
 const mediaSchema = new mongoose.Schema(
   {
-    blur: {
-      hash: { type: String, default: "" },
-      width: { type: Number, default: null },
-      height: { type: Number, default: null },
-    },
+    blur: createBlurFields(),
     url: { type: String, default: "" },
     public_id: { type: String, default: "" },
     storage: {

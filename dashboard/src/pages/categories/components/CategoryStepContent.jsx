@@ -25,7 +25,7 @@ function CategoryStepContent({
         setImagePreview={setImagePreview}
       />
     ),
-    name: <CategoryNameStep value={form.name} onChange={onChange} />,
+    name: <CategoryNameStep value={form.name} slug={form.slug} onChange={onChange} />,
     parent: (
       <CategoryParentStep
         tree={tree}

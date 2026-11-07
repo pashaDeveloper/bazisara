@@ -7,6 +7,7 @@ import {
 
 const genreFields = [
   { name: "name", title: "نام", label: "نام", placeholder: "مثلا ماجراجویی" },
+  { name: "slug", title: "اسلاگ", label: "اسلاگ (اختیاری؛ پیش‌فرض از نام)", placeholder: "action-adventure" },
   {
     name: "image",
     title: "تصویر",

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { clearAdmin } from "@/features/auth/authSlice";
 import { useThemeProvider } from "@/utils/ThemeContext";
+import GlobalImageSettings from "@/components/shared/GlobalImageSettings";
 
 function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
   const dispatch = useDispatch();
@@ -58,6 +59,7 @@ function Header({ sidebarOpen, setSidebarOpen, variant = "default" }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <GlobalImageSettings />
             <button
               aria-label={isDark ? "فعال کردن حالت روشن" : "فعال کردن حالت تاریک"}
               className="inline-flex h-10 w-10 items-center justify-center rounded-secondary border border-gray-300 bg-gray-100 text-gray-700 shadow-sm transition hover:border-green-500 hover:text-green-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-blue-500 dark:hover:text-blue-300"

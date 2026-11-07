@@ -101,7 +101,7 @@ function getPlayStationTrophyErrorDescription(error) {
 const populateGame = (query) =>
   query
     .populate("category", "name")
-    .populate("genres", "name icon image")
+    .populate("genres", "name slug icon image")
     .populate("platforms", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("platformReleases.platform", "name name_fa name_en slug parent image fontFile svgIcon")
     .populate("platformSizes.platform", "name slug parent image fontFile svgIcon")
@@ -110,8 +110,8 @@ const populateGame = (query) =>
     .populate("developers", "name logo icon")
     .populate("publishers", "name logo icon")
     .populate("tags", "name slug image")
-    .populate("gameKeywords", "name title_en slug image")
-    .populate("filterValues.genres", "name icon image")
+    .populate({ path: "gameKeywords", select: "name title_en slug icon", populate: { path: "icon", select: "name svg color" } })
+    .populate("filterValues.genres", "name slug icon image")
     .populate("collections", "title_fa title_en slug placement visibility")
     .populate("relatedGames", "gameId playstationTitleId title slug cover")
     .populate("creator", "name email avatar role adminId");
@@ -120,8 +120,12 @@ function gameIdentityFilter(id) {
   const value = String(id || "").trim();
   const filters = [];
   filters.push(...publicIdOrLegacyFilters("gameId", value, "GM"));
+  filters.push(...publicIdOrLegacyFilters("legacyPublicIds", value, "GM"));
   if (value) {
-    if (/^bb-\d+$/i.test(value)) filters.push({ gameId: value.toLowerCase() });
+    filters.push({ gameId: value.toLowerCase() });
+    filters.push({ legacyPublicIds: value });
+    filters.push({ legacyPublicIds: value.toUpperCase() });
+    filters.push({ legacyPublicIds: value.toLowerCase() });
     filters.push({ gameId: value.toUpperCase() });
     filters.push({ playstationTitleId: value.toUpperCase() });
   }
@@ -232,6 +236,8 @@ async function ensureDynamicGameTags(title, creator = null) {
 }
 
 async function applyDynamicGameTags(payload, currentGame = null, creator = null) {
+  // Explicit selections, including an empty list, must remain selectable/removable.
+  if (payload.tags !== undefined || currentGame) return;
   const title = String(payload.title !== undefined ? payload.title : currentGame?.title || "").trim();
   if (!title) return;
 

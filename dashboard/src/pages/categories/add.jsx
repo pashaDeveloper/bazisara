@@ -16,6 +16,7 @@ function CategoryAdd() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
+    slug: "",
     description: "",
     icon: "",
     parent: "",
@@ -87,6 +88,7 @@ function CategoryAdd() {
 
       const formData = new FormData();
       formData.append("name", form.name.trim());
+      formData.append("slug", form.slug.trim());
       formData.append("description", form.description.trim());
       if (form.icon) formData.append("icon", form.icon);
       if (form.parent) formData.append("parent", form.parent);

@@ -45,6 +45,8 @@ export function uploadImageWithProgress(file, onProgress, options = {}) {
   formData.append("file", file);
   if (options.entityType) formData.append("entityType", options.entityType);
   if (options.entityName) formData.append("entityName", options.entityName);
+  if (options.mediaRole) formData.append("mediaRole", options.mediaRole);
+  if (options.mediaIndex) formData.append("mediaIndex", String(options.mediaIndex));
   if (options.requireEntityName) formData.append("requireEntityName", "true");
   if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
   if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));

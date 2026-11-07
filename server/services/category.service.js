@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Category = require("../models/category.model");
 const Icon = require("../models/icon.model");
+const { makeCategorySlug } = require("../utils/categorySlug.util");
 const {
   buildSearchQuery,
   buildPaginationMeta,
@@ -8,6 +9,18 @@ const {
   getSearchTerm,
 } = require("../utils/pagination.util");
 const { mediaFromUploadOrBody } = require("../utils/media.util");
+
+async function validateSlug(slug, parent, res, currentId = null) {
+  if (!slug || slug.length > 140) {
+    res.status(400).json({ acknowledgement: false, description: "اسلاگ دسته‌بندی باید بین ۱ تا ۱۴۰ کاراکتر باشد" });
+    return false;
+  }
+  if (await Category.exists({ slug, parent: parent || null, isDeleted: false, ...(currentId ? { _id: { $ne: currentId } } : {}) })) {
+    res.status(409).json({ acknowledgement: false, description: "این اسلاگ در دسته‌بندی والد قبلاً ثبت شده است" });
+    return false;
+  }
+  return true;
+}
 
 async function ensureParentExists(parentId) {
   if (!parentId) return null;
@@ -79,8 +92,12 @@ exports.createCategory = async (req, res) => {
   await ensureParentExists(parent);
   await ensureIconExists(icon);
 
+  const slug = makeCategorySlug(req.body.slug || name);
+  if (!(await validateSlug(slug, parent, res))) return;
+
   const category = await Category.create({
     name: String(name).trim(),
+    slug,
     description,
     icon: icon || null,
     image: mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image),
@@ -102,12 +119,12 @@ exports.getCategories = async (req, res) => {
   const search = getSearchTerm(req.query);
   const query = {
     isDeleted: false,
-    ...buildSearchQuery(search, ["name", "description"]),
+    ...buildSearchQuery(search, ["name", "slug", "description"]),
   };
   const { limit, page, skip } = getPaginationOptions(req.query);
   const [categories, totalItems] = await Promise.all([
     Category.find(query)
-      .populate("parent", "name")
+      .populate("parent", "name slug")
       .populate("icon", "name svg color")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -126,7 +143,7 @@ exports.getCategories = async (req, res) => {
 
 exports.getCategoryTree = async (_, res) => {
   const categories = await Category.find({ isDeleted: false })
-    .select("_id name description icon image parent")
+    .select("_id name slug description icon image parent")
     .populate("icon", "name svg color")
     .lean();
 
@@ -152,7 +169,7 @@ exports.getCategory = async (req, res) => {
   }
 
   const category = await Category.findOne({ _id: id, isDeleted: false })
-    .populate("parent", "name")
+    .populate("parent", "name slug")
     .populate("icon", "name svg color");
 
   if (!category) {
@@ -199,6 +216,9 @@ exports.updateCategory = async (req, res) => {
   }
 
   if (name !== undefined) category.name = String(name).trim();
+  if (req.body.slug !== undefined) category.slug = makeCategorySlug(req.body.slug || category.name);
+  if (!category.slug) category.slug = makeCategorySlug(category.name);
+  if (!(await validateSlug(category.slug, category.parent, res, id))) return;
   if (description !== undefined) category.description = description;
   if (icon !== undefined) {
     await ensureIconExists(icon);

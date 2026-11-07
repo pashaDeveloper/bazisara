@@ -37,8 +37,10 @@ export function getAnalyticsIds() {
 
 function contentFromPath(path: string) {
   const parts = path.split("/").filter(Boolean);
-  const entityType = parts[0] === "magazines" || parts[0] === "articles" ? "article" : parts[0] === "games" ? "game" : "";
-  const entityId = entityType && parts.length >= 3 ? parts[2] : "";
+  const entityType = ["magazine", "magazines", "articles"].includes(parts[0]) ? "article" : parts[0] === "games" ? "game" : "";
+  const entityId = entityType === "game"
+    ? (/^(?:bazi[a-z0-9]{5}|bb-\d+|GM\d+|[a-f0-9]{24})$/i.test(parts[1] || "") ? parts[1] : parts[2] || "")
+    : entityType === "article" ? parts.slice(1).find((part) => /^(?:mag[a-z0-9]{5}|MAG\d+|MG\d+|[a-f0-9]{24})$/i.test(part)) || "" : "";
 
   return { entityType, entityId };
 }

@@ -84,6 +84,7 @@ function Genres() {
                     <tr key={item._id} className="border-b border-zinc-900 text-zinc-200">
                       <td className="py-4 pl-3">
                         <span className="block truncate">{item.name}</span>
+                        <span className="mt-1 block truncate text-xs text-zinc-500" dir="ltr">{item.slug || "-"}</span>
                       </td>
                       <td className="py-4">
                         <IconPreview icon={item.icon} label={item.name} />

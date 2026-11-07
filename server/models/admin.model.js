@@ -1,3 +1,4 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const validator = require("validator");
@@ -38,11 +39,7 @@ const adminSchema = new mongoose.Schema(
 
     // آواتار
     avatar: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       url: {
         type: String,
         default: "https://placehold.co/300x300.png",
@@ -58,11 +55,7 @@ const adminSchema = new mongoose.Schema(
       },
     },
     nationalCard: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       url: {
         type: String,
         default: "",

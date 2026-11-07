@@ -1,19 +1,12 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
-const { nextDashedPublicId } = require("../utils/publicId.util");
+const { nextRandomPublicId } = require("../utils/publicId.util");
 
 const mediaSchema = new mongoose.Schema(
   {
-    blur: {
-      hash: { type: String, default: "" },
-      public_id: { type: String, default: "" },
-      url: { type: String, default: "" },
-      width: { type: Number, default: null },
-      height: { type: Number, default: null },
-      quality: { type: Number, default: null },
-      blurAmount: { type: Number, default: null },
-    },
+    blur: createBlurFields(),
     mobile: {
       url: { type: String, default: "" },
       public_id: { type: String, default: "" },
@@ -211,6 +204,7 @@ const extraEditionSchema = new mongoose.Schema(
 const gameSchema = new mongoose.Schema(
   {
     gameId: { type: String, unique: true, sparse: true },
+    legacyPublicIds: { type: [String], default: [], index: true },
     title: {
       type: String,
       required: [true, "Game title is required"],
@@ -503,7 +497,7 @@ gameSchema.pre("save", async function (next) {
     coerceLegacyGameSizeFields(this);
 
     if (!this.gameId) {
-      this.gameId = await nextDashedPublicId("gameIdBb", "bb", 1026);
+      this.gameId = await nextRandomPublicId("bazi", this.constructor, "gameId");
     }
 
     next();

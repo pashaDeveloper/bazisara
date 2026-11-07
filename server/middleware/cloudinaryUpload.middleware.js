@@ -92,7 +92,7 @@ const uploadCloudinary = (customFolder = null) => {
               key: result.public_id,
               blur: blurFile
                 ? {
-                    hash: "",
+                    hash: blurFile.hash,
                     width: blurFile.width,
                     height: blurFile.height,
                     quality: blurFile.quality,

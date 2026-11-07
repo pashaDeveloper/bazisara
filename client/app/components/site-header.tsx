@@ -33,7 +33,7 @@ const navItems = [
   { href: "/products2", label: "دسته‌بندی کالاها", icon: Grid2x2 },
   { href: "/products2", label: "تخفیف‌های ویژه", icon: ChevronDown },
   { href: "/products2", label: "Open Box", icon: ShoppingBasket },
-  { href: "/magazines", label: "مجله بازی بازار", icon: Grid2x2 },
+  { href: "/magazine", label: "مجله بازی بازار", icon: Grid2x2 },
   { href: "/products2", label: "پیگیری سفارشات", icon: ChevronDown },
   { href: "/contact", label: "تماس با ما", icon: Phone },
   { href: "/about", label: "ارتباط با ما", icon: ChevronDown },

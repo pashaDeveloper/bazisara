@@ -7,6 +7,7 @@ import { BlurImage } from "../../../components/blur-image";
 export type GameMediaSlide = {
   alt: string;
   blurSrc: string;
+  blurAmount?: number | null;
   imageSrc: string;
   kind: "image" | "trailer";
   videoSrc?: string;
@@ -63,6 +64,7 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
             <BlurImage
               alt={slide.alt}
               blurSrc={slide.blurSrc}
+              blurAmount={slide.blurAmount}
               className="h-full w-full"
               imageClassName="object-cover object-center"
               src={slide.imageSrc}

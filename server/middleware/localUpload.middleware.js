@@ -97,7 +97,7 @@ const uploadLocal = (customFolder = null) => {
               key: publicId,
               blur: blurFile
                 ? {
-                    hash: "",
+                    hash: blurFile.hash,
                     width: blurFile.width,
                     height: blurFile.height,
                     quality: blurFile.quality,

@@ -1,6 +1,8 @@
+const { createBlurFields } = require("../utils/mediaSchema.util");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
 const baseSchema = require("./baseSchema.model");
+const { makeCategorySlug } = require("../utils/categorySlug.util");
 
 const categorySchema = new mongoose.Schema(
   {
@@ -10,6 +12,7 @@ const categorySchema = new mongoose.Schema(
       trim: true,
       maxLength: [100, "Category name must be at most 100 characters"],
     },
+    slug: { type: String, trim: true, lowercase: true, maxLength: 140 },
     description: {
       type: String,
       trim: true,
@@ -22,11 +25,7 @@ const categorySchema = new mongoose.Schema(
       default: null,
     },
     image: {
-      blur: {
-        hash: { type: String, default: "" },
-        width: { type: Number, default: null },
-        height: { type: Number, default: null },
-      },
+      blur: createBlurFields(),
       url: {
         type: String,
         default: "",
@@ -54,6 +53,14 @@ const categorySchema = new mongoose.Schema(
 categorySchema.index(
   { parent: 1, name: 1, isDeleted: 1 },
   { unique: true, partialFilterExpression: { isDeleted: false } }
+);
+
+categorySchema.pre("validate", function () {
+  this.slug = makeCategorySlug(this.slug || this.name);
+});
+categorySchema.index(
+  { parent: 1, slug: 1, isDeleted: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: false, slug: { $type: "string" } } }
 );
 
 const Category = mongoose.model("Category", categorySchema);

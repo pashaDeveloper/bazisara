@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Genre = require("../models/genre.model");
 const Icon = require("../models/icon.model");
+const { makeGenreSlug } = require("../utils/genreSlug.util");
 const {
   buildSearchQuery,
   buildPaginationMeta,
@@ -24,6 +25,18 @@ async function ensureIconExists(iconId) {
   return icon;
 }
 
+async function validateSlug(slug, res, currentId = null) {
+  if (!slug || slug.length > 140) {
+    res.status(400).json({ acknowledgement: false, message: "Bad Request", description: "اسلاگ ژانر باید بین ۱ تا ۱۴۰ کاراکتر باشد" });
+    return false;
+  }
+  if (await Genre.exists({ slug, isDeleted: false, ...(currentId ? { _id: { $ne: currentId } } : {}) })) {
+    res.status(409).json({ acknowledgement: false, message: "Conflict", description: "این اسلاگ قبلاً برای ژانر دیگری ثبت شده است" });
+    return false;
+  }
+  return true;
+}
+
 exports.createGenre = async (req, res) => {
   const { name, description = "", icon = "" } = req.body;
 
@@ -35,10 +48,13 @@ exports.createGenre = async (req, res) => {
     });
   }
 
+  const slug = makeGenreSlug(req.body.slug || name);
+  if (!(await validateSlug(slug, res))) return;
   await ensureIconExists(icon);
 
   const genre = await Genre.create({
     name: String(name).trim(),
+    slug,
     description,
     icon: icon || null,
     image: mediaFromUploadOrBody(req.uploadedFiles, "image", req.body.image),
@@ -58,7 +74,7 @@ exports.getGenres = async (req, res) => {
   const search = getSearchTerm(req.query);
   const query = {
     isDeleted: false,
-    ...buildSearchQuery(search, ["name", "description"]),
+    ...buildSearchQuery(search, ["name", "slug", "description"]),
   };
   const { limit, page, skip } = getPaginationOptions(req.query);
   const [genres, totalItems] = await Promise.all([
@@ -133,6 +149,11 @@ exports.updateGenre = async (req, res) => {
   }
 
   if (name !== undefined) genre.name = String(name).trim();
+  const slug = makeGenreSlug(
+    req.body.slug !== undefined ? req.body.slug || genre.name : genre.slug || genre.name
+  );
+  if (!(await validateSlug(slug, res, id))) return;
+  genre.slug = slug;
   if (description !== undefined) genre.description = description;
   if (icon !== undefined) {
     await ensureIconExists(icon);

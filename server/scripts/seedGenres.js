@@ -4,6 +4,7 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
 const Genre = require("../models/genre.model");
+const { makeGenreSlug } = require("../utils/genreSlug.util");
 const Icon = require("../models/icon.model");
 
 const mongoUri =
@@ -120,6 +121,7 @@ async function seed() {
             deletedAt: null,
           },
           $setOnInsert: {
+            slug: makeGenreSlug(item.name),
             image: { url: "", public_id: "" },
           },
         },

@@ -47,6 +47,7 @@ export const bazisaraApi = createApi({
   refetchOnMountOrArgChange: true,
   refetchOnReconnect: true,
   tagTypes: [
+    "MediaSettings",
     "User",
     "Admin",
     "Address",

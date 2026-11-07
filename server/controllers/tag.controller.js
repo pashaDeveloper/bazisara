@@ -1,5 +1,13 @@
 const tagService = require("../services/tag.service");
 
+exports.getTagOptions = async (req, res, next) => {
+  try {
+    await tagService.getTagOptions(req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.createTag = async (req, res, next) => {
   try {
     await tagService.createTag(req, res);

@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 type BlurImageProps = {
   alt: string;
   blurSrc?: string;
+  blurAmount?: number | null;
   className?: string;
   imageClassName?: string;
   imageStyle?: CSSProperties;
@@ -16,6 +17,7 @@ type BlurImageProps = {
 export function BlurImage({
   alt,
   blurSrc,
+  blurAmount = 12,
   className = "",
   imageClassName = "object-cover",
   imageStyle,
@@ -50,10 +52,10 @@ export function BlurImage({
         <img
           aria-hidden
           alt=""
-          className={`absolute inset-0 h-full w-full scale-110 blur-md ${imageClassName}`}
+          className={`absolute inset-0 h-full w-full scale-110 ${imageClassName}`}
           decoding="async"
           src={blurSrc || src}
-          style={imageStyle}
+          style={{ ...imageStyle, filter: `blur(${Math.max(0, Math.min(40, blurAmount ?? 12))}px)` }}
         />
       ) : null}
       <img
