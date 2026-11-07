@@ -64,6 +64,7 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
             <BlurImage
               alt={slide.alt}
               blurSrc={slide.blurSrc}
+              blurAmount={slide.blurAmount}
               className="h-full w-full"
               imageClassName="object-cover object-center"
               src={slide.imageSrc}
