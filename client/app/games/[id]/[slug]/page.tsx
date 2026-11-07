@@ -172,11 +172,10 @@ function gameMedia(game: Game, preferred: "desktop" | "mobile" | "card" = "card"
 }
 
 function buildMediaSlides(game: Game): GameMediaSlide[] {
-  const gallerySlides =
-    game.gallery
-      ?.map((item, index): GameMediaSlide | null => {
-        const imageSrc = mediaUrl(item);
-        if (!imageSrc) return null;
+  const gallerySlides: GameMediaSlide[] =
+    game.gallery?.reduce<GameMediaSlide[]>((slides, item, index) => {
+      const imageSrc = mediaUrl(item);
+      if (!imageSrc) return slides;
 
         return {
           alt: item.alt || `${game.title} screenshot ${index + 1}`,
@@ -189,7 +188,7 @@ function buildMediaSlides(game: Game): GameMediaSlide[] {
       .filter((item): item is GameMediaSlide => Boolean(item)) || [];
 
   const trailerVideo = mediaUrl(game.trailerVideo);
-  const trailerPosterMedia = game.trailerThumbnail || gameMedia(game, "desktop") || gameMedia(game, "card");
+  const trailerPosterMedia = [game.trailerThumbnail, gameMedia(game, "desktop"), gameMedia(game, "card")].find((item) => mediaUrl(item));
   const trailerPoster = mediaUrl(trailerPosterMedia);
 
   if (trailerVideo && trailerPoster) {

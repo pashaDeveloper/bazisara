@@ -6,7 +6,7 @@ import { BlurImage } from "../../../components/blur-image";
 
 export type GameMediaSlide = {
   alt: string;
-  blurSrc: string;
+  blurSrc?: string;
   blurAmount?: number | null;
   imageSrc: string;
   kind: "image" | "trailer";
@@ -51,20 +51,19 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
   };
 
   return (
-    <section className="bg-white px-4 py-4 lg:mx-auto lg:mt-6 lg:max-w-[1440px] lg:rounded-xl lg:border lg:border-[#e8ecf3] lg:p-5">
-      <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" dir="rtl">
+    <section className="bg-white px-4 py-8 lg:mx-auto lg:mt-8 lg:max-w-[1440px] lg:px-0" dir="ltr" aria-label={`${title} media`}>
+      <div className="flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:gap-4 lg:gap-5 [&::-webkit-scrollbar]:hidden">
         {visibleSlides.map((slide, index) => (
           <button
-            aria-label={slide.kind === "trailer" ? `Play ${title} trailer` : `Show media ${index + 1}`}
-            className="relative aspect-video w-[72vw] max-w-[320px] shrink-0 overflow-hidden rounded-lg bg-[#101827] shadow-[0_12px_28px_-24px_rgba(15,23,42,.65)] transition hover:opacity-90 sm:w-[280px] lg:w-[300px]"
-            key={`${slide.imageSrc}-${index}`}
+            key={`${slide.kind}-${slide.imageSrc}-${index}`}
+            type="button"
+            aria-label={slide.kind === "trailer" ? "نمایش تریلر" : `نمایش تصویر ${index + 1}`}
             onClick={() => openTrailer(slide, index)}
             type="button"
           >
             <BlurImage
               alt={slide.alt}
               blurSrc={slide.blurSrc}
-              blurAmount={slide.blurAmount}
               className="h-full w-full"
               imageClassName="object-cover object-center"
               src={slide.imageSrc}
@@ -74,8 +73,8 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/92 text-[#ff3f68] shadow-[0_14px_28px_-18px_rgba(0,0,0,.75)]">
                   <Play className="h-6 w-6 fill-current" />
                 </span>
-              </span>
-            ) : null} b
+              ) : null}
+            </span>
           </button>
         ))}
       </div>
