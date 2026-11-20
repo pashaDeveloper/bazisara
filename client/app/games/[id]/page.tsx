@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Game } from "../../lib/api";
 import { getApiItem } from "../../lib/api";
-import { gameHref } from "../../lib/content-routes";
+import { gameHref, storedRouteId } from "../../lib/content-routes";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,7 +12,7 @@ type PageProps = {
 
 export default async function GameLegacyRedirectPage({ params }: PageProps) {
   const { id } = await params;
-  const game = await getApiItem<Game>("/games", id);
+  const game = await getApiItem<Game>("/games", storedRouteId(id));
 
   if (!game) {
     redirect("/games");

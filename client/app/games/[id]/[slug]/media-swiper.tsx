@@ -59,7 +59,6 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
             type="button"
             aria-label={slide.kind === "trailer" ? "نمایش تریلر" : `نمایش تصویر ${index + 1}`}
             onClick={() => openTrailer(slide, index)}
-            type="button"
           >
             <BlurImage
               alt={slide.alt}
@@ -74,8 +73,8 @@ export function GameMediaSwiper({ slides, title }: GameMediaSwiperProps) {
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/92 text-[#ff3f68] shadow-[0_14px_28px_-18px_rgba(0,0,0,.75)]">
                   <Play className="h-6 w-6 fill-current" />
                 </span>
-              ) : null}
-            </span>
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

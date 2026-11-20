@@ -1,10 +1,12 @@
 "use client";
 
 import { Filter, Grid2x2, ListFilter, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 import { ArticleCard, GameCard } from "./cards";
 import { DashboardCardSkeleton } from "./cards";
 import type { Article, Game, NamedEntity } from "../lib/api";
+import { articleCategorySegments } from "../lib/content-routes";
 
 type CatalogItem = (Article | Game) & {
   category?: NamedEntity | null;
@@ -14,14 +16,20 @@ type CatalogItem = (Article | Game) & {
 type CatalogKind = "game" | "article";
 
 function uniqueCategories(items: CatalogItem[], kind: CatalogKind) {
-  const seen = new Map<string, string>();
+  const seen = new Map<string, { name: string; href?: string }>();
 
   items.forEach((item) => {
     let category = item.category;
     const visited = new Set<string>();
     while (category?._id && category.name && !visited.has(category._id)) {
       visited.add(category._id);
-      if (!seen.has(category._id)) seen.set(category._id, category.name);
+      if (!seen.has(category._id)) {
+        const segments = kind === "article" ? articleCategorySegments(category) : [];
+        seen.set(category._id, {
+          name: category.name,
+          href: kind === "article" ? ["/magzine", ...segments].join("/") : undefined,
+        });
+      }
       category = category.parent;
     }
 
@@ -31,11 +39,11 @@ function uniqueCategories(items: CatalogItem[], kind: CatalogKind) {
     game.genres?.forEach((genre) => {
       if (!genre._id || !genre.name) return;
       const id = `genre:${genre._id}`;
-      if (!seen.has(id)) seen.set(id, genre.name);
+      if (!seen.has(id)) seen.set(id, { name: genre.name });
     });
   });
 
-  return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  return Array.from(seen.entries()).map(([id, category]) => ({ id, ...category }));
 }
 
 function itemMatchesCategory(item: CatalogItem, kind: CatalogKind, selectedCategory: string) {
@@ -68,21 +76,30 @@ function cardSearchText(item: CatalogItem, kind: CatalogKind) {
 export function CatalogBrowser({
   items,
   kind,
+  activeCategoryId,
 }: {
   items: CatalogItem[];
   kind: CatalogKind;
   title?: string;
   label?: string;
   subtitle?: string;
+  activeCategoryId?: string;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [localCategory, setLocalCategory] = useState("all");
+  const selectedCategory = activeCategoryId || localCategory;
+  const selectCategory = (id: string, href?: string) => {
+    if (href) router.push(href);
+    else if (kind === "article" && id === "all") router.push("/magzine");
+    else setLocalCategory(id);
+  };
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase("fa-IR"));
   const categories = useMemo(() => uniqueCategories(items, kind), [items, kind]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      const categoryMatch = itemMatchesCategory(item, kind, selectedCategory);
+      const categoryMatch = kind === "article" || itemMatchesCategory(item, kind, selectedCategory);
       const searchMatch = deferredSearch
         ? cardSearchText(item, kind).toLocaleLowerCase("fa-IR").includes(deferredSearch)
         : true;
@@ -95,7 +112,7 @@ export function CatalogBrowser({
       <div className="mb-3 flex gap-2 overflow-x-auto pb-2 lg:hidden">
         <button
           type="button"
-          onClick={() => setSelectedCategory("all")}
+          onClick={() => selectCategory("all")}
           className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${
             selectedCategory === "all"
               ? "border-zinc-900 bg-zinc-900 text-white"
@@ -109,7 +126,7 @@ export function CatalogBrowser({
           <button
             key={category.id}
             type="button"
-            onClick={() => setSelectedCategory(category.id)}
+            onClick={() => selectCategory(category.id, category.href)}
             className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${
               selectedCategory === category.id
                 ? "border-zinc-900 bg-zinc-900 text-white"
@@ -141,7 +158,7 @@ export function CatalogBrowser({
           <div className="mt-5 space-y-2">
             <button
               type="button"
-              onClick={() => setSelectedCategory("all")}
+              onClick={() => selectCategory("all")}
               className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-right text-sm font-medium transition ${
                 selectedCategory === "all"
                   ? "bg-zinc-900 text-white"
@@ -155,7 +172,7 @@ export function CatalogBrowser({
               <button
                 key={category.id}
                 type="button"
-                onClick={() => setSelectedCategory(category.id)}
+                onClick={() => selectCategory(category.id, category.href)}
                 className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-right text-sm font-medium transition ${
                   selectedCategory === category.id
                     ? "bg-zinc-900 text-white"

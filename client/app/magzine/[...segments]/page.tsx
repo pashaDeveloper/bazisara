@@ -3,7 +3,7 @@ import ArticleDetailPage, { generateMetadata as articleMetadata } from "../../ar
 import { CatalogBrowser } from "../../components/catalog-browser";
 import type { Article, NamedEntity } from "../../lib/api";
 import { getApiItem, getApiList } from "../../lib/api";
-import { articleCategorySegments, articleHref } from "../../lib/content-routes";
+import { articleCategorySegments, articleHref, storedRouteId } from "../../lib/content-routes";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,7 +21,9 @@ function findCategory(nodes: CategoryNode[], path: string[], parent?: NamedEntit
 }
 
 async function resolveArticle(segments: string[]) {
-  for (const value of [...new Set([segments.at(-2), segments.at(-1)])]) {
+  const id = segments.at(-2) || segments.at(-1);
+  const slug = segments.at(-1);
+  for (const value of new Set([id && storedRouteId(id), id, slug])) {
     if (!value) continue;
     const article = await getApiItem<Article>("/magazines", value);
     if (article) return article;
@@ -40,12 +42,12 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function MagazinePage({ params }: Props) {
   const { segments } = await params;
-  const path = `/magazine/${segments.join("/")}`;
+  const path = `/magzine/${segments.join("/")}`;
   const tree = await getApiList<CategoryNode>("/categories/tree");
   const category = findCategory(tree, segments);
   if (category?._id) {
     const articles = await getApiList<Article>(`/magazines/all?category=${encodeURIComponent(category._id)}&includeDescendants=true`, 100);
-    return <div className="min-h-screen bg-[#f8fafc] text-zinc-950"><CatalogBrowser items={articles} kind="article" label="مجله بازی بازار" title={category.name || "مجله"} subtitle="مطالب این دسته‌بندی و زیر‌دسته‌های آن" /></div>;
+    return <div className="min-h-screen bg-[#f8fafc] text-zinc-950"><CatalogBrowser activeCategoryId={category._id} items={articles} kind="article" label="مجله بازی بازار" title={category.name || "مجله"} subtitle="مطالب این دسته‌بندی و زیر‌دسته‌های آن" /></div>;
   }
   const article = await resolveArticle(segments);
   if (article) {

@@ -23,7 +23,7 @@ import { SkeletonBlock } from "../../../components/cards";
 import { productRoutePath, products } from "../../../products2/data";
 import type { Game, Media, NamedEntity } from "../../../lib/api";
 import { formatPersianDate, getApiItem, getApiList, mediaBlurUrl, mediaUrl } from "../../../lib/api";
-import { gameHref } from "../../../lib/content-routes";
+import { gameHref, storedRouteId } from "../../../lib/content-routes";
 import { GameDetailTabs } from "./game-detail-tabs";
 import { GameMediaSwiper, type GameMediaSlide } from "./media-swiper";
 import { TrailerPlayOverlay } from "./trailer-play-overlay";
@@ -173,19 +173,18 @@ function gameMedia(game: Game, preferred: "desktop" | "mobile" | "card" = "card"
 
 function buildMediaSlides(game: Game): GameMediaSlide[] {
   const gallerySlides: GameMediaSlide[] =
-    game.gallery?.reduce<GameMediaSlide[]>((slides, item, index) => {
+    game.gallery?.flatMap<GameMediaSlide>((item, index) => {
       const imageSrc = mediaUrl(item);
-      if (!imageSrc) return slides;
+      if (!imageSrc) return [];
 
-        return {
-          alt: item.alt || `${game.title} screenshot ${index + 1}`,
-          blurSrc: mediaBlurUrl(item),
-          blurAmount: item?.blur?.blurAmount,
-          imageSrc,
-          kind: "image" as const,
-        };
-      })
-      .filter((item): item is GameMediaSlide => Boolean(item)) || [];
+      return [{
+        alt: item.alt || `${game.title} screenshot ${index + 1}`,
+        blurSrc: mediaBlurUrl(item),
+        blurAmount: item.blur?.blurAmount,
+        imageSrc,
+        kind: "image",
+      }];
+    }) || [];
 
   const trailerVideo = mediaUrl(game.trailerVideo);
   const trailerPosterMedia = [game.trailerThumbnail, gameMedia(game, "desktop"), gameMedia(game, "card")].find((item) => mediaUrl(item));
@@ -687,7 +686,7 @@ function MobileBottomNav() {
 
 export async function generateMetadata({ params }: PageProps) {
   const { id, slug } = await params;
-  const game = await getApiItem<Game>("/games", id) || await getApiItem<Game>("/games", slug);
+  const game = await getApiItem<Game>("/games", storedRouteId(id)) || await getApiItem<Game>("/games", slug);
 
   return {
     title: game ? `${game.title} | بازی سرا` : "بازی | بازی سرا",
@@ -701,7 +700,7 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function GameDetailPage({ params }: PageProps) {
   const { id, slug } = await params;
   const [game, allGames] = await Promise.all([
-    getApiItem<Game>("/games", id).then(async (game) => game || await getApiItem<Game>("/games", slug)),
+    getApiItem<Game>("/games", storedRouteId(id)).then(async (game) => game || await getApiItem<Game>("/games", slug)),
     getApiList<Game>("/games/all", 24),
   ]);
 

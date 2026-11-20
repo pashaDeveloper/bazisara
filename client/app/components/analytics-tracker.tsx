@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { API_BASE } from "../lib/api";
+import { storedRouteId } from "../lib/content-routes";
 
 const VISITOR_KEY = "bazisara_visitor_id";
 const SESSION_KEY = "bazisara_session_id";
@@ -37,12 +38,12 @@ export function getAnalyticsIds() {
 
 function contentFromPath(path: string) {
   const parts = path.split("/").filter(Boolean);
-  const entityType = ["magazine", "magazines", "articles"].includes(parts[0]) ? "article" : parts[0] === "games" ? "game" : "";
+  const entityType = ["magzine", "magazine", "magazines", "articles"].includes(parts[0]) ? "article" : parts[0] === "games" ? "game" : "";
   const entityId = entityType === "game"
-    ? (/^(?:bazi[a-z0-9]{5}|bb-\d+|GM\d+|[a-f0-9]{24})$/i.test(parts[1] || "") ? parts[1] : parts[2] || "")
-    : entityType === "article" ? parts.slice(1).find((part) => /^(?:mag[a-z0-9]{5}|MAG\d+|MG\d+|[a-f0-9]{24})$/i.test(part)) || "" : "";
+    ? (/^(?:bazi-?[a-z0-9]{5}|bb-\d+|GM\d+|[a-f0-9]{24})$/i.test(parts[1] || "") ? parts[1] : parts[2] || "")
+    : entityType === "article" ? parts.slice(1).find((part) => /^(?:mag-?[a-z0-9]{5}|MAG\d+|MG\d+|[a-f0-9]{24})$/i.test(part)) || "" : "";
 
-  return { entityType, entityId };
+  return { entityType, entityId: storedRouteId(entityId) };
 }
 
 function send(path: string, body: Record<string, unknown>, method = "POST") {
