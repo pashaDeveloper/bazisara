@@ -943,7 +943,7 @@ function GameForm({ mode = "create" }) {
       if (!screenshotNumbersRef.current.has(uploadKey)) {
         const savedNumbers = (form.gallery || []).map((item) => {
           const key = item.public_id || item.media?.public_id || item.url || "";
-          return Number(key.match(/gameplayscreenshot(\d+)\./)?.[1] || 0);
+          return Number(key.match(/(?:gameplayscreenshot|gameplay-screenshot-)(\d+)\./)?.[1] || 0);
         });
         const highest = Math.max(0, ...savedNumbers, ...screenshotNumbersRef.current.values());
         screenshotNumbersRef.current.set(uploadKey, highest + 1);

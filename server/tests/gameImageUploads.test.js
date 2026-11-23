@@ -21,13 +21,14 @@ test("game filenames use names, roles and screenshot numbers without dimensions"
   }
   const body = { entityType: "game", entityName: "Dead space", mediaRole: "gallery", mediaIndex: 5 };
   const result = makeObjectName("page-builder", "webp", body, { width: 1920, height: 1080 });
-  assert.equal(result.filename, "Dead-space-gameplayscreenshot05.webp");
-  assert.ok(makePoorImageKey(result.key).endsWith("/Dead-space-poor-gameplayscreenshot05.webp"));
+  assert.equal(result.filename, "Dead-space-gameplay-screenshot-05.webp");
+  assert.ok(makePoorImageKey(result.key).endsWith("/Dead-space-poor-gameplay-screenshot-05.webp"));
   assert.notEqual(result.key, makeObjectName("page-builder", "webp", body, { width: 1920, height: 1080 }).key);
 });
 
 test("variant deletion supports both patterned filenames and legacy uploads", () => {
   assert.equal(makePoorImageKey("game/GTA-V-768x768-cover.webp"), "game/GTA-V-768x768-poorcover.webp");
+  assert.equal(makePoorImageKey("game/GTA-V-gameplayscreenshot01.webp"), "game/GTA-V-poor-gameplayscreenshot01.webp");
   assert.equal(makeMobileImageKey("game/GTA-V-768x768-cover.webp"), "game/GTA-V-640x640-cover.webp");
   assert.equal(makePoorImageKey("game/old-random.webp"), "game/old-random-blur.webp");
   assert.equal(makeMobileImageKey("game/old-random.webp"), "game/old-random-mobile.webp");
@@ -97,9 +98,9 @@ test("multipart game uploads store cover, poor preview and mobile variant with m
     assert.equal(directResponse.status, 200);
     const directMedia = await directResponse.json();
     assert.ok(directMedia.cover[0].mobile.public_id.endsWith("/Dead-space-cover-mobile.webp"));
-    assert.equal(directMedia.gallery[0].filename, "Dead-space-gameplayscreenshot01.webp");
-    assert.equal(directMedia.gallery[1].filename, "Dead-space-gameplayscreenshot02.webp");
-    assert.ok(directMedia.gallery[1].blur.public_id.endsWith("/Dead-space-poor-gameplayscreenshot02.webp"));
+    assert.equal(directMedia.gallery[0].filename, "Dead-space-gameplay-screenshot-01.webp");
+    assert.equal(directMedia.gallery[1].filename, "Dead-space-gameplay-screenshot-02.webp");
+    assert.ok(directMedia.gallery[1].blur.public_id.endsWith("/Dead-space-poor-gameplay-screenshot-02.webp"));
     assert.equal(objects.length, 7);
   } finally {
     S3Client.prototype.send = originalSend;

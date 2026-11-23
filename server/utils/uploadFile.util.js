@@ -375,8 +375,9 @@ const getGameImagePrepareOptions = (body = {}, field = "") => {
 };
 
 const makePoorImageKey = (key) => {
-  if (/-(?:cover(?:dlc|desk|mob|edition)?|gameplayscreenshot\d+)\.[^.]+$/.test(key)) {
-    return key.replace(/-(cover(?:dlc|desk|mob|edition)?|gameplayscreenshot\d+)\.[^.]+$/, (_, role) =>
+  const namedImageSuffix = /-(cover(?:dlc|desk|mob|edition)?|gameplayscreenshot\d+|gameplay-screenshot-\d+)\.[^.]+$/;
+  if (namedImageSuffix.test(key)) {
+    return key.replace(namedImageSuffix, (_, role) =>
       `-poor${role.startsWith("gameplay") ? "-" : ""}${role}.webp`
     );
   }
@@ -394,7 +395,7 @@ const makeObjectName = (customFolder, extension, body = {}, image = {}) => {
     if (!name) throw makeBadRequest("Game name is required before uploading game images");
     const index = Number(body.mediaIndex || image.index || 1);
     if (!Number.isSafeInteger(index) || index < 1) throw makeBadRequest("Invalid image index");
-    const suffix = role === "gameplayscreenshot" ? `${role}${String(index).padStart(2, "0")}` : role;
+    const suffix = role === "gameplayscreenshot" ? `gameplay-screenshot-${String(index).padStart(2, "0")}` : role;
     const filename = `${name}-${suffix}.${extension}`;
     // Isolate uploads so replacing or cancelling one cannot overwrite an existing image.
     const key = `${getBaseFolder(customFolder, body)}/${crypto.randomBytes(12).toString("hex")}/${filename}`;
