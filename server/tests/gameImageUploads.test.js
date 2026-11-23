@@ -76,6 +76,16 @@ test("multipart game uploads store cover, poor preview and mobile variant with m
     const actual = await sharp(objects.find((object) => object.Key === media.public_id).Body).metadata();
     assert.equal(actual.width, 768);
     assert.equal(actual.height, 768);
+    const trailerForm = new FormData();
+    trailerForm.append("entityType", "game");
+    trailerForm.append("entityName", "GTA V");
+    trailerForm.append("file", new Blob(["video"], { type: "video/mp4" }), "تریلر بازی.MP4");
+    const trailerResponse = await fetch(`http://127.0.0.1:${server.address().port}/upload`, { method: "POST", body: trailerForm });
+    assert.equal(trailerResponse.status, 200);
+    const trailer = await trailerResponse.json();
+    assert.equal(trailer.filename, "تریلر بازی.MP4");
+    assert.equal(objects.at(-1).Key, trailer.public_id);
+    assert.ok(trailer.public_id.endsWith("/تریلر بازی.MP4"));
     objects.length = 0;
     const directForm = new FormData();
     directForm.append("title", "Dead space");

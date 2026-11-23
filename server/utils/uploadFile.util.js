@@ -400,6 +400,19 @@ const makeObjectName = (customFolder, extension, body = {}, image = {}) => {
     const key = `${getBaseFolder(customFolder, body)}/${crypto.randomBytes(12).toString("hex")}/${filename}`;
     return { filename, key };
   }
+  if (getEntityTypeFolder(customFolder, body) === "game" && image.originalName) {
+    const original = path.win32.basename(image.originalName);
+    // Multer decodes ordinary multipart filenames as Latin-1.
+    const utf8 = Buffer.from(original, "latin1").toString("utf8");
+    const decoded = Buffer.from(utf8, "utf8").toString("latin1") === original ? utf8 : original;
+    const parsed = path.parse(decoded);
+    const name = parsed.name.replace(/[\u0000-\u001f\u007f]/g, "").trim();
+    if (name && name !== "." && name !== "..") {
+      const filename = name + (parsed.ext.slice(1).toLowerCase() === extension ? parsed.ext : `.${extension}`);
+      const key = `${getBaseFolder(customFolder, body)}/${crypto.randomBytes(12).toString("hex")}/${filename}`;
+      return { filename, key };
+    }
+  }
   const filename = `${crypto.randomBytes(16).toString("hex")}.${extension}`;
   const key = `${getBaseFolder(customFolder, body)}/${filename}`;
 

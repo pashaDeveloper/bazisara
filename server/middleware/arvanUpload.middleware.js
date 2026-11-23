@@ -117,7 +117,8 @@ const uploadArvan = (customFolder = null) => {
             const { extension, fileBuffer, contentType } = await prepareFile(file, prepareOptions);
             const dimensions = contentType.startsWith("image/") ? await sharp(fileBuffer).metadata() : {};
             const { filename, key } = makeObjectName(customFolder, extension, req.body, {
-              field, width: dimensions.width, height: dimensions.height, index: req.uploadedFiles[field].length + 1,
+              field, width: dimensions.width, height: dimensions.height,
+              index: req.uploadedFiles[field].length + 1, originalName: file.originalname,
             });
             const blurFile = await makeBlurPreview(mediaRole ? { ...file, buffer: fileBuffer } : file, extension);
             const mobileFile = isSquareCardImage(customFolder, field)

@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
         hostname: "s3.ir-tbz-sh1.arvanstorage.ir",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "s3.ir-thr-at1.arvanstorage.ir",
+        pathname: "/bazibazar/**",
+      },
     ],
   },
 };

@@ -234,6 +234,8 @@ const uploadImageWithProgress = (file, onProgress, options = {}) => {
   if (options.entityType) formData.append("entityType", options.entityType);
   if (options.entityName) formData.append("entityName", options.entityName);
   if (options.requireEntityName) formData.append("requireEntityName", "true");
+  if (options.mediaRole) formData.append("mediaRole", options.mediaRole);
+  if (options.mediaIndex != null) formData.append("mediaIndex", String(options.mediaIndex));
   if (options.resizeWidth) formData.append("resizeWidth", String(options.resizeWidth));
   if (options.resizeHeight) formData.append("resizeHeight", String(options.resizeHeight));
   if (options.resizeFit) formData.append("resizeFit", String(options.resizeFit));
@@ -268,7 +270,7 @@ const uploadImageWithProgress = (file, onProgress, options = {}) => {
 
       reject({
         status: xhr.status,
-        message: payload?.description || payload?.message || xhr.statusText,
+        message: payload?.description || payload?.message || payload?.error || xhr.statusText,
         data: payload,
       });
     };
